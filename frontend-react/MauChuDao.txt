@@ -1,0 +1,5 @@
+#00288e -> màu xanh dương(đậm)
+#1e40af -> màu xanh dương(đậm vừa: hover: focus)
+
+#fdfdff -> màu trắng(đậm)
+#f8f9ff -> màu trắng + xanh nước(nhạt)

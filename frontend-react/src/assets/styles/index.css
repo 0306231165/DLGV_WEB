@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Thêm các custom CSS khác nếu cần ở đây */
+body {
+  margin: 0;
+  padding: 0;
+}
