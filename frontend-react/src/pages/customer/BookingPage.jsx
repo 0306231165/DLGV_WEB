@@ -1357,7 +1357,7 @@ const BookingPage = () => {
                             )}
                             {addonsTotal > 0 && (
                               <div className="flex justify-between text-on-surface-variant">
-                                <span>Dịch vụ thêm (buổi đầu)</span>
+                                <span>Dịch vụ thêm</span>
                                 <span>+{addonsTotal.toLocaleString('vi-VN')}đ</span>
                               </div>
                             )}
