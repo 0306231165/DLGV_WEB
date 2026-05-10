@@ -19,13 +19,29 @@ const BookingPage = () => {
   const [selectedTime, setSelectedTime] = useState('08:00');
   const [duration, setDuration] = useState(2);
 
+  // ── Gói tháng ─────────────────────────────────────────
   const [weekDays, setWeekDays] = useState([]);
   const [contractMonths, setContractMonths] = useState(1);
   const [sessionsPerWeek, setSessionsPerWeek] = useState(1);
-  const [flexibleSchedule, setFlexibleSchedule] = useState(false); // lịch linh hoạt
-  const [startDate, setStartDate] = useState(''); // ngày bắt đầu cụ thể
+  const [flexibleSchedule, setFlexibleSchedule] = useState(false);
+  const [startDate, setStartDate] = useState('');
 
-  // Accordion state cho sidebar step 2
+  // ── Gói lặp lại (đơn giản hoá) ────────────────────────
+  // recurringFrequency: 'weekly' | 'biweekly'
+  const [recurringFrequency, setRecurringFrequency] = useState('weekly');
+  // chỉ chọn 1 ngày trong tuần
+  const [recurringDay, setRecurringDay] = useState('');
+
+  // ── Validation errors ──────────────────────────────────
+  const [errors, setErrors] = useState({});
+
+  const scheduleHeadingRef = useRef(null);
+  const addressHeadingRef = useRef(null);
+  const weekDaysRef = useRef(null);
+  const startDateRef = useRef(null);
+  const addressRef = useRef(null);
+
+  // Accordion state
   const [openSections, setOpenSections] = useState({
     service: true,
     schedule: true,
@@ -46,12 +62,6 @@ const BookingPage = () => {
     { id: 'sun', label: 'CN' },
   ];
 
-  const toggleWeekDay = (id) => {
-    setWeekDays((prev) =>
-      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
-    );
-  };
-
   const contractOptions = [
     { months: 1, label: '1 tháng', discount: 10 },
     { months: 3, label: '3 tháng', discount: 15 },
@@ -67,6 +77,8 @@ const BookingPage = () => {
   ];
 
   const [extras, setExtras] = useState([]);
+  // extrasScope: { [extraId]: 'all' | 'first' } — chỉ dùng cho gói tháng
+  const [extrasScope, setExtrasScope] = useState({});
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [staffMode, setStaffMode] = useState('auto');
 
@@ -139,15 +151,30 @@ const BookingPage = () => {
     recurring: 'Gói lặp lại',
   };
 
-  const toggleExtra = (id) => {
-    setExtras((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  const toggleWeekDay = (id) => {
+    setWeekDays((prev) =>
+      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
     );
+    if (errors.weekDays) setErrors((prev) => ({ ...prev, weekDays: null }));
   };
 
-  const extrasPrice = extraServices
-    .filter((service) => extras.includes(service.id))
-    .reduce((total, service) => total + service.price, 0);
+  const toggleExtra = (id) => {
+    setExtras((prev) => {
+      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
+      // Khi bỏ chọn thì xoá scope luôn
+      if (prev.includes(id)) {
+        setExtrasScope((s) => { const ns = { ...s }; delete ns[id]; return ns; });
+      } else {
+        // Mặc định scope = 'first' (chỉ buổi đầu)
+        setExtrasScope((s) => ({ ...s, [id]: 'first' }));
+      }
+      return next;
+    });
+  };
+
+  const setExtraScope = (id, scope) => {
+    setExtrasScope((prev) => ({ ...prev, [id]: scope }));
+  };
 
   const travelFee = 15000;
   const durationExtraPrice = durationOptions.find((d) => d.hours === duration)?.extraPrice ?? 0;
@@ -156,21 +183,109 @@ const BookingPage = () => {
   const basePrice = selectedPackageData.price;
   const contractDiscount = contractOptions.find((c) => c.months === contractMonths)?.discount ?? 0;
 
-  const totalSingle = basePrice + extrasPrice + travelFee + durationExtraPrice + staffExtraPrice;
-
+  // ── Gói tháng: tách 2 tầng ──────────────────────────────
   const sessionsPerMonth = sessionsPerWeek * 4;
-  const monthlyRaw = (basePrice + durationExtraPrice + staffExtraPrice) * sessionsPerMonth;
-  const monthlyDiscount = Math.round(monthlyRaw * contractDiscount / 100);
-  const totalMonthly = (monthlyRaw - monthlyDiscount) * contractMonths + extrasPrice + travelFee;
+  const totalSessions = sessionsPerMonth * contractMonths;
 
-  const weeklyRaw = (basePrice + durationExtraPrice + staffExtraPrice) * sessionsPerWeek;
-  const totalRecurring = weeklyRaw + extrasPrice + travelFee;
+  // Tầng 1 — Gói cơ bản (được discount)
+  const coreRaw = (basePrice + durationExtraPrice + staffExtraPrice) * sessionsPerMonth;
+  const coreDiscount = Math.round(coreRaw * contractDiscount / 100);
+  const coreMonthly = coreRaw - coreDiscount; // giá 1 tháng sau giảm
+  const coreTotal = coreMonthly * contractMonths;
+
+  // Tầng 2 — Add-ons (không discount, tính theo scope)
+  const addonsTotal = extraServices
+    .filter((s) => extras.includes(s.id))
+    .reduce((sum, s) => {
+      const scope = extrasScope[s.id] ?? 'first';
+      if (frequency === 'monthly') {
+        return sum + (scope === 'all' ? s.price * totalSessions : s.price);
+      }
+      // Ca lẻ & lặp lại: luôn 1 lần
+      return sum + s.price;
+    }, 0);
+
+  // ── Tổng theo từng gói ──────────────────────────────────
+  // Ca lẻ
+  const totalSingle = basePrice + durationExtraPrice + staffExtraPrice + addonsTotal + travelFee;
+
+  // Gói tháng
+  const totalMonthly = coreTotal + addonsTotal + travelFee;
+
+  // Gói lặp lại: giá 1 buổi + add-ons (1 lần) + di chuyển
+  const totalRecurring = basePrice + durationExtraPrice + staffExtraPrice + addonsTotal + travelFee;
 
   const total = frequency === 'single' ? totalSingle
     : frequency === 'monthly' ? totalMonthly
     : totalRecurring;
 
-  // ─── Step Indicator ───────────────────────────
+  // ── Validate & submit ──────────────────────────────────
+  const handleSubmit = () => {
+    const newErrors = {};
+
+    if (frequency === 'monthly') {
+      const requiredDays = flexibleSchedule ? 1 : sessionsPerWeek;
+      if (weekDays.length < requiredDays) {
+        newErrors.weekDays = flexibleSchedule
+          ? 'Vui lòng chọn ít nhất 1 ngày làm việc.'
+          : `Vui lòng chọn đủ ${requiredDays} ngày làm việc.`;
+      }
+      if (!startDate) {
+        newErrors.startDate = 'Vui lòng chọn ngày bắt đầu hợp đồng.';
+      }
+    }
+
+    if (frequency === 'recurring') {
+      if (!recurringDay) {
+        newErrors.recurringDay = 'Vui lòng chọn ngày làm việc hàng tuần.';
+      }
+    }
+
+    if (addressMode === 'new') {
+      if (!newAddress.street.trim()) {
+        newErrors.street = 'Vui lòng nhập số nhà, tên đường.';
+      }
+      if (!newAddress.district.trim()) {
+        newErrors.district = 'Vui lòng nhập phường / quận.';
+      }
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      const firstKey = Object.keys(newErrors)[0];
+      const refMap = {
+        weekDays: scheduleHeadingRef,
+        startDate: scheduleHeadingRef,
+        recurringDay: scheduleHeadingRef,
+        street: addressHeadingRef,
+        district: addressHeadingRef,
+      };
+      const targetRef = refMap[firstKey];
+      if (targetRef?.current) {
+        const y = targetRef.current.getBoundingClientRect().top + window.scrollY - 100;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+      return;
+    }
+
+    setStep(3);
+  };
+
+  // ── Inline Error Message ──────────────────────────────
+  const ErrorMsg = ({ message }) => {
+    if (!message) return null;
+    return (
+      <div className="flex items-center gap-1.5 mt-2 text-error text-sm font-medium animate-pulse">
+        <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
+          error
+        </span>
+        {message}
+      </div>
+    );
+  };
+
+  // ── Step Indicator ────────────────────────────────────
   const StepIndicator = () => {
     const steps = [
       { num: 1, label: 'Dịch vụ & Gói' },
@@ -183,14 +298,9 @@ const BookingPage = () => {
         {steps.map((s, i) => {
           const isActive = step === s.num;
           const isDone = step > s.num;
-
           return (
             <React.Fragment key={s.num}>
-              <span
-                className={`flex items-center gap-2 ${
-                  isActive ? 'text-primary font-bold' : ''
-                }`}
-              >
+              <span className={`flex items-center gap-2 ${isActive ? 'text-primary font-bold' : ''}`}>
                 <span
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-label-sm transition-all ${
                     isActive
@@ -201,25 +311,15 @@ const BookingPage = () => {
                   }`}
                 >
                   {isDone ? (
-                    <span
-                      className="material-symbols-outlined text-base"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      check
-                    </span>
+                    <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
                   ) : (
                     s.num
                   )}
                 </span>
                 {s.label}
               </span>
-
               {i < steps.length - 1 && (
-                <div
-                  className={`h-px w-12 transition-all ${
-                    step > s.num ? 'bg-primary' : 'bg-outline-variant'
-                  }`}
-                />
+                <div className={`h-px w-12 transition-all ${step > s.num ? 'bg-primary' : 'bg-outline-variant'}`} />
               )}
             </React.Fragment>
           );
@@ -228,16 +328,14 @@ const BookingPage = () => {
     );
   };
 
-  // ─── Accordion Section Header ───────────────────────────
+  // ── Accordion Section Header ──────────────────────────
   const AccordionHeader = ({ sectionKey, icon, label }) => (
     <button
       onClick={() => toggleSection(sectionKey)}
       className="w-full flex items-center gap-2 px-6 py-3 hover:bg-surface-container/50 transition-colors"
     >
       <span className="material-symbols-outlined text-primary text-base">{icon}</span>
-      <p className="flex-1 text-xs font-bold text-primary uppercase tracking-widest text-left">
-        {label}
-      </p>
+      <p className="flex-1 text-xs font-bold text-primary uppercase tracking-widest text-left">{label}</p>
       <span
         className="material-symbols-outlined text-on-surface-variant text-base transition-transform duration-200"
         style={{ transform: openSections[sectionKey] ? 'rotate(0deg)' : 'rotate(-90deg)' }}
@@ -254,9 +352,7 @@ const BookingPage = () => {
       {step === 1 && (
         <>
           <div ref={headingRef} className="mb-12">
-            <h1 className="font-h2 text-h2 text-primary mb-2">
-              Đặt lịch - Bước 1: Dịch vụ & Gói
-            </h1>
+            <h1 className="font-h2 text-h2 text-primary mb-2">Đặt lịch - Bước 1: Dịch vụ & Gói</h1>
             <StepIndicator />
           </div>
 
@@ -269,12 +365,11 @@ const BookingPage = () => {
                   <span className="material-symbols-outlined text-primary">event_repeat</span>
                   Tần suất vệ sinh
                 </h3>
-
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     { id: 'single', icon: 'event', title: 'Ca lẻ', desc: 'Vệ sinh một lần duy nhất theo yêu cầu.' },
-                    { id: 'monthly', icon: 'package_2', title: 'Gói tháng', desc: 'Lịch cố định hàng tháng, tiết kiệm 15%.', badge: 'Ưu đãi nhất' },
-                    { id: 'recurring', icon: 'update', title: 'Gói lặp lại', desc: 'Dịch vụ định kỳ mỗi tuần hoặc 2 tuần.' },
+                    { id: 'monthly', icon: 'package_2', title: 'Gói tháng', desc: 'Lịch cố định hàng tháng, tiết kiệm từ 10% đến 20%.', badge: 'Ưu đãi nhất' },
+                    { id: 'recurring', icon: 'update', title: 'Gói lặp lại', desc: 'Tự động lặp lại hàng tuần hoặc 2 tuần. Hủy bất kỳ lúc nào.' },
                   ].map((item) => (
                     <label key={item.id} className="relative cursor-pointer">
                       <input
@@ -297,9 +392,7 @@ const BookingPage = () => {
                         )}
                       </div>
                       <div className="absolute top-4 right-4 text-primary opacity-0 peer-checked:opacity-100">
-                        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                          check_circle
-                        </span>
+                        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                       </div>
                     </label>
                   ))}
@@ -312,19 +405,12 @@ const BookingPage = () => {
                   <span className="material-symbols-outlined text-primary">cleaning_services</span>
                   Chọn gói dịch vụ
                 </h3>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {packages.map((pkg) => {
                     const isSelected = selectedPackage === pkg.id;
                     return (
                       <label key={pkg.id} className="relative cursor-pointer">
-                        <input
-                          type="radio"
-                          name="package"
-                          checked={isSelected}
-                          onChange={() => setSelectedPackage(pkg.id)}
-                          className="peer sr-only"
-                        />
+                        <input type="radio" name="package" checked={isSelected} onChange={() => setSelectedPackage(pkg.id)} className="peer sr-only" />
                         <div className={`bg-surface-container-item glass-card p-6 rounded-xl border-2 transition-all flex gap-4 h-full ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/30'}`}>
                           <div className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 ${pkg.iconBg}`}>
                             <span className="material-symbols-outlined text-primary text-3xl">{pkg.icon}</span>
@@ -336,9 +422,7 @@ const BookingPage = () => {
                           </div>
                         </div>
                         <div className="absolute top-6 right-6 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
-                          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                            check_circle
-                          </span>
+                          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                         </div>
                       </label>
                     );
@@ -352,45 +436,22 @@ const BookingPage = () => {
                   <span className="material-symbols-outlined text-primary">badge</span>
                   Nhân viên phụ trách
                 </h3>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
-                    {
-                      id: 'auto',
-                      icon: 'smart_toy',
-                      title: 'Hệ thống tự chọn',
-                      desc: 'Tối ưu hoá thời gian và đảm bảo chất lượng. Miễn phí phí chọn.',
-                      badge: 'Miễn phí',
-                      badgeColor: 'bg-secondary-container text-on-secondary-container',
-                    },
-                    {
-                      id: 'manual',
-                      icon: 'person_search',
-                      title: 'Tự chọn nhân viên',
-                      desc: 'Lựa chọn người quen đã từng làm việc tại nhà bạn.',
-                      badge: '+30.000đ/buổi',
-                      badgeColor: 'bg-tertiary-fixed text-on-tertiary-fixed-variant',
-                    },
+                    { id: 'auto', icon: 'smart_toy', title: 'Hệ thống tự chọn', desc: 'Tối ưu hoá thời gian và đảm bảo chất lượng.', badge: 'Miễn phí', badgeColor: 'bg-secondary-container text-on-secondary-container' },
+                    { id: 'manual', icon: 'person_search', title: 'Tự chọn nhân viên', desc: 'Chọn nhân viên từ danh sách những người nhận lịch.', badge: '+30.000đ/buổi', badgeColor: 'bg-tertiary-fixed text-on-tertiary-fixed-variant' },
                   ].map((item) => {
                     const isSelected = staffMode === item.id;
                     return (
                       <label key={item.id} className="relative cursor-pointer">
-                        <input
-                          type="radio"
-                          name="staffMode"
-                          checked={isSelected}
-                          onChange={() => setStaffMode(item.id)}
-                          className="peer sr-only"
-                        />
+                        <input type="radio" name="staffMode" checked={isSelected} onChange={() => setStaffMode(item.id)} className="peer sr-only" />
                         <div className="bg-surface-container-item glass-card p-6 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all h-full">
                           <div className="mb-4 w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
                             <span className="material-symbols-outlined">{item.icon}</span>
                           </div>
                           <h4 className="font-bold text-on-surface text-body-lg mb-2">{item.title}</h4>
                           <p className="text-on-surface-variant text-sm mb-3">{item.desc}</p>
-                          <span className={`inline-block px-3 py-1 rounded text-[12px] font-bold ${item.badgeColor}`}>
-                            {item.badge}
-                          </span>
+                          <span className={`inline-block px-3 py-1 rounded text-[12px] font-bold ${item.badgeColor}`}>{item.badge}</span>
                         </div>
                         <div className="absolute top-4 right-4 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
                           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
@@ -406,7 +467,6 @@ const BookingPage = () => {
             <aside className="lg:col-span-4 sticky top-24">
               <div className="bg-background-2 glass-card p-8 rounded-2xl shadow-xl border border-white/50">
                 <h3 className="font-h3 text-h3 text-primary mb-6">Tóm tắt dịch vụ</h3>
-
                 <div className="space-y-4 mb-8">
                   <div className="flex justify-between text-on-surface-variant">
                     <span>Loại dịch vụ</span>
@@ -414,20 +474,16 @@ const BookingPage = () => {
                   </div>
                   <div className="flex justify-between items-center text-on-surface-variant">
                     <span>Gói dịch vụ</span>
-                    <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm">
-                      {selectedPackageData.title}
-                    </span>
+                    <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm">{selectedPackageData.title}</span>
                   </div>
                   <div className="flex justify-between text-on-surface-variant">
                     <span>Nhân viên</span>
-                    <span className="font-semibold text-on-surface">
-                      {staffMode === 'auto' ? 'Hệ thống chọn' : 'Tự chọn'}
-                    </span>
+                    <span className="font-semibold text-on-surface">{staffMode === 'auto' ? 'Hệ thống chọn' : 'Tự chọn'}</span>
                   </div>
                   <hr className="border-outline-variant/20" />
                   <div className="flex justify-between text-on-surface-variant">
                     <span>Giá cơ bản</span>
-                    <span className="font-semibold text-on-surface">{selectedPackageData.price.toLocaleString('vi-VN')}đ</span>
+                    <span className="font-semibold text-on-surface">{selectedPackageData.price.toLocaleString('vi-VN')}đ/buổi</span>
                   </div>
                   {staffMode === 'manual' && (
                     <div className="flex justify-between text-on-surface-variant">
@@ -436,16 +492,14 @@ const BookingPage = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="pt-6 border-t-2 border-dashed border-outline-variant/30 mb-8">
                   <div className="flex justify-between items-end">
-                    <span className="text-on-surface-variant font-medium">Tổng thanh toán</span>
+                    <span className="text-on-surface-variant font-medium">Giá / buổi</span>
                     <span className="text-3xl font-h1 font-extrabold text-primary">
-                      {selectedPackageData.price.toLocaleString('vi-VN')}đ
+                      {(selectedPackageData.price + staffExtraPrice).toLocaleString('vi-VN')}đ
                     </span>
                   </div>
                 </div>
-
                 <button
                   onClick={() => setStep(2)}
                   className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
@@ -453,12 +507,9 @@ const BookingPage = () => {
                   Tiếp theo
                   <span className="material-symbols-outlined">arrow_forward</span>
                 </button>
-
                 <p className="mt-4 text-xs text-center text-on-surface-variant">
                   Bằng cách nhấn tiếp theo, bạn đồng ý với{' '}
-                  <Link to="/terms" className="underline hover:text-primary transition-colors">
-                    Điều khoản dịch vụ
-                  </Link>{' '}
+                  <Link to="/terms" className="underline hover:text-primary transition-colors">Điều khoản dịch vụ</Link>{' '}
                   của CleanTrust.
                 </p>
               </div>
@@ -471,24 +522,21 @@ const BookingPage = () => {
       {step === 2 && (
         <>
           <div ref={headingRef} className="mb-12">
-            <h1 className="font-h2 text-h2 text-primary mb-2">
-              Đặt lịch - Bước 2: Thời gian & Địa chỉ
-            </h1>
+            <h1 className="font-h2 text-h2 text-primary mb-2">Đặt lịch - Bước 2: Thời gian & Địa chỉ</h1>
             <StepIndicator />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-
-            {/* LEFT */}
             <div className="lg:col-span-8 space-y-6">
 
               {/* Chọn thời gian */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
+                <h3 ref={scheduleHeadingRef} className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary">calendar_month</span>
                   {frequency === 'single' ? 'Chọn thời gian' : 'Lịch làm việc'}
                 </h3>
 
+                {/* ── Ca lẻ ── */}
                 {frequency === 'single' && (
                   <>
                     <div className="flex gap-4 overflow-x-auto pb-4">
@@ -507,7 +555,6 @@ const BookingPage = () => {
                         </div>
                       ))}
                     </div>
-
                     <div className="mt-8">
                       <p className="font-semibold mb-3">Giờ bắt đầu</p>
                       <div className="flex items-center gap-3">
@@ -546,9 +593,9 @@ const BookingPage = () => {
                   </>
                 )}
 
-                {(frequency === 'monthly' || frequency === 'recurring') && (
+                {/* ── Gói tháng ── */}
+                {frequency === 'monthly' && (
                   <>
-                    {/* Số buổi mỗi tuần */}
                     <div className="mb-8">
                       <p className="font-semibold mb-3">Số buổi mỗi tuần</p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -569,14 +616,8 @@ const BookingPage = () => {
                             </div>
                           </label>
                         ))}
-                        {/* Linh hoạt */}
                         <label className="relative cursor-pointer">
-                          <input
-                            type="radio"
-                            checked={flexibleSchedule}
-                            onChange={() => { setFlexibleSchedule(true); setWeekDays([]); }}
-                            className="peer sr-only"
-                          />
+                          <input type="radio" checked={flexibleSchedule} onChange={() => { setFlexibleSchedule(true); setWeekDays([]); }} className="peer sr-only" />
                           <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
                             <p className="font-bold text-on-surface text-body-lg">Nhiều buổi</p>
                             <p className="text-xs text-on-surface-variant mt-1">/ tuần</p>
@@ -586,48 +627,48 @@ const BookingPage = () => {
                           </div>
                         </label>
                       </div>
-
                     </div>
 
-                    {/* Chọn ngày trong tuần */}
-                    {(
-                      <div className="mb-8">
-                        <p className="font-semibold mb-3">
-                          Chọn ngày làm việc
-                          <span className="ml-2 text-xs text-on-surface-variant font-normal">{flexibleSchedule ? '(chọn tối đa 7 ngày)' : `(chọn ${sessionsPerWeek} ngày)`}</span>
-                        </p>
-                        <div className="flex gap-3 flex-wrap">
-                          {weekDayOptions.map((d) => {
-                            const isSelected = weekDays.includes(d.id);
-                            const maxDays = flexibleSchedule ? 7 : sessionsPerWeek;
-                            const isDisabled = !isSelected && weekDays.length >= maxDays;
-                            return (
-                              <button
-                                key={d.id}
-                                onClick={() => !isDisabled && toggleWeekDay(d.id)}
-                                className={`w-12 h-12 rounded-xl border-2 font-bold text-sm transition-all ${
-                                  isSelected
-                                    ? 'border-primary bg-primary text-on-primary'
-                                    : isDisabled
-                                    ? 'border-outline-variant/20 text-on-surface-variant/30 cursor-not-allowed'
-                                    : 'border-outline-variant hover:border-primary hover:text-primary'
-                                }`}
-                              >
-                                {d.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {weekDays.length > 0 && (
-                          <p className="text-xs text-primary mt-2 font-medium">
-                            Đã chọn: {weekDays.map((id) => weekDayOptions.find((d) => d.id === id)?.label).join(', ')}
-                          </p>
-                        )}
+                    <div className="mb-8" ref={weekDaysRef}>
+                      <p className="font-semibold mb-3">
+                        Chọn ngày làm việc
+                        <span className="ml-2 text-xs text-on-surface-variant font-normal">
+                          {flexibleSchedule ? '(chọn tối đa 7 ngày)' : `(chọn ${sessionsPerWeek} ngày)`}
+                        </span>
+                      </p>
+                      <div className={`flex gap-3 flex-wrap p-3 rounded-xl transition-colors ${errors.weekDays ? 'bg-error/5 border-2 border-error/40' : 'border-2 border-transparent'}`}>
+                        {weekDayOptions.map((d) => {
+                          const isSelected = weekDays.includes(d.id);
+                          const maxDays = flexibleSchedule ? 7 : sessionsPerWeek;
+                          const isDisabled = !isSelected && weekDays.length >= maxDays;
+                          return (
+                            <button
+                              key={d.id}
+                              onClick={() => !isDisabled && toggleWeekDay(d.id)}
+                              className={`w-12 h-12 rounded-xl border-2 font-bold text-sm transition-all ${
+                                isSelected
+                                  ? 'border-primary bg-primary text-on-primary'
+                                  : isDisabled
+                                  ? 'border-outline-variant/20 text-on-surface-variant/30 cursor-not-allowed'
+                                  : errors.weekDays
+                                  ? 'border-error/40 hover:border-error hover:text-error'
+                                  : 'border-outline-variant hover:border-primary hover:text-primary'
+                              }`}
+                            >
+                              {d.label}
+                            </button>
+                          );
+                        })}
                       </div>
-                    )}
+                      {weekDays.length > 0 && (
+                        <p className="text-xs text-primary mt-2 font-medium">
+                          Đã chọn: {weekDays.map((id) => weekDayOptions.find((d) => d.id === id)?.label).join(', ')}
+                        </p>
+                      )}
+                      <ErrorMsg message={errors.weekDays} />
+                    </div>
 
-                    {/* Ngày bắt đầu — date picker */}
-                    <div className="mb-8">
+                    <div className="mb-8" ref={startDateRef}>
                       <p className="font-semibold mb-3">Ngày bắt đầu hợp đồng</p>
                       <div className="relative w-fit">
                         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl pointer-events-none">calendar_today</span>
@@ -635,8 +676,13 @@ const BookingPage = () => {
                           type="date"
                           value={startDate}
                           min={new Date().toISOString().split('T')[0]}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="pl-10 pr-4 py-3 rounded-xl border-2 border-outline-variant bg-surface focus:border-primary focus:outline-none transition-colors text-on-surface cursor-pointer"
+                          onChange={(e) => {
+                            setStartDate(e.target.value);
+                            if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: null }));
+                          }}
+                          className={`pl-10 pr-4 py-3 rounded-xl border-2 bg-surface focus:outline-none transition-colors text-on-surface cursor-pointer ${
+                            errors.startDate ? 'border-error focus:border-error' : 'border-outline-variant focus:border-primary'
+                          }`}
                         />
                       </div>
                       {startDate && (
@@ -645,6 +691,7 @@ const BookingPage = () => {
                           Bắt đầu từ: {new Date(startDate).toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                       )}
+                      <ErrorMsg message={errors.startDate} />
                     </div>
 
                     <div className="mb-8">
@@ -682,55 +729,150 @@ const BookingPage = () => {
                       </div>
                     </div>
 
-                    {frequency === 'monthly' && (
-                      <div>
-                        <p className="font-semibold mb-3">Thời hạn hợp đồng</p>
-                        <div className="grid grid-cols-3 gap-3">
-                          {contractOptions.map((opt) => (
-                            <label key={opt.months} className="relative cursor-pointer">
-                              <input
-                                type="radio"
-                                checked={contractMonths === opt.months}
-                                onChange={() => setContractMonths(opt.months)}
-                                className="peer sr-only"
-                              />
-                              <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
-                                <p className="font-bold text-on-surface text-body-lg">{opt.label}</p>
-                                <p className="text-xs text-primary font-semibold mt-1">Giảm {opt.discount}%</p>
-                              </div>
-                              <div className="absolute top-3 right-3 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
-                                <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
+                    <div>
+                      <p className="font-semibold mb-3">Thời hạn hợp đồng</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {contractOptions.map((opt) => (
+                          <label key={opt.months} className="relative cursor-pointer">
+                            <input type="radio" checked={contractMonths === opt.months} onChange={() => setContractMonths(opt.months)} className="peer sr-only" />
+                            <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
+                              <p className="font-bold text-on-surface text-body-lg">{opt.label}</p>
+                              <p className="text-xs text-primary font-semibold mt-1">Giảm {opt.discount}%</p>
+                            </div>
+                            <div className="absolute top-3 right-3 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
+                              <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            </div>
+                          </label>
+                        ))}
                       </div>
-                    )}
-
-                    {frequency === 'recurring' && (
-                      <div className="flex items-start gap-3 p-4 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed">
-                        <span className="material-symbols-outlined text-on-tertiary-fixed-variant mt-0.5">info</span>
-                        <div>
-                          <p className="font-semibold text-on-tertiary-fixed-variant">Tự động lặp lại hàng tuần</p>
-                          <p className="text-sm text-on-tertiary-fixed-variant/80 mt-1">Không có thời hạn hợp đồng. Bạn có thể hủy hoặc tạm dừng bất kỳ lúc nào trước 24 giờ.</p>
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </>
                 )}
 
-                {/* Thời lượng */}
+                {/* ── Gói lặp lại (đơn giản hoá) ── */}
+                {frequency === 'recurring' && (
+                  <>
+                    {/* Thông tin tự động lặp lại */}
+                    <div className="flex items-start gap-3 p-4 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed mb-8">
+                      <span className="material-symbols-outlined text-on-tertiary-fixed-variant mt-0.5">info</span>
+                      <div>
+                        <p className="font-semibold text-on-tertiary-fixed-variant">Tự động lặp lại, không ràng buộc</p>
+                        <p className="text-sm text-on-tertiary-fixed-variant/80 mt-1">
+                          Buổi đầu được xác nhận, các buổi tiếp theo tự động lên lịch. Hủy hoặc tạm dừng bất kỳ lúc nào trước 24 giờ.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Tần suất lặp lại */}
+                    <div className="mb-8">
+                      <p className="font-semibold mb-3">Tần suất lặp lại</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: 'weekly', label: 'Mỗi tuần', sub: 'Lặp lại hàng tuần' },
+                          { id: 'biweekly', label: '2 tuần / lần', sub: 'Lặp lại cách tuần' },
+                        ].map((opt) => (
+                          <label key={opt.id} className="relative cursor-pointer">
+                            <input
+                              type="radio"
+                              checked={recurringFrequency === opt.id}
+                              onChange={() => setRecurringFrequency(opt.id)}
+                              className="peer sr-only"
+                            />
+                            <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
+                              <p className="font-bold text-on-surface text-body-lg">{opt.label}</p>
+                              <p className="text-xs text-on-surface-variant mt-1">{opt.sub}</p>
+                            </div>
+                            <div className="absolute top-3 right-3 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
+                              <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Chọn 1 ngày trong tuần */}
+                    <div className="mb-8">
+                      <p className="font-semibold mb-3">
+                        Ngày làm việc
+                        <span className="ml-2 text-xs text-on-surface-variant font-normal">(chọn 1 ngày)</span>
+                      </p>
+                      <div className={`flex gap-3 flex-wrap p-3 rounded-xl transition-colors ${errors.recurringDay ? 'bg-error/5 border-2 border-error/40' : 'border-2 border-transparent'}`}>
+                        {weekDayOptions.map((d) => {
+                          const isSelected = recurringDay === d.id;
+                          return (
+                            <button
+                              key={d.id}
+                              onClick={() => {
+                                setRecurringDay(d.id);
+                                if (errors.recurringDay) setErrors((prev) => ({ ...prev, recurringDay: null }));
+                              }}
+                              className={`w-12 h-12 rounded-xl border-2 font-bold text-sm transition-all ${
+                                isSelected
+                                  ? 'border-primary bg-primary text-on-primary'
+                                  : errors.recurringDay
+                                  ? 'border-error/40 hover:border-error hover:text-error'
+                                  : 'border-outline-variant hover:border-primary hover:text-primary'
+                              }`}
+                            >
+                              {d.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {recurringDay && (
+                        <p className="text-xs text-primary mt-2 font-medium flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">check_circle</span>
+                          Mỗi {recurringFrequency === 'weekly' ? 'tuần' : '2 tuần'} vào {weekDayOptions.find((d) => d.id === recurringDay)?.label}
+                        </p>
+                      )}
+                      <ErrorMsg message={errors.recurringDay} />
+                    </div>
+
+                    {/* Giờ bắt đầu */}
+                    <div className="mb-8">
+                      <p className="font-semibold mb-3">Giờ bắt đầu mỗi buổi</p>
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <select
+                            value={selectedTime.split(':')[0]}
+                            onChange={(e) => setSelectedTime(`${e.target.value}:${selectedTime.split(':')[1]}`)}
+                            className="appearance-none pl-4 pr-10 py-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold text-lg focus:outline-none cursor-pointer"
+                          >
+                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </select>
+                          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-primary text-base pointer-events-none">expand_more</span>
+                        </div>
+                        <span className="text-2xl font-bold text-on-surface-variant">:</span>
+                        <div className="relative">
+                          <select
+                            value={selectedTime.split(':')[1]}
+                            onChange={(e) => setSelectedTime(`${selectedTime.split(':')[0]}:${e.target.value}`)}
+                            className="appearance-none pl-4 pr-10 py-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold text-lg focus:outline-none cursor-pointer"
+                          >
+                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map((m) => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </select>
+                          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-primary text-base pointer-events-none">expand_more</span>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2 px-3 py-2 bg-surface-container rounded-lg">
+                          <span className="material-symbols-outlined text-on-surface-variant text-base">schedule</span>
+                          <span className="text-sm text-on-surface-variant font-medium">{selectedTime}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Thời lượng (tất cả gói) */}
                 <div className="mt-8">
                   <p className="font-semibold mb-3">Thời lượng mỗi buổi</p>
                   <div className="grid grid-cols-3 gap-3">
                     {durationOptions.map((opt) => (
                       <label key={opt.hours} className="relative cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={duration === opt.hours}
-                          onChange={() => setDuration(opt.hours)}
-                          className="peer sr-only"
-                        />
+                        <input type="radio" checked={duration === opt.hours} onChange={() => setDuration(opt.hours)} className="peer sr-only" />
                         <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
                           <p className="font-bold text-on-surface text-body-lg">{opt.label}</p>
                           {opt.extraPrice > 0 ? (
@@ -754,12 +896,11 @@ const BookingPage = () => {
               </section>
 
               {/* Địa chỉ */}
-              <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
+              <section className="glass-card bg-surface-container-item rounded-2xl p-8" ref={addressRef}>
+                <h3 ref={addressHeadingRef} className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary">location_on</span>
                   Địa chỉ vệ sinh
                 </h3>
-
                 <div className="flex gap-2 p-1 bg-surface-container rounded-xl mb-6 w-fit">
                   {[
                     { id: 'saved', icon: 'bookmark', label: 'Địa chỉ đã lưu' },
@@ -767,11 +908,9 @@ const BookingPage = () => {
                   ].map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setAddressMode(tab.id)}
+                      onClick={() => { setAddressMode(tab.id); setErrors((prev) => ({ ...prev, street: null, district: null })); }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                        addressMode === tab.id
-                          ? 'bg-primary text-on-primary shadow-sm'
-                          : 'text-on-surface-variant hover:text-on-surface'
+                        addressMode === tab.id ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
                       }`}
                     >
                       <span className="material-symbols-outlined text-base">{tab.icon}</span>
@@ -786,32 +925,19 @@ const BookingPage = () => {
                       <label
                         key={addr.id}
                         className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                          selectedSavedAddress === addr.id
-                            ? 'border-primary bg-primary/5'
-                            : 'border-outline-variant/40 hover:border-outline-variant'
+                          selectedSavedAddress === addr.id ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'
                         }`}
                       >
-                        <input
-                          type="radio"
-                          checked={selectedSavedAddress === addr.id}
-                          onChange={() => setSelectedSavedAddress(addr.id)}
-                          className="accent-primary w-4 h-4 shrink-0"
-                        />
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                          selectedSavedAddress === addr.id ? 'bg-primary/10' : 'bg-surface-container'
-                        }`}>
-                          <span className={`material-symbols-outlined text-xl ${
-                            selectedSavedAddress === addr.id ? 'text-primary' : 'text-on-surface-variant'
-                          }`}>{addr.icon}</span>
+                        <input type="radio" checked={selectedSavedAddress === addr.id} onChange={() => setSelectedSavedAddress(addr.id)} className="accent-primary w-4 h-4 shrink-0" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${selectedSavedAddress === addr.id ? 'bg-primary/10' : 'bg-surface-container'}`}>
+                          <span className={`material-symbols-outlined text-xl ${selectedSavedAddress === addr.id ? 'text-primary' : 'text-on-surface-variant'}`}>{addr.icon}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-on-surface">{addr.label}</p>
                           <p className="text-sm text-on-surface-variant mt-0.5 leading-relaxed">{addr.address}</p>
                         </div>
                         {selectedSavedAddress === addr.id && (
-                          <span className="material-symbols-outlined text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
-                            check_circle
-                          </span>
+                          <span className="material-symbols-outlined text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                         )}
                       </label>
                     ))}
@@ -825,39 +951,35 @@ const BookingPage = () => {
                 {addressMode === 'new' && (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold text-on-surface mb-2">
-                        Số nhà, tên đường <span className="text-error">*</span>
-                      </label>
+                      <label className="block text-sm font-semibold text-on-surface mb-2">Số nhà, tên đường <span className="text-error">*</span></label>
                       <div className="relative">
                         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">signpost</span>
                         <input
                           type="text"
                           placeholder="VD: 123 Nguyễn Huệ"
                           value={newAddress.street}
-                          onChange={(e) => setNewAddress((p) => ({ ...p, street: e.target.value }))}
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-outline-variant bg-surface focus:border-primary focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50"
+                          onChange={(e) => { setNewAddress((p) => ({ ...p, street: e.target.value })); if (errors.street) setErrors((prev) => ({ ...prev, street: null })); }}
+                          className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 bg-surface focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50 ${errors.street ? 'border-error focus:border-error' : 'border-outline-variant focus:border-primary'}`}
                         />
                       </div>
+                      <ErrorMsg message={errors.street} />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-on-surface mb-2">
-                        Phường / Quận <span className="text-error">*</span>
-                      </label>
+                      <label className="block text-sm font-semibold text-on-surface mb-2">Phường / Quận <span className="text-error">*</span></label>
                       <div className="relative">
                         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">location_city</span>
                         <input
                           type="text"
                           placeholder="VD: Phường Bến Nghé, Quận 1"
                           value={newAddress.district}
-                          onChange={(e) => setNewAddress((p) => ({ ...p, district: e.target.value }))}
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-outline-variant bg-surface focus:border-primary focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50"
+                          onChange={(e) => { setNewAddress((p) => ({ ...p, district: e.target.value })); if (errors.district) setErrors((prev) => ({ ...prev, district: null })); }}
+                          className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 bg-surface focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50 ${errors.district ? 'border-error focus:border-error' : 'border-outline-variant focus:border-primary'}`}
                         />
                       </div>
+                      <ErrorMsg message={errors.district} />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-on-surface mb-2">
-                        Ghi chú thêm <span className="text-on-surface-variant font-normal">(tùy chọn)</span>
-                      </label>
+                      <label className="block text-sm font-semibold text-on-surface mb-2">Ghi chú thêm <span className="text-on-surface-variant font-normal">(tùy chọn)</span></label>
                       <div className="relative">
                         <span className="material-symbols-outlined absolute left-3 top-3.5 text-on-surface-variant text-xl">notes</span>
                         <textarea
@@ -875,49 +997,84 @@ const BookingPage = () => {
 
               {/* Dịch vụ thêm */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
+                <h3 className="font-h3 text-h3 mb-2 text-on-surface flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary">add_circle</span>
                   Dịch vụ thêm
                 </h3>
-
+                {frequency === 'monthly' && (
+                  // <p className="text-xs text-on-surface-variant mb-6 flex items-center gap-1">
+                  //   <span className="material-symbols-outlined text-sm">info</span>
+                  //   Dịch vụ thêm tính phí riêng (không áp dụng ưu đãi gói tháng).
+                  //   Bạn có thể chọn áp dụng dịch vụ này chỉ cho buổi làm đầu tiên hoặc cho tất cả các buổi trong hợp đồng.
+                  // </p>
+                  <p className="text-xs text-on-surface-variant mb-6 flex gap-1">
+                    <span className="material-symbols-outlined text-sm" style={{ marginTop: '-2px' }}>info</span>
+                    <span>Dịch vụ thêm tính phí riêng (không áp dụng ưu đãi gói tháng). Bạn có thể chọn áp dụng dịch vụ này chỉ cho buổi làm đầu tiên hoặc cho tất cả các buổi trong hợp đồng.</span>
+                  </p>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {extraServices.map((service) => (
-                    <label
-                      key={service.id}
-                      className={`flex flex-col rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-                        extras.includes(service.id) ? 'border-primary' : 'border-outline-variant hover:border-outline-variant/80'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={extras.includes(service.id)}
-                        onChange={() => toggleExtra(service.id)}
-                        className="sr-only"
-                      />
-                      <div className="h-32 overflow-hidden relative">
-                        <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
-                        {extras.includes(service.id) && (
-                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-white text-4xl drop-shadow" style={{ fontVariationSettings: "'FILL' 1" }}>
-                              check_circle
-                            </span>
+                  {extraServices.map((service) => {
+                    const isSelected = extras.includes(service.id);
+                    const scope = extrasScope[service.id] ?? 'first';
+                    return (
+                      <div key={service.id} className="flex flex-col">
+                        <label
+                          className={`flex flex-col rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
+                            isSelected ? 'border-primary' : 'border-outline-variant hover:border-outline-variant/80'
+                          }`}
+                        >
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleExtra(service.id)} className="sr-only" />
+                          <div className="h-32 overflow-hidden relative">
+                            <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-white text-4xl drop-shadow" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className={`p-4 flex-1 flex flex-col justify-between transition-all ${isSelected ? 'bg-primary/5' : 'bg-surface'}`}>
+                            <div>
+                              <h4 className="font-bold text-on-surface">{service.title}</h4>
+                              <p className="font-semibold mt-1 text-primary">
+                                {frequency === 'monthly' && isSelected && scope === 'all'
+                                  ? `${(service.price * totalSessions).toLocaleString('vi-VN')}đ / ${contractMonths} tháng`
+                                  : `${service.price.toLocaleString('vi-VN')}đ / lần`
+                                }
+                              </p>
+                            </div>
+                            <div className={`mt-3 flex items-center gap-2 text-sm font-semibold ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>
+                              <span className="material-symbols-outlined text-base" style={isSelected ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                                {isSelected ? 'check_circle' : 'add_circle'}
+                              </span>
+                              {isSelected ? 'Đã chọn' : 'Thêm dịch vụ'}
+                            </div>
+                          </div>
+                        </label>
+
+                        {/* Scope toggle — chỉ hiện khi gói tháng và đã chọn */}
+                        {frequency === 'monthly' && isSelected && (
+                          <div className="mt-2 flex gap-2">
+                            {[
+                              { value: 'first', label: 'Buổi đầu tiên' },
+                              { value: 'all', label: 'Tất cả buổi' },
+                            ].map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() => setExtraScope(service.id, opt.value)}
+                                className={`flex-1 py-2 px-2 rounded-lg border-2 text-xs font-semibold transition-all ${
+                                  scope === opt.value
+                                    ? 'border-primary bg-primary text-on-primary'
+                                    : 'border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
-                      <div className={`p-4 flex-1 flex flex-col justify-between transition-all ${extras.includes(service.id) ? 'bg-primary/5' : 'bg-surface'}`}>
-                        <div>
-                          <h4 className="font-bold text-on-surface">{service.title}</h4>
-                          <p className="font-semibold mt-1 text-primary">{service.price.toLocaleString('vi-VN')}đ</p>
-                        </div>
-                        <div className={`mt-3 flex items-center gap-2 text-sm font-semibold ${extras.includes(service.id) ? 'text-primary' : 'text-on-surface-variant'}`}>
-                          <span className="material-symbols-outlined text-base" style={extras.includes(service.id) ? { fontVariationSettings: "'FILL' 1" } : {}}>
-                            {extras.includes(service.id) ? 'check_circle' : 'add_circle'}
-                          </span>
-                          {extras.includes(service.id) ? 'Đã chọn' : 'Thêm dịch vụ'}
-                        </div>
-                      </div>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
 
@@ -935,9 +1092,7 @@ const BookingPage = () => {
                     onChange={(e) => setStaffNote(e.target.value)}
                     className="w-full px-4 py-4 rounded-xl border-2 border-outline-variant/30 bg-surface focus:border-primary focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/40 resize-none"
                   />
-                  <div className="absolute bottom-3 right-4 text-xs text-on-surface-variant/50">
-                    {staffNote.length}/300
-                  </div>
+                  <div className="absolute bottom-3 right-4 text-xs text-on-surface-variant/50">{staffNote.length}/300</div>
                 </div>
                 <p className="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
                   <span className="material-symbols-outlined text-sm">info</span>
@@ -963,24 +1118,13 @@ const BookingPage = () => {
                         paymentMethod === item.id ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'
                       }`}
                     >
-                      <input
-                        type="radio"
-                        checked={paymentMethod === item.id}
-                        onChange={() => setPaymentMethod(item.id)}
-                        className="accent-primary w-4 h-4 shrink-0"
-                      />
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                        paymentMethod === item.id ? 'bg-primary/10' : 'bg-surface-container'
-                      }`}>
-                        <span className={`material-symbols-outlined text-xl ${
-                          paymentMethod === item.id ? 'text-primary' : 'text-on-surface-variant'
-                        }`}>{item.icon}</span>
+                      <input type="radio" checked={paymentMethod === item.id} onChange={() => setPaymentMethod(item.id)} className="accent-primary w-4 h-4 shrink-0" />
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${paymentMethod === item.id ? 'bg-primary/10' : 'bg-surface-container'}`}>
+                        <span className={`material-symbols-outlined text-xl ${paymentMethod === item.id ? 'text-primary' : 'text-on-surface-variant'}`}>{item.icon}</span>
                       </div>
                       <span className="font-bold text-on-surface">{item.title}</span>
                       {paymentMethod === item.id && (
-                        <span className="material-symbols-outlined text-primary ml-auto shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
-                          check_circle
-                        </span>
+                        <span className="material-symbols-outlined text-primary ml-auto shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                       )}
                     </label>
                   ))}
@@ -988,16 +1132,14 @@ const BookingPage = () => {
               </section>
             </div>
 
-            {/* ── SIDEBAR STEP 2 — Accordion + CTA dính đáy ── */}
+            {/* ── SIDEBAR STEP 2 ── */}
             <aside className="lg:col-span-4 sticky top-24">
               <div className="bg-background-2 glass-card rounded-2xl shadow-xl border border-white/50 overflow-hidden flex flex-col">
 
-                {/* Header cố định */}
                 <div className="px-6 py-5 border-b border-outline-variant/20">
                   <h3 className="font-h3 text-h3 text-primary">Tóm tắt đặt lịch</h3>
                 </div>
 
-                {/* Nội dung accordion — có thể scroll */}
                 <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
 
                   {/* Section: Dịch vụ đã chọn */}
@@ -1011,15 +1153,11 @@ const BookingPage = () => {
                         </div>
                         <div className="flex justify-between items-center text-on-surface-variant">
                           <span>Gói dịch vụ</span>
-                          <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm">
-                            {selectedPackageData.title}
-                          </span>
+                          <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm">{selectedPackageData.title}</span>
                         </div>
                         <div className="flex justify-between items-center text-on-surface-variant">
                           <span>Nhân viên</span>
-                          <span className="font-semibold text-on-surface">
-                            {staffMode === 'auto' ? 'Hệ thống chọn' : 'Tự chọn'}
-                          </span>
+                          <span className="font-semibold text-on-surface">{staffMode === 'auto' ? 'Hệ thống chọn' : 'Tự chọn'}</span>
                         </div>
                       </div>
                     )}
@@ -1033,9 +1171,7 @@ const BookingPage = () => {
                         <div className="flex justify-between text-on-surface-variant">
                           <span>Địa chỉ</span>
                           <span className="font-semibold text-on-surface text-right max-w-[60%] leading-snug">
-                            {addressMode === 'saved'
-                              ? savedAddresses[selectedSavedAddress].label
-                              : newAddress.street || 'Chưa nhập'}
+                            {addressMode === 'saved' ? savedAddresses[selectedSavedAddress].label : newAddress.street || 'Chưa nhập'}
                           </span>
                         </div>
 
@@ -1048,11 +1184,13 @@ const BookingPage = () => {
                           </div>
                         )}
 
-                        {(frequency === 'monthly' || frequency === 'recurring') && (
+                        {frequency === 'monthly' && (
                           <>
                             <div className="flex justify-between text-on-surface-variant">
                               <span>Tần suất</span>
-                              <span className="font-semibold text-on-surface">{flexibleSchedule ? `${weekDays.length || '?'} buổi/tuần` : `${sessionsPerWeek} buổi/tuần`}</span>
+                              <span className="font-semibold text-on-surface">
+                                {flexibleSchedule ? `${weekDays.length || '?'} buổi/tuần` : `${sessionsPerWeek} buổi/tuần`}
+                              </span>
                             </div>
                             {weekDays.length > 0 && (
                               <div className="flex justify-between text-on-surface-variant">
@@ -1066,18 +1204,37 @@ const BookingPage = () => {
                               <span>Giờ bắt đầu</span>
                               <span className="font-semibold text-on-surface">{selectedTime} ({duration}h)</span>
                             </div>
-                            {frequency === 'monthly' && (
+                            <div className="flex justify-between text-on-surface-variant">
+                              <span>Hợp đồng</span>
+                              <span className="font-semibold text-on-surface">{contractMonths} tháng</span>
+                            </div>
+                          </>
+                        )}
+
+                        {frequency === 'recurring' && (
+                          <>
+                            <div className="flex justify-between text-on-surface-variant">
+                              <span>Lặp lại</span>
+                              <span className="font-semibold text-on-surface">
+                                {recurringFrequency === 'weekly' ? 'Mỗi tuần' : '2 tuần / lần'}
+                              </span>
+                            </div>
+                            {recurringDay && (
                               <div className="flex justify-between text-on-surface-variant">
-                                <span>Hợp đồng</span>
-                                <span className="font-semibold text-on-surface">{contractMonths} tháng</span>
+                                <span>Ngày làm</span>
+                                <span className="font-semibold text-on-surface">
+                                  {weekDayOptions.find((d) => d.id === recurringDay)?.label}
+                                </span>
                               </div>
                             )}
-                            {frequency === 'recurring' && (
-                              <div className="flex justify-between text-on-surface-variant">
-                                <span>Thời hạn</span>
-                                <span className="font-semibold text-on-surface">Không giới hạn</span>
-                              </div>
-                            )}
+                            <div className="flex justify-between text-on-surface-variant">
+                              <span>Giờ bắt đầu</span>
+                              <span className="font-semibold text-on-surface">{selectedTime} ({duration}h)</span>
+                            </div>
+                            <div className="flex justify-between text-on-surface-variant">
+                              <span>Thời hạn</span>
+                              <span className="font-semibold text-on-surface">Không giới hạn</span>
+                            </div>
                           </>
                         )}
                       </div>
@@ -1089,58 +1246,126 @@ const BookingPage = () => {
                     <AccordionHeader sectionKey="cost" icon="receipt_long" label="Chi phí" />
                     {openSections.cost && (
                       <div className="px-6 pb-5 space-y-2">
-                        <div className="flex justify-between text-on-surface-variant">
-                          <span>Giá cơ bản{frequency !== 'single' ? '/buổi' : ''}</span>
-                          <span>{selectedPackageData.price.toLocaleString('vi-VN')}đ</span>
-                        </div>
 
-                        {durationExtraPrice > 0 && (
-                          <div className="flex justify-between text-on-surface-variant">
-                            <span>Phụ thu thời lượng</span>
-                            <span>+{durationExtraPrice.toLocaleString('vi-VN')}đ</span>
-                          </div>
-                        )}
-
-                        {staffExtraPrice > 0 && (
-                          <div className="flex justify-between text-on-surface-variant">
-                            <span>Phí chọn nhân viên</span>
-                            <span>+{staffExtraPrice.toLocaleString('vi-VN')}đ/buổi</span>
-                          </div>
-                        )}
-
-                        {frequency === 'monthly' && (
+                        {/* ── Ca lẻ ── */}
+                        {frequency === 'single' && (
                           <>
-                            <div className="flex justify-between text-on-surface-variant text-sm">
-                              <span className="leading-snug">
-                                {sessionsPerWeek} buổi/tuần × 4 tuần<br />
-                                <span className="text-xs text-on-surface-variant/60">= {sessionsPerMonth} buổi/tháng × {contractMonths} tháng</span>
-                              </span>
-                              <span className="text-right shrink-0 ml-2">
-                                {((basePrice + durationExtraPrice + staffExtraPrice) * sessionsPerMonth * contractMonths).toLocaleString('vi-VN')}đ
-                              </span>
+                            <div className="flex justify-between text-on-surface-variant">
+                              <span>Giá cơ bản</span>
+                              <span>{selectedPackageData.price.toLocaleString('vi-VN')}đ</span>
                             </div>
-                            <div className="flex justify-between text-primary font-medium">
-                              <span>Ưu đãi hợp đồng ({contractDiscount}%)</span>
-                              <span>-{(monthlyDiscount * contractMonths).toLocaleString('vi-VN')}đ</span>
-                            </div>
+                            {durationExtraPrice > 0 && (
+                              <div className="flex justify-between text-on-surface-variant">
+                                <span>Phụ thu thời lượng</span>
+                                <span>+{durationExtraPrice.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
+                            {staffExtraPrice > 0 && (
+                              <div className="flex justify-between text-on-surface-variant">
+                                <span>Phí chọn nhân viên</span>
+                                <span>+{staffExtraPrice.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
+                            {addonsTotal > 0 && (
+                              <div className="flex justify-between text-on-surface-variant">
+                                <span>Dịch vụ thêm</span>
+                                <span>+{addonsTotal.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
                           </>
                         )}
 
+                        {/* ── Gói tháng — 2 tầng tách biệt ── */}
+                        {frequency === 'monthly' && (
+                          <>
+                            {/* Tầng 1: Gói cơ bản */}
+                            <div className="bg-surface-container/30 rounded-xl p-3 border border-outline-variant/30">
+                              <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Gói cơ bản</p>
+                              <div className="flex justify-between text-on-surface-variant text-sm mt-2">
+                                <span className="leading-snug">
+                                  {sessionsPerWeek} buổi/tuần × {duration}h × {contractMonths} tháng
+                                  <br />
+                                  <span className="text-xs text-on-surface-variant/60">= {totalSessions} buổi</span>
+                                </span>
+                                <span className="text-right shrink-0 ml-2">
+                                  {((basePrice + durationExtraPrice + staffExtraPrice) * totalSessions).toLocaleString('vi-VN')}đ
+                                </span>
+                              </div>
+                              {staffExtraPrice > 0 && (
+                                <div className="flex justify-between text-on-surface-variant text-sm mt-1">
+                                  <span>Phí chọn nhân viên</span>
+                                  <span>+{staffExtraPrice.toLocaleString('vi-VN')}đ/buổi</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-primary font-medium mt-1">
+                                <span>Ưu đãi hợp đồng ({contractDiscount}%)</span>
+                                <span>-{(coreDiscount * contractMonths).toLocaleString('vi-VN')}đ</span>
+                              </div>
+                              <div className="flex justify-between text-on-surface font-semibold text-sm border-t border-outline-variant/20 pt-2 mt-2">
+                                <span>Thành tiền gói cơ bản</span>
+                                <span>{coreTotal.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            </div>
+
+                            {/* Tầng 2: Dịch vụ thêm */}
+                            {extras.length > 0 && (
+                              <div className="bg-surface-container/20 rounded-xl p-3 mt-3 border border-outline-variant/30">
+                                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Dịch vụ thêm</p>
+                                {extraServices.filter((s) => extras.includes(s.id)).map((s) => {
+                                  const scope = extrasScope[s.id] ?? 'first';
+                                  const amount = scope === 'all' ? s.price * totalSessions : s.price;
+                                  return (
+                                    <div key={s.id} className="flex justify-between text-on-surface-variant text-sm mt-2">
+                                      <span className="leading-snug">
+                                        {s.title}
+                                        <br />
+                                        <span className="text-xs text-on-surface-variant/60">
+                                          {scope === 'all' ? `${totalSessions} buổi` : 'Buổi đầu tiên'}
+                                        </span>
+                                      </span>
+                                      <span className="shrink-0 ml-2">+{amount.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                  );
+                                })}
+                                <div className="flex justify-between text-on-surface font-semibold text-sm border-t border-outline-variant/20 pt-2 mt-2">
+                                  <span>Thành tiền dịch vụ thêm</span>
+                                  <span>{addonsTotal.toLocaleString('vi-VN')}đ</span>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* ── Gói lặp lại ── */}
                         {frequency === 'recurring' && (
-                          <div className="flex justify-between text-on-surface-variant">
-                            <span>{sessionsPerWeek} buổi/tuần</span>
-                            <span>{weeklyRaw.toLocaleString('vi-VN')}đ/tuần</span>
-                          </div>
+                          <>
+                            <div className="flex justify-between text-on-surface-variant">
+                              <span>Giá cơ bản/buổi</span>
+                              <span>{selectedPackageData.price.toLocaleString('vi-VN')}đ</span>
+                            </div>
+                            {durationExtraPrice > 0 && (
+                              <div className="flex justify-between text-on-surface-variant">
+                                <span>Phụ thu thời lượng</span>
+                                <span>+{durationExtraPrice.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
+                            {staffExtraPrice > 0 && (
+                              <div className="flex justify-between text-on-surface-variant">
+                                <span>Phí chọn nhân viên</span>
+                                <span>+{staffExtraPrice.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
+                            {addonsTotal > 0 && (
+                              <div className="flex justify-between text-on-surface-variant">
+                                <span>Dịch vụ thêm (buổi đầu)</span>
+                                <span>+{addonsTotal.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
+                          </>
                         )}
 
-                        {extrasPrice > 0 && (
-                          <div className="flex justify-between text-on-surface-variant">
-                            <span>Dịch vụ thêm</span>
-                            <span>+{extrasPrice.toLocaleString('vi-VN')}đ</span>
-                          </div>
-                        )}
-
-                        <div className="flex justify-between text-on-surface-variant">
+                        {/* Di chuyển — tất cả gói */}
+                        <div className="flex justify-between text-on-surface-variant pt-1">
                           <span>Phí di chuyển</span>
                           <span>{travelFee.toLocaleString('vi-VN')}đ</span>
                         </div>
@@ -1149,23 +1374,29 @@ const BookingPage = () => {
                   </div>
                 </div>
 
-                {/* ── Tổng + CTA — luôn hiển thị, dính đáy card ── */}
+                {/* Tổng + CTA */}
                 <div className="px-6 pt-4 pb-5 border-t-2 border-dashed border-outline-variant/30 bg-surface-container-low/60 flex flex-col gap-3">
-
-                  {/* Tổng thanh toán — luôn thấy */}
                   <div className="flex justify-between items-center">
                     <span className="text-on-surface-variant font-medium">
-                      {frequency === 'recurring' ? 'Tạm tính / tuần' : 'Tổng thanh toán'}
+                      {frequency === 'recurring' ? 'Thanh toán buổi đầu' : 'Tổng thanh toán'}
                     </span>
                     <span className="text-2xl font-h1 font-extrabold text-primary">
                       {total.toLocaleString('vi-VN')}đ
                     </span>
                   </div>
                   {frequency === 'monthly' && (
-                    <p className="text-xs text-on-surface-variant text-right -mt-2">cho {contractMonths} tháng</p>
+                    <p className="text-xs text-on-surface-variant text-right -mt-2">cho {contractMonths} tháng ({totalSessions} buổi)</p>
+                  )}
+                  {frequency === 'recurring' && (
+                    <p className="text-xs text-on-surface-variant text-right -mt-2">
+                      các buổi tiếp theo: {(basePrice + durationExtraPrice + staffExtraPrice + travelFee).toLocaleString('vi-VN')}đ/buổi
+                    </p>
                   )}
 
-                  <button className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  <button
+                    onClick={handleSubmit}
+                    className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  >
                     Hoàn tất đặt lịch
                     <span className="material-symbols-outlined">check</span>
                   </button>
@@ -1177,7 +1408,6 @@ const BookingPage = () => {
                     Quay lại
                   </button>
                 </div>
-
               </div>
             </aside>
           </div>
