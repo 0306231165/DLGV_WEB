@@ -127,7 +127,7 @@ const BookingPage = () => {
       title: 'Ủi quần áo',
       price: 80000,
       image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuA8sddz97bqiwJVcesTaOVtpzyoUjQsx_JkfXyArmyIpXO-CKgo4WTv2hyI1MLzKMdFNhji9BgWyswW7Tk2MeK0h4gynON0RIauNY3IbxPHKa1qMxeQ4-zVBxFDHFS5cw1Wpj8bnVm6gXbwCdJJ0mm9YoFrJvw-1HBwr-AIS8AHaWg3E9pD63kapNO4Mrbx49tzwYPUEnaYujscZNHrzdNHf-KNhKnWSCk7aWgClJU0q_qiTKFMZwqPf5US8NWTFDV2eD2fOMZRiyLA',
+        'https://lh3.googleusercontent.com/aida-public/AB6AXuA8sddz97bqiwJVcesTaOVtpzyoUjQsx_JkfXyArmyIpXO-CKgo4WTv2hyI1MLzKMdFNhji9BgWyswW7Tk2MeK0h4gynON0RIauNY3IbxPHKa1qMxeQ4-zVBxFDFHS5cw1Wpj8bnVm6gXbwCdJJ0mm9YoFrJvw-1HBwr-AIS8AHaWg3E9pD63kapNO4Mrbx49tzwYPUEnaYujscZNHrzdNHf-KNhKnWSCk7aWgClJU0q_qiTKFMZwqPf5US8NWTFDV2eD2fOMZRiyLA',
     },
   ];
 
@@ -578,8 +578,8 @@ const BookingPage = () => {
                             className="peer sr-only"
                           />
                           <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
-                            <p className="font-bold text-on-surface text-body-lg">Nhiều hơn</p>
-                            <p className="text-xs text-on-surface-variant mt-1">4–7 buổi / tuần</p>
+                            <p className="font-bold text-on-surface text-body-lg">Nhiều buổi</p>
+                            <p className="text-xs text-on-surface-variant mt-1">/ tuần</p>
                           </div>
                           <div className="absolute top-3 right-3 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
                             <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
