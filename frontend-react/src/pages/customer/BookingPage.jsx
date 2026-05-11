@@ -27,9 +27,7 @@ const BookingPage = () => {
   const [startDate, setStartDate] = useState('');
 
   // ── Gói lặp lại (đơn giản hoá) ────────────────────────
-  // recurringFrequency: 'weekly' | 'biweekly'
   const [recurringFrequency, setRecurringFrequency] = useState('weekly');
-  // chỉ chọn 1 ngày trong tuần
   const [recurringDay, setRecurringDay] = useState('');
 
   // ── Validation errors ──────────────────────────────────
@@ -77,14 +75,17 @@ const BookingPage = () => {
   ];
 
   const [extras, setExtras] = useState([]);
-  // extrasScope: { [extraId]: 'all' | 'first' } — chỉ dùng cho gói tháng
   const [extrasScope, setExtrasScope] = useState({});
+  // ca lẻ & lặp lại: mặc định 'cash' | gói tháng: không có mặc định (null)
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [staffMode, setStaffMode] = useState('auto');
 
   const [addressMode, setAddressMode] = useState('saved');
   const [selectedSavedAddress, setSelectedSavedAddress] = useState(0);
   const [newAddress, setNewAddress] = useState({ street: '', district: '', note: '' });
+
+  // Số dư Ví CleanTrust (mock)
+  const walletBalance = 320000;
 
   const savedAddresses = [
     { id: 0, label: 'Nhà riêng', address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM', icon: 'home' },
@@ -151,6 +152,33 @@ const BookingPage = () => {
     recurring: 'Gói lặp lại',
   };
 
+  // ── Reset khi đổi frequency ────────────────────────────
+  const handleFrequencyChange = (newFreq) => {
+    if (newFreq === frequency) return;
+    setFrequency(newFreq);
+    // Lịch & dịch vụ thêm
+    setSelectedDate(0);
+    setSelectedTime('08:00');
+    setDuration(2);
+    setWeekDays([]);
+    setContractMonths(1);
+    setSessionsPerWeek(1);
+    setFlexibleSchedule(false);
+    setStartDate('');
+    setRecurringFrequency('weekly');
+    setRecurringDay('');
+    setExtras([]);
+    setExtrasScope({});
+    setStaffNote('');
+    // Địa chỉ
+    setAddressMode('saved');
+    setSelectedSavedAddress(0);
+    setNewAddress({ street: '', district: '', note: '' });
+    // Thanh toán: gói tháng không có mặc định, còn lại mặc định tiền mặt
+    setPaymentMethod(newFreq === 'monthly' ? null : 'cash');
+    setErrors({});
+  };
+
   const toggleWeekDay = (id) => {
     setWeekDays((prev) =>
       prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
@@ -161,11 +189,9 @@ const BookingPage = () => {
   const toggleExtra = (id) => {
     setExtras((prev) => {
       const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
-      // Khi bỏ chọn thì xoá scope luôn
       if (prev.includes(id)) {
         setExtrasScope((s) => { const ns = { ...s }; delete ns[id]; return ns; });
       } else {
-        // Mặc định scope = 'first' (chỉ buổi đầu)
         setExtrasScope((s) => ({ ...s, [id]: 'first' }));
       }
       return next;
@@ -183,14 +209,17 @@ const BookingPage = () => {
   const basePrice = selectedPackageData.price;
   const contractDiscount = contractOptions.find((c) => c.months === contractMonths)?.discount ?? 0;
 
+  // ── FIX 2: Dùng số ngày thực tế khi chọn "Nhiều buổi" ──
+  const effectiveSessionsPerWeek = flexibleSchedule ? (weekDays.length || 1) : sessionsPerWeek;
+
   // ── Gói tháng: tách 2 tầng ──────────────────────────────
-  const sessionsPerMonth = sessionsPerWeek * 4;
+  const sessionsPerMonth = effectiveSessionsPerWeek * 4;
   const totalSessions = sessionsPerMonth * contractMonths;
 
   // Tầng 1 — Gói cơ bản (được discount)
   const coreRaw = (basePrice + durationExtraPrice + staffExtraPrice) * sessionsPerMonth;
   const coreDiscount = Math.round(coreRaw * contractDiscount / 100);
-  const coreMonthly = coreRaw - coreDiscount; // giá 1 tháng sau giảm
+  const coreMonthly = coreRaw - coreDiscount;
   const coreTotal = coreMonthly * contractMonths;
 
   // Tầng 2 — Add-ons (không discount, tính theo scope)
@@ -201,18 +230,12 @@ const BookingPage = () => {
       if (frequency === 'monthly') {
         return sum + (scope === 'all' ? s.price * totalSessions : s.price);
       }
-      // Ca lẻ & lặp lại: luôn 1 lần
       return sum + s.price;
     }, 0);
 
   // ── Tổng theo từng gói ──────────────────────────────────
-  // Ca lẻ
   const totalSingle = basePrice + durationExtraPrice + staffExtraPrice + addonsTotal + travelFee;
-
-  // Gói tháng
   const totalMonthly = coreTotal + addonsTotal + travelFee;
-
-  // Gói lặp lại: giá 1 buổi + add-ons (1 lần) + di chuyển
   const totalRecurring = basePrice + durationExtraPrice + staffExtraPrice + addonsTotal + travelFee;
 
   const total = frequency === 'single' ? totalSingle
@@ -376,7 +399,7 @@ const BookingPage = () => {
                         type="radio"
                         name="frequency"
                         checked={frequency === item.id}
-                        onChange={() => setFrequency(item.id)}
+                        onChange={() => handleFrequencyChange(item.id)}
                         className="peer sr-only"
                       />
                       <div className="bg-surface-container-item glass-card p-6 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all h-full">
@@ -411,7 +434,7 @@ const BookingPage = () => {
                     return (
                       <label key={pkg.id} className="relative cursor-pointer">
                         <input type="radio" name="package" checked={isSelected} onChange={() => setSelectedPackage(pkg.id)} className="peer sr-only" />
-                        <div className={`bg-surface-container-item glass-card p-6 rounded-xl border-2 transition-all flex gap-4 h-full ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/30'}`}>
+                        <div className={`bg-surface-container-item glass-card p-6 rounded-xl border-2 transition-all flex gap-4 h-full ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/30'} peer-checked:bg-primary/5`}>
                           <div className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 ${pkg.iconBg}`}>
                             <span className="material-symbols-outlined text-primary text-3xl">{pkg.icon}</span>
                           </div>
@@ -663,6 +686,9 @@ const BookingPage = () => {
                       {weekDays.length > 0 && (
                         <p className="text-xs text-primary mt-2 font-medium">
                           Đã chọn: {weekDays.map((id) => weekDayOptions.find((d) => d.id === id)?.label).join(', ')}
+                          {flexibleSchedule && (
+                            <span className="ml-2 text-on-surface-variant">({weekDays.length} buổi/tuần)</span>
+                          )}
                         </p>
                       )}
                       <ErrorMsg message={errors.weekDays} />
@@ -749,10 +775,9 @@ const BookingPage = () => {
                   </>
                 )}
 
-                {/* ── Gói lặp lại (đơn giản hoá) ── */}
+                {/* ── Gói lặp lại ── */}
                 {frequency === 'recurring' && (
                   <>
-                    {/* Thông tin tự động lặp lại */}
                     <div className="flex items-start gap-3 p-4 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed mb-8">
                       <span className="material-symbols-outlined text-on-tertiary-fixed-variant mt-0.5">info</span>
                       <div>
@@ -763,7 +788,6 @@ const BookingPage = () => {
                       </div>
                     </div>
 
-                    {/* Tần suất lặp lại */}
                     <div className="mb-8">
                       <p className="font-semibold mb-3">Tần suất lặp lại</p>
                       <div className="grid grid-cols-2 gap-3">
@@ -790,7 +814,6 @@ const BookingPage = () => {
                       </div>
                     </div>
 
-                    {/* Chọn 1 ngày trong tuần */}
                     <div className="mb-8">
                       <p className="font-semibold mb-3">
                         Ngày làm việc
@@ -828,7 +851,6 @@ const BookingPage = () => {
                       <ErrorMsg message={errors.recurringDay} />
                     </div>
 
-                    {/* Giờ bắt đầu */}
                     <div className="mb-8">
                       <p className="font-semibold mb-3">Giờ bắt đầu mỗi buổi</p>
                       <div className="flex items-center gap-3">
@@ -1002,11 +1024,6 @@ const BookingPage = () => {
                   Dịch vụ thêm
                 </h3>
                 {frequency === 'monthly' && (
-                  // <p className="text-xs text-on-surface-variant mb-6 flex items-center gap-1">
-                  //   <span className="material-symbols-outlined text-sm">info</span>
-                  //   Dịch vụ thêm tính phí riêng (không áp dụng ưu đãi gói tháng).
-                  //   Bạn có thể chọn áp dụng dịch vụ này chỉ cho buổi làm đầu tiên hoặc cho tất cả các buổi trong hợp đồng.
-                  // </p>
                   <p className="text-xs text-on-surface-variant mb-6 flex gap-1">
                     <span className="material-symbols-outlined text-sm" style={{ marginTop: '-2px' }}>info</span>
                     <span>Dịch vụ thêm tính phí riêng (không áp dụng ưu đãi gói tháng). Bạn có thể chọn áp dụng dịch vụ này chỉ cho buổi làm đầu tiên hoặc cho tất cả các buổi trong hợp đồng.</span>
@@ -1051,7 +1068,6 @@ const BookingPage = () => {
                           </div>
                         </label>
 
-                        {/* Scope toggle — chỉ hiện khi gói tháng và đã chọn */}
                         {frequency === 'monthly' && isSelected && (
                           <div className="mt-2 flex gap-2">
                             {[
@@ -1102,33 +1118,117 @@ const BookingPage = () => {
 
               {/* Thanh toán */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
+                <h3 className="font-h3 text-h3 mb-2 text-on-surface flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary">payments</span>
                   Phương thức thanh toán
                 </h3>
+
+                {/* Gói tháng: chỉ online, không mặc định */}
+                {frequency === 'monthly' && (
+                  <div className="flex items-center gap-1 mb-6 p-3 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed">
+                    <span className="material-symbols-outlined text-on-tertiary-fixed-variant text-sm">info</span>
+                    <p className="text-xs text-on-tertiary-fixed-variant">Gói tháng yêu cầu thanh toán online để đảm bảo hợp đồng.</p>
+                  </div>
+                )}
+
                 <div className="space-y-3">
-                  {[
-                    { id: 'cash', icon: 'payments', title: 'Tiền mặt (COD)' },
-                    { id: 'card', icon: 'credit_card', title: 'Visa/Mastercard' },
-                    { id: 'wallet', icon: 'account_balance_wallet', title: 'MoMo/ZaloPay' },
-                  ].map((item) => (
-                    <label
-                      key={item.id}
-                      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                        paymentMethod === item.id ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'
-                      }`}
-                    >
-                      <input type="radio" checked={paymentMethod === item.id} onChange={() => setPaymentMethod(item.id)} className="accent-primary w-4 h-4 shrink-0" />
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${paymentMethod === item.id ? 'bg-primary/10' : 'bg-surface-container'}`}>
-                        <span className={`material-symbols-outlined text-xl ${paymentMethod === item.id ? 'text-primary' : 'text-on-surface-variant'}`}>{item.icon}</span>
-                      </div>
-                      <span className="font-bold text-on-surface">{item.title}</span>
-                      {paymentMethod === item.id && (
-                        <span className="material-symbols-outlined text-primary ml-auto shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                      )}
-                    </label>
-                  ))}
+                  {/* ── Ví CleanTrust — vị trí đầu nếu gói tháng ── */}
+                  {frequency === 'monthly' && (() => {
+                    const isSelected = paymentMethod === 'cleantrust';
+                    return (
+                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
+                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('cleantrust')} className="accent-primary w-4 h-4 shrink-0" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
+                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>account_balance_wallet</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-on-surface">Ví CleanTrust</p>
+                          <p className="text-xs text-on-surface-variant mt-0.5">
+                            Số dư: <span className="font-semibold text-primary">{walletBalance.toLocaleString('vi-VN')}đ</span>
+                          </p>
+                        </div>
+                        <span className="inline-block px-2 py-0.5 bg-secondary-container text-primary rounded text-[11px] font-bold shrink-0">Hoàn tiền tự động</span>
+                        {isSelected && <span className="material-symbols-outlined text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+                      </label>
+                    );
+                  })()}
+
+                  {/* Tiền mặt — chỉ ca lẻ & lặp lại */}
+                  {frequency !== 'monthly' && (() => {
+                    const isSelected = paymentMethod === 'cash';
+                    return (
+                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
+                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('cash')} className="accent-primary w-4 h-4 shrink-0" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
+                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>payments</span>
+                        </div>
+                        <span className="font-bold text-on-surface">Tiền mặt (COD)</span>
+                        {isSelected && <span className="material-symbols-outlined text-primary ml-auto shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+                      </label>
+                    );
+                  })()}
+
+                  {/* Ví CleanTrust — ca lẻ & lặp lại: vị trí thứ 2 */}
+                  {frequency !== 'monthly' && (() => {
+                    const isSelected = paymentMethod === 'cleantrust';
+                    return (
+                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
+                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('cleantrust')} className="accent-primary w-4 h-4 shrink-0" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
+                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>account_balance_wallet</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-on-surface">Ví CleanTrust</p>
+                          <p className="text-xs text-on-surface-variant mt-0.5">
+                            Số dư: <span className="font-semibold text-primary">{walletBalance.toLocaleString('vi-VN')}đ</span>
+                          </p>
+                        </div>
+                        <span className="inline-block px-2 py-0.5 bg-secondary-container text-primary rounded text-[11px] font-bold shrink-0">Hoàn tiền tự động</span>
+                        {isSelected && <span className="material-symbols-outlined text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+                      </label>
+                    );
+                  })()}
+
+                  {/* Visa/Mastercard */}
+                  {(() => {
+                    const isSelected = paymentMethod === 'card';
+                    return (
+                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
+                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('card')} className="accent-primary w-4 h-4 shrink-0" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
+                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>credit_card</span>
+                        </div>
+                        <span className="font-bold text-on-surface">Visa / Mastercard</span>
+                        {isSelected && <span className="material-symbols-outlined text-primary ml-auto shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+                      </label>
+                    );
+                  })()}
+
+                  {/* MoMo/ZaloPay */}
+                  {(() => {
+                    const isSelected = paymentMethod === 'ewallet';
+                    return (
+                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
+                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('ewallet')} className="accent-primary w-4 h-4 shrink-0" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
+                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>smartphone</span>
+                        </div>
+                        <span className="font-bold text-on-surface">MoMo / ZaloPay</span>
+                        {isSelected && <span className="material-symbols-outlined text-primary ml-auto shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+                      </label>
+                    );
+                  })()}
                 </div>
+
+                {/* Chú thích Ví CleanTrust */}
+                {paymentMethod === 'cleantrust' && (
+                  <div className="mt-4 p-3 rounded-xl bg-secondary-container/40 border border-secondary-container flex items-start gap-2">
+                    <span className="material-symbols-outlined text-primary text-sm mt-0.5">info</span>
+                    <p className="text-xs text-on-surface-variant leading-relaxed">
+                      Số dư Ví CleanTrust là tiền hoàn từ các buổi đã thanh toán nhưng không sử dụng. Không thể rút ra ngân hàng, chỉ dùng thanh toán dịch vụ CleanTrust.
+                    </p>
+                  </div>
+                )}
               </section>
             </div>
 
@@ -1142,7 +1242,6 @@ const BookingPage = () => {
 
                 <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
 
-                  {/* Section: Dịch vụ đã chọn */}
                   <div className="border-b border-outline-variant/20">
                     <AccordionHeader sectionKey="service" icon="cleaning_services" label="Dịch vụ đã chọn" />
                     {openSections.service && (
@@ -1163,7 +1262,6 @@ const BookingPage = () => {
                     )}
                   </div>
 
-                  {/* Section: Lịch làm việc */}
                   <div className="border-b border-outline-variant/20">
                     <AccordionHeader sectionKey="schedule" icon="calendar_month" label="Lịch làm việc" />
                     {openSections.schedule && (
@@ -1241,13 +1339,11 @@ const BookingPage = () => {
                     )}
                   </div>
 
-                  {/* Section: Chi phí */}
                   <div>
                     <AccordionHeader sectionKey="cost" icon="receipt_long" label="Chi phí" />
                     {openSections.cost && (
                       <div className="px-6 pb-5 space-y-2">
 
-                        {/* ── Ca lẻ ── */}
                         {frequency === 'single' && (
                           <>
                             <div className="flex justify-between text-on-surface-variant">
@@ -1275,15 +1371,13 @@ const BookingPage = () => {
                           </>
                         )}
 
-                        {/* ── Gói tháng — 2 tầng tách biệt ── */}
                         {frequency === 'monthly' && (
                           <>
-                            {/* Tầng 1: Gói cơ bản */}
                             <div className="bg-surface-container/30 rounded-xl p-3 border border-outline-variant/30">
                               <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Gói cơ bản</p>
                               <div className="flex justify-between text-on-surface-variant text-sm mt-2">
                                 <span className="leading-snug">
-                                  {sessionsPerWeek} buổi/tuần × {duration}h × {contractMonths} tháng
+                                  {effectiveSessionsPerWeek} buổi/tuần × {duration}h × {contractMonths} tháng
                                   <br />
                                   <span className="text-xs text-on-surface-variant/60">= {totalSessions} buổi</span>
                                 </span>
@@ -1307,7 +1401,6 @@ const BookingPage = () => {
                               </div>
                             </div>
 
-                            {/* Tầng 2: Dịch vụ thêm */}
                             {extras.length > 0 && (
                               <div className="bg-surface-container/20 rounded-xl p-3 mt-3 border border-outline-variant/30">
                                 <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Dịch vụ thêm</p>
@@ -1336,7 +1429,6 @@ const BookingPage = () => {
                           </>
                         )}
 
-                        {/* ── Gói lặp lại ── */}
                         {frequency === 'recurring' && (
                           <>
                             <div className="flex justify-between text-on-surface-variant">
@@ -1364,7 +1456,6 @@ const BookingPage = () => {
                           </>
                         )}
 
-                        {/* Di chuyển — tất cả gói */}
                         <div className="flex justify-between text-on-surface-variant pt-1">
                           <span>Phí di chuyển</span>
                           <span>{travelFee.toLocaleString('vi-VN')}đ</span>
@@ -1374,7 +1465,6 @@ const BookingPage = () => {
                   </div>
                 </div>
 
-                {/* Tổng + CTA */}
                 <div className="px-6 pt-4 pb-5 border-t-2 border-dashed border-outline-variant/30 bg-surface-container-low/60 flex flex-col gap-3">
                   <div className="flex justify-between items-center">
                     <span className="text-on-surface-variant font-medium">
