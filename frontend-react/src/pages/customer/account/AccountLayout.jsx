@@ -55,7 +55,7 @@ const AccountLayout = () => {
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all relative overflow-hidden
                   ${isActive
-                    ? 'bg-primary/5 text-primary'
+                    ? 'bg-surface-container-low text-primary'
                     : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
                   }`
                 }

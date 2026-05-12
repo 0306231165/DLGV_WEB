@@ -7,13 +7,20 @@ import AccountLayout  from '../pages/customer/account/AccountLayout';
 
 // Import Pages — Customer
 import Home           from '../pages/customer/Home';
-import MyBookingsPage from '../pages/customer/MyBookingsPage';
+// import MyBookingsPage from '../pages/customer/MyBookingsPage';
 import BookingPage    from '../pages/customer/BookingPage';
 
 // Import Pages — Account
 import ProfilePage    from '../pages/customer/account/ProfilePage';
 import AddressesPage  from '../pages/customer/account/AddressesPage';
 import PaymentPage    from '../pages/customer/account/PaymentPage';
+
+// Import Pages — MyBooking
+import MyBookingsLayout    from '../pages/customer/mybooking/MyBookingsLayout';
+import AllBookingsPage     from '../pages/customer/mybooking/AllBookingsPage';
+import UpcomingBookingsPage from '../pages/customer/mybooking/UpcomingBookingsPage';
+import ActiveBookingsPage  from '../pages/customer/mybooking/ActiveBookingsPage';
+import CompletedBookingsPage from '../pages/customer/mybooking/CompletedBookingsPage';
 
 const AppRouter = () => {
   return (
@@ -23,7 +30,6 @@ const AppRouter = () => {
         <Route path="/" element={<CustomerLayout />}>
           <Route index element={<Home />} />
 
-          <Route path="my-booking" element={<MyBookingsPage />} />
           <Route path="booking"    element={<BookingPage />} />
 
           {/* Trang tài khoản — nested layout với sidebar riêng */}
@@ -33,6 +39,15 @@ const AppRouter = () => {
             <Route path="addresses"  element={<AddressesPage />} />
             <Route path="payment"    element={<PaymentPage />} />
           </Route>
+
+          {/* Trang lịch của tôi — nested layout với sidebar riêng */}
+          <Route path="/my-bookings" element={<MyBookingsLayout />}>
+            <Route index             element={<AllBookingsPage />} />
+            <Route path="upcoming"   element={<UpcomingBookingsPage />} />
+            <Route path="active"     element={<ActiveBookingsPage />} />
+            <Route path="completed"  element={<CompletedBookingsPage />} />
+          </Route>
+
         </Route>
       </Routes>
     </BrowserRouter>

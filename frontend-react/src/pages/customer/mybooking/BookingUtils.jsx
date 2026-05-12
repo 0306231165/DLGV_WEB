@@ -1,0 +1,183 @@
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+
+// ─── Tab System ────────────────────────────────────────────────────────────────
+export const BookingTabs = () => {
+  const tabs = [
+    { label: 'Tất cả', to: '/my-bookings', end: true },
+    { label: 'Sắp tới', to: '/my-bookings/upcoming' },
+    { label: 'Đang thực hiện', to: '/my-bookings/active' },
+    { label: 'Đã hoàn thành', to: '/my-bookings/completed' },
+  ];
+
+  return (
+    <div className="flex items-center gap-2 p-1.5 bg-surface-container-low w-fit rounded-2xl mb-8 border border-outline-variant/20 shadow-sm flex-wrap">
+      {tabs.map((tab) => (
+        <NavLink
+          key={tab.to}
+          to={tab.to}
+          end={tab.end}
+          className={({ isActive }) =>
+            isActive
+              ? 'px-8 py-2.5 rounded-xl bg-primary text-on-primary font-label-sm shadow-md shadow-primary/20 transition-all active:scale-95'
+              : 'px-8 py-2.5 rounded-xl text-on-surface-variant hover:text-primary hover:bg-white/50 font-label-sm transition-all duration-300'
+          }
+        >
+          {tab.label}
+        </NavLink>
+      ))}
+    </div>
+  );
+};
+
+// ─── Booking Card ──────────────────────────────────────────────────────────────
+export const BookingCard = ({ booking }) => {
+  const {
+    title,
+    price,
+    date,
+    time,
+    assignee,
+    assigneeIcon,
+    serviceIcon,
+    status,
+    statusLabel,
+    statusClass,
+    actions,
+  } = booking;
+
+  const borderAccent = {
+    confirmed: 'border-l-primary',
+    active: 'border-l-surface-tint',
+    pending: 'border-l-outline-variant',
+    completed: 'border-l-outline',
+  }[status] ?? 'border-l-outline-variant';
+
+  const iconBg = {
+    confirmed: 'bg-primary/10',
+    active: 'bg-surface-tint/15',
+    pending: 'bg-outline-variant/10',
+    completed: 'bg-outline/10',
+  }[status] ?? 'bg-primary/10';
+
+  const iconColor = {
+    confirmed: 'text-primary',
+    active: 'text-surface-tint',
+    pending: 'text-on-surface-variant',
+    completed: 'text-outline',
+  }[status] ?? 'text-primary';
+
+  return (
+    <div
+      className={`glass-card bg-surface-container-item p-5 rounded-3xl flex gap-5 hover:shadow-2xl hover:shadow-primary/10 transition-all group border-l-4 ${borderAccent} shadow-sm shadow-gray-300`}
+    >
+      {/* Icon Block */}
+      <div className="flex flex-col items-center gap-2 shrink-0">
+        <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center ${iconBg}`}>
+          <span className={`material-symbols-outlined text-4xl ${iconColor}`}>{serviceIcon}</span>
+        </div>
+        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold shadow-sm whitespace-nowrap ${statusClass}`}>
+          {statusLabel}
+        </span>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0 flex flex-col justify-between gap-3">
+        <div>
+          <div className="flex justify-between items-start gap-2 mb-2">
+            <h3 className="font-h3 text-base text-on-surface leading-tight line-clamp-2">{title}</h3>
+            <span className="text-primary font-bold text-base shrink-0">{price}</span>
+          </div>
+          <div className="flex flex-col gap-1.5 text-on-surface-variant text-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px] text-primary">calendar_today</span>
+              <span className="truncate">{date}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+              <span className="truncate">{time}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px] text-primary">{assigneeIcon}</span>
+              <span className="truncate">{assignee}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          {actions.map((action, i) => (
+            <button
+              key={i}
+              className={`flex-1 py-2 rounded-xl font-label-sm text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 ${action.className}`}
+            >
+              {action.icon && <span className="material-symbols-outlined text-[16px]">{action.icon}</span>}
+              {action.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Sample Data ───────────────────────────────────────────────────────────────
+export const BOOKINGS = {
+  upcoming: [
+    {
+      id: 1,
+      title: 'Vệ sinh nhà cửa định kỳ',
+      price: '300.000đ',
+      date: 'Thứ Tư, 24 Tháng 5, 2024',
+      time: '08:00 - 11:00 (3 giờ)',
+      assignee: 'Nhân viên: Nguyễn Thu Hà',
+      assigneeIcon: 'person',
+      serviceIcon: 'cleaning_services',
+      status: 'confirmed',
+      statusLabel: 'ĐÃ XÁC NHẬN',
+      statusClass: 'bg-white/90 backdrop-blur-md text-primary border border-primary/20',
+      actions: [
+        { label: 'Đổi lịch', className: 'bg-secondary-container text-on-secondary-fixed-variant hover:bg-secondary-fixed' },
+        { label: 'Hủy đơn', className: 'border border-error/20 text-error hover:bg-error/5' },
+      ],
+    },
+    {
+      id: 3,
+      title: 'Vệ sinh văn phòng',
+      price: '550.000đ',
+      date: 'Thứ Hai, 29 Tháng 5',
+      time: '09:00 - 12:00 (3 giờ)',
+      assignee: 'Đang điều phối nhân viên...',
+      assigneeIcon: 'person_search',
+      serviceIcon: 'domain',
+      status: 'pending',
+      statusLabel: 'CHỜ XÁC NHẬN',
+      statusClass: 'bg-surface-container-high text-on-surface-variant border border-outline-variant/30',
+      actions: [
+        { label: 'Chi tiết', className: 'bg-secondary-container text-on-secondary-fixed-variant hover:bg-secondary-fixed' },
+        { label: 'Hủy đơn', className: 'border border-error/20 text-error hover:bg-error/5' },
+      ],
+    },
+  ],
+  active: [
+    {
+      id: 2,
+      title: 'Tổng vệ sinh chuyên sâu',
+      price: '1.250.000đ',
+      date: 'Hôm nay, 22 Tháng 5',
+      time: '13:30 - 17:30 (4 giờ)',
+      assignee: 'Đội: CleanTrust Team 04',
+      assigneeIcon: 'engineering',
+      serviceIcon: 'auto_awesome',
+      status: 'active',
+      statusLabel: 'ĐANG THỰC HIỆN',
+      statusClass: 'bg-surface-tint text-white',
+      actions: [
+        { label: 'Theo dõi', icon: 'location_on', className: 'bg-primary text-on-primary hover:bg-primary-container' },
+      ],
+    },
+  ],
+  completed: [],
+};
+
+BOOKINGS.all = [...BOOKINGS.upcoming, ...BOOKINGS.active, ...BOOKINGS.completed];

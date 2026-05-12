@@ -22,7 +22,7 @@ const Header = () => {
         <Link className={getLinkClass("/")} to="/">Trang chủ</Link>
         <Link className={getLinkClass("/services")} to="/services">Dịch vụ</Link>
         <Link className={getLinkClass("/reviews")} to="/reviews">Đánh giá</Link>
-        <Link className={getLinkClass("/my-booking")} to="/my-booking">Lịch của tôi</Link>
+        <Link className={getLinkClass("/my-bookings")} to="/my-bookings">Lịch của tôi</Link>
       </nav>
 
       <div className="flex items-center space-x-4">
