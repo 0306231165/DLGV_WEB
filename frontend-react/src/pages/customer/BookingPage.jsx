@@ -7,8 +7,7 @@ const BookingPage = () => {
 
   useEffect(() => {
     if (headingRef.current) {
-      const y = headingRef.current.getBoundingClientRect().top + window.scrollY - 80;
-      window.scrollTo({ top: y, behavior: 'smooth' });
+      headingRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [step]);
 
@@ -67,6 +66,18 @@ const BookingPage = () => {
   ];
 
   const [staffNote, setStaffNote] = useState('');
+
+  // ── Diện tích căn hộ ──────────────────────────────────
+  // const [areaOption, setAreaOption] = useState('under-50');
+  const [areaOption, setAreaOption] = useState('');
+  const [areaCustom, setAreaCustom] = useState('');
+
+  const areaOptions = [
+    { id: 'under-50', label: 'Dưới 50m²' },
+    { id: '50-80', label: '50m² - 80m²' },
+    { id: '80-120', label: '80m² - 120m²' },
+    { id: 'over-120', label: 'Trên 120m²' },
+  ];
 
   const durationOptions = [
     { hours: 2, label: '2 tiếng', extraPrice: 0 },
@@ -286,8 +297,7 @@ const BookingPage = () => {
       };
       const targetRef = refMap[firstKey];
       if (targetRef?.current) {
-        const y = targetRef.current.getBoundingClientRect().top + window.scrollY - 100;
-        window.scrollTo({ top: y, behavior: 'smooth' });
+        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
       return;
     }
@@ -374,7 +384,7 @@ const BookingPage = () => {
       {/* ── STEP 1 ── */}
       {step === 1 && (
         <>
-          <div ref={headingRef} className="mb-12">
+          <div ref={headingRef} className="mb-12 scroll-mt-24">
             <h1 className="font-h2 text-h2 text-primary mb-2">Đặt lịch - Bước 1: Dịch vụ & Gói</h1>
             <StepIndicator />
           </div>
@@ -450,6 +460,52 @@ const BookingPage = () => {
                       </label>
                     );
                   })}
+                </div>
+              </section>
+
+              {/* Diện tích căn hộ */}
+              <section>
+                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">straighten</span>
+                  Diện tích căn hộ
+                </h3>
+                <div className="border-2 glass-card bg-surface-container-item p-6 rounded-xl">
+                  <div className="flex flex-wrap gap-3 mb-6">
+                    {areaOptions.map((opt) => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setAreaOption(opt.id)}
+                        className={`px-4 py-2 rounded-full border-2 text-sm font-semibold transition-all ${
+                          areaOption === opt.id
+                            ? 'border-primary bg-primary text-on-primary'
+                            : 'border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="max-w-xs">
+                    <label className="block text-sm font-semibold text-on-surface mb-2">
+                      Nhập diện tích chính xác (m²) <span className="text-on-surface-variant font-normal">(tùy chọn)</span>
+                    </label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl pointer-events-none">straighten</span>
+                      <input
+                        type="number"
+                        placeholder="Ví dụ: 65"
+                        value={areaCustom}
+                        onChange={(e) => setAreaCustom(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-outline-variant bg-surface focus:border-primary focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50"
+                      />
+                    </div>
+                    {areaCustom && (
+                      <p className="text-xs text-primary mt-2 font-medium flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        Diện tích: {areaCustom} m²
+                      </p>
+                    )}
+                  </div>
                 </div>
               </section>
 
@@ -544,7 +600,7 @@ const BookingPage = () => {
       {/* ── STEP 2 ── */}
       {step === 2 && (
         <>
-          <div ref={headingRef} className="mb-12">
+          <div ref={headingRef} className="mb-12 scroll-mt-24">
             <h1 className="font-h2 text-h2 text-primary mb-2">Đặt lịch - Bước 2: Thời gian & Địa chỉ</h1>
             <StepIndicator />
           </div>
@@ -554,7 +610,7 @@ const BookingPage = () => {
 
               {/* Chọn thời gian */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <h3 ref={scheduleHeadingRef} className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
+                <h3 ref={scheduleHeadingRef} className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2 scroll-mt-24">
                   <span className="material-symbols-outlined text-primary">calendar_month</span>
                   {frequency === 'single' ? 'Chọn thời gian' : 'Lịch làm việc'}
                 </h3>
@@ -919,7 +975,7 @@ const BookingPage = () => {
 
               {/* Địa chỉ */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8" ref={addressRef}>
-                <h3 ref={addressHeadingRef} className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
+                <h3 ref={addressHeadingRef} className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2 scroll-mt-24">
                   <span className="material-symbols-outlined text-primary">location_on</span>
                   Địa chỉ vệ sinh
                 </h3>

@@ -7,25 +7,20 @@ const CustomerLayout = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Scroll mượt + delay nhỏ để đảm bảo nội dung đã render xong
-    const scrollToTop = () => {
-      window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior: 'smooth'     // thay vì instant
-      });
-    };
+    // Không scroll top khi đang ở trang booking (BookingPage tự quản lý scroll)
+    if (location.pathname.startsWith('/booking')) return;
 
-    // Delay một chút để scroll mượt hơn
-    const timeout = setTimeout(scrollToTop, 50);
+    const timeout = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    }, 50);
 
     return () => clearTimeout(timeout);
-  }, [location.pathname, location.key]);   // ← thêm location.key rất quan trọng
+  }, [location.pathname, location.key]); // ← cả hai: pathname để detect đổi trang, key để detect click cùng link
 
   return (
     <div className="bg-background text-on-background font-body-md antialiased pt-20">
       <Header />
-      
+
       <main className="min-h-screen">
         <Outlet />
       </main>
