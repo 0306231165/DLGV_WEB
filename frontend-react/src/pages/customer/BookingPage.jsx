@@ -1,358 +1,277 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
+// ─── Constants ──────────────────────────────────────────────────────────────
+
+const PACKAGES = [
+  {
+    id: 'standard',
+    title: 'Vệ sinh Tiêu chuẩn',
+    description: 'Quét dọn, lau chùi cơ bản các phòng, dọn rác.',
+    price: 150000,
+    icon: 'home',
+    iconBg: 'bg-secondary-container',
+    tasks: [
+      'Quét và lau sàn toàn bộ căn nhà',
+      'Lau bụi đồ đạc: TV, kệ, tủ',
+      'Dọn và thay túi rác',
+      'Vệ sinh bề mặt bếp',
+      'Vệ sinh nhà vệ sinh',
+      'Xếp dọn gọn gàng đồ đạc',
+    ],
+  },
+  {
+    id: 'deep',
+    title: 'Tổng vệ sinh chuyên sâu',
+    description: 'Vệ sinh toàn bộ ngóc ngách, tẩy ố, làm sạch kính.',
+    price: 450000,
+    icon: 'flare',
+    iconBg: 'bg-tertiary-fixed',
+    tasks: [
+      'Tất cả dịch vụ Tiêu chuẩn',
+      'Chà bóng, tẩy ố sàn gạch',
+      'Làm sạch kính cửa sổ trong nhà',
+      'Vệ sinh sâu tủ bếp bên ngoài',
+      'Lau quạt trần và đèn',
+      'Đánh bóng thiết bị vệ sinh',
+      'Dọn sau xây dựng hoặc chuyển nhà',
+    ],
+  },
+];
+
+// Mô hình A: diện tích quyết định giờ (theo Gemini discussion)
+const AREA_OPTIONS = [
+  { id: 'under-55',  label: 'Dưới 55m²',      sub: 'Khoảng 1-2 phòng ngủ, 1 WC',   hours: 2, maxArea: 55 },
+  { id: '55-85',     label: '55m² – 85m²',     sub: 'Khoảng 2-3 phòng ngủ, 2 WC',   hours: 3, maxArea: 85 },
+  { id: '85-120',    label: '85m² – 120m²',    sub: 'Khoảng 3-4 phòng ngủ, 2-3 WC', hours: 4, maxArea: 120 },
+];
+
+const EXTRA_SERVICES = [
+  { id: 'fridge', title: 'Làm sạch tủ lạnh', price: 100000, icon: 'kitchen',  addMinutes: 30 },
+  { id: 'glass',  title: 'Lau kính',          price: 150000, icon: 'window',   addMinutes: 45 },
+  { id: 'iron',   title: 'Ủi quần áo',        price: 80000,  icon: 'iron',     addMinutes: 60 },
+];
+
+const TIME_SLOTS = {
+  morning:   ['08:00', '09:00', '10:00', '11:00'],
+  afternoon: ['13:00', '14:00', '15:00', '16:00'],
+};
+
+const MONTH_NAMES = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
+                     'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+
+const WEEK_DAY_OPTIONS = [
+  { id: 'mon', label: 'T2' },
+  { id: 'tue', label: 'T3' },
+  { id: 'wed', label: 'T4' },
+  { id: 'thu', label: 'T5' },
+  { id: 'fri', label: 'T6' },
+  { id: 'sat', label: 'T7' },
+  { id: 'sun', label: 'CN' },
+];
+
+const SAVED_ADDRESSES = [
+  { id: 0, label: 'Nhà riêng',   address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',         icon: 'home' },
+  { id: 1, label: 'Văn phòng',   address: '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM',          icon: 'business' },
+];
+
+const PAYMENT_METHODS = [
+  { id: 'cash',       icon: 'payments',                label: 'Tiền mặt',         onlyFor: ['single','recurring'] },
+  { id: 'cleantrust', icon: 'account_balance_wallet',  label: 'Ví CleanTrust',    badge: 'Hoàn tiền TĐ' },
+  { id: 'card',       icon: 'credit_card',             label: 'Visa / Mastercard' },
+  { id: 'ewallet',    icon: 'smartphone',              label: 'MoMo / ZaloPay' },
+];
+
+// ─── Helper ──────────────────────────────────────────────────────────────────
+
+const fmt = (n) => n.toLocaleString('vi-VN') + 'đ';
+
+const getCalendarDays = (year, month) => {
+  const firstDay = new Date(year, month, 1).getDay();
+  const startOffset = (firstDay + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  return cells;
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const ErrorMsg = ({ message }) => {
+  if (!message) return null;
+  return (
+    <div className="flex items-center gap-1.5 mt-2 text-error text-sm font-medium">
+      <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>error</span>
+      {message}
+    </div>
+  );
+};
+
+const SectionTitle = ({ icon, children }) => (
+  <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
+    <span className="material-symbols-outlined text-primary">{icon}</span>
+    {children}
+  </h3>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 const BookingPage = () => {
   const [step, setStep] = useState(1);
   const headingRef = useRef(null);
 
   useEffect(() => {
-    if (headingRef.current) {
-      headingRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    headingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [step]);
 
-  const [frequency, setFrequency] = useState('single');
+  // ── Step 1 state ──────────────────────────────────────────────────────────
   const [selectedPackage, setSelectedPackage] = useState('standard');
+  const [showTasks, setShowTasks]             = useState(null); // package id for modal
+  const [selectedArea, setSelectedArea]       = useState(null); // AREA_OPTIONS id
+  const [extras, setExtras]                   = useState([]);
+  const [hasPet, setHasPet]                   = useState(null); // true/false/null
+  const [staffMode, setStaffMode]             = useState('auto');
 
-  const [selectedDate, setSelectedDate] = useState(0);
-  const [selectedTime, setSelectedTime] = useState('08:00');
-  const [duration, setDuration] = useState(2);
-
-  // ── Gói tháng ─────────────────────────────────────────
-  const [weekDays, setWeekDays] = useState([]);
-  const [contractMonths, setContractMonths] = useState(1);
-  const [sessionsPerWeek, setSessionsPerWeek] = useState(1);
-  const [flexibleSchedule, setFlexibleSchedule] = useState(false);
-  const [startDate, setStartDate] = useState('');
-
-  // ── Gói lặp lại (đơn giản hoá) ────────────────────────
-  const [recurringFrequency, setRecurringFrequency] = useState('weekly');
-  const [recurringDay, setRecurringDay] = useState('');
-
-  // ── Validation errors ──────────────────────────────────
-  const [errors, setErrors] = useState({});
-
-  const scheduleHeadingRef = useRef(null);
-  const addressHeadingRef = useRef(null);
-  const weekDaysRef = useRef(null);
-  const startDateRef = useRef(null);
-  const addressRef = useRef(null);
-
-  // Accordion state
-  const [openSections, setOpenSections] = useState({
-    service: true,
-    schedule: true,
-    cost: true,
+  // ── Step 2 state ──────────────────────────────────────────────────────────
+  const [repeatMode, setRepeatMode]             = useState('once');   // once | weekly | biweekly
+  const [selectedDate, setSelectedDate]         = useState(null);     // { year, month, day }
+  const [selectedTime, setSelectedTime]         = useState('08:00');
+  const [recurringDay, setRecurringDay]         = useState('');
+  const [calendarMonth, setCalendarMonth]       = useState(() => {
+    const d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth() };
   });
 
-  const toggleSection = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const weekDayOptions = [
-    { id: 'mon', label: 'T2' },
-    { id: 'tue', label: 'T3' },
-    { id: 'wed', label: 'T4' },
-    { id: 'thu', label: 'T5' },
-    { id: 'fri', label: 'T6' },
-    { id: 'sat', label: 'T7' },
-    { id: 'sun', label: 'CN' },
-  ];
-
-  const contractOptions = [
-    { months: 1, label: '1 tháng', discount: 10 },
-    { months: 3, label: '3 tháng', discount: 15 },
-    { months: 6, label: '6 tháng', discount: 20 },
-  ];
-
-  const [staffNote, setStaffNote] = useState('');
-
-  // ── Diện tích căn hộ ──────────────────────────────────
-  // const [areaOption, setAreaOption] = useState('under-50');
-  const [areaOption, setAreaOption] = useState('');
-  const [areaCustom, setAreaCustom] = useState('');
-
-  const areaOptions = [
-    { id: 'under-50', label: 'Dưới 50m²' },
-    { id: '50-80', label: '50m² - 80m²' },
-    { id: '80-120', label: '80m² - 120m²' },
-    { id: 'over-120', label: 'Trên 120m²' },
-  ];
-
-  const durationOptions = [
-    { hours: 2, label: '2 tiếng', extraPrice: 0 },
-    { hours: 3, label: '3 tiếng', extraPrice: 100000 },
-    { hours: 4, label: '4 tiếng', extraPrice: 200000 },
-  ];
-
-  const [extras, setExtras] = useState([]);
-  const [extrasScope, setExtrasScope] = useState({});
-  // ca lẻ & lặp lại: mặc định 'cash' | gói tháng: không có mặc định (null)
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [staffMode, setStaffMode] = useState('auto');
-
-  const [addressMode, setAddressMode] = useState('saved');
+  // ── Step 3 state ──────────────────────────────────────────────────────────
+  const [contactMode, setContactMode]           = useState('saved');  // saved | new
   const [selectedSavedAddress, setSelectedSavedAddress] = useState(0);
-  const [newAddress, setNewAddress] = useState({ street: '', district: '', note: '' });
+  const [newContact, setNewContact]             = useState({ name: '', phone: '', email: '', street: '', district: '', note: '' });
+  const [staffNote, setStaffNote]               = useState('');
 
-  // Số dư Ví CleanTrust (mock)
-  const walletBalance = 320000;
+  // ── Step 4 state ──────────────────────────────────────────────────────────
+  const [paymentMethod, setPaymentMethod]       = useState('cash');
+  const [promoCode, setPromoCode]               = useState('');
+  const [promoApplied, setPromoApplied]         = useState(false);
+  const [promoDiscount, setPromoDiscount]       = useState(0);
 
-  const savedAddresses = [
-    { id: 0, label: 'Nhà riêng', address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM', icon: 'home' },
-    { id: 1, label: 'Văn phòng', address: '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM', icon: 'business' },
-  ];
+  // ── Validation ────────────────────────────────────────────────────────────
+  const [errors, setErrors] = useState({});
 
-  const packages = [
-    {
-      id: 'standard',
-      title: 'Vệ sinh Tiêu chuẩn',
-      description: 'Quét dọn, lau chùi cơ bản các phòng, dọn rác.',
-      price: 150000,
-      icon: 'home',
-      iconBg: 'bg-secondary-container',
-    },
-    {
-      id: 'deep',
-      title: 'Tổng vệ sinh chuyên sâu',
-      description: 'Vệ sinh toàn bộ ngóc ngách, tẩy ố, làm sạch kính.',
-      price: 450000,
-      icon: 'flare',
-      iconBg: 'bg-tertiary-fixed',
-    },
-  ];
+  // ── Derived values ────────────────────────────────────────────────────────
+  const pkgData     = PACKAGES.find(p => p.id === selectedPackage);
+  const areaData    = AREA_OPTIONS.find(a => a.id === selectedArea);
+  const baseHours   = areaData ? areaData.hours : 2;
+  const extraMinutes = extras.reduce((sum, id) => {
+    const e = EXTRA_SERVICES.find(s => s.id === id);
+    return sum + (e ? e.addMinutes : 0);
+  }, 0);
+  const totalMinutes = baseHours * 60 + extraMinutes;
+  const needTwoStaff = totalMinutes > 240;
+  const staffExtraPrice  = staffMode === 'manual' ? 30000 : 0;
+  const extrasTotal      = EXTRA_SERVICES.filter(s => extras.includes(s.id)).reduce((sum, s) => sum + s.price, 0);
+  const travelFee        = 15000;
+  const subtotal         = pkgData.price + extrasTotal + staffExtraPrice + travelFee;
+  const total            = Math.max(0, subtotal - promoDiscount);
+  const walletBalance    = 320000;
 
-  const dates = [
-    { day: 'T2', date: '15' },
-    { day: 'T3', date: '16' },
-    { day: 'T4', date: '17' },
-    { day: 'T5', date: '18' },
-    { day: 'T6', date: '19' },
-    { day: 'T7', date: '20' },
-  ];
-
-  const extraServices = [
-    {
-      id: 'fridge',
-      title: 'Làm sạch tủ lạnh',
-      price: 100000,
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuBJeKHlmEKV3Tn4OX28kXPHGAPDm93cYjY9nFpRzox5KtWTVIZ2l9rUbFUIOVf_v7qJIPOBXXEsCrZe85sBroI4gDnC1AM4t6QwT_JVuI16LOwbASqYccX1eRydQNdy_5pXKZf_Hv59TrDTDrYlQJw5O0xVkjyzw6zKglZVqQfCCsIpQWqI0m5TFyhB9bBzavlu1UM6TaYMHjkxJ8kAuMDhVu6zevJjPrZEtpaeP5AqjZpMMdpoD1pyW6rX2YAWyurm61TK-ljBZL1k',
-    },
-    {
-      id: 'glass',
-      title: 'Lau kính',
-      price: 150000,
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuCC5curV9u3nwgY0WWxp3O4ENjb667CvoKWZQmGtJFzo63-11vpwlIGAKWHTP1znik3061l5lk0Z2oKS1pXB6TMmmsaDpCQ7RX4cYpHvVey0MHyYorm1xRt5f8guBep1Lam1AaSD5uXQ4Zo3mwufyxUjNxUTm2QBUXWYIfKNN08-pK7b4WFnW4LtIXUmjM8R8WW25wkvbc7jnaGof_k6YvxP7eBks2uw609cnUj4wcHQjYidYkubxl5ZaDxBkuL8KpO_qAziNqChT_E',
-    },
-    {
-      id: 'iron',
-      title: 'Ủi quần áo',
-      price: 80000,
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuA8sddz97bqiwJVcesTaOVtpzyoUjQsx_JkfXyArmyIpXO-CKgo4WTv2hyI1MLzKMdFNhji9BgWyswW7Tk2MeK0h4gynON0RIauNY3IbxPHKa1qMxeQ4-zVBxFDFHS5cw1Wpj8bnVm6gXbwCdJJ0mm9YoFrJvw-1HBwr-AIS8AHaWg3E9pD63kapNO4Mrbx49tzwYPUEnaYujscZNHrzdNHf-KNhKnWSCk7aWgClJU0q_qiTKFMZwqPf5US8NWTFDV2eD2fOMZRiyLA',
-    },
-  ];
-
-  const selectedPackageData = packages.find((pkg) => pkg.id === selectedPackage);
-
-  const frequencyText = {
-    single: 'Vệ sinh lẻ',
-    monthly: 'Gói tháng',
-    recurring: 'Gói lặp lại',
+  // ── Calendar helpers ──────────────────────────────────────────────────────
+  const isDateDisabled = (day) => {
+    if (!day) return true;
+    const d = new Date(calendarMonth.year, calendarMonth.month, day);
+    d.setHours(0,0,0,0);
+    const t = new Date(); t.setHours(0,0,0,0);
+    return d < t;
   };
-
-  // ── Reset khi đổi frequency ────────────────────────────
-  const handleFrequencyChange = (newFreq) => {
-    if (newFreq === frequency) return;
-    setFrequency(newFreq);
-    // Lịch & dịch vụ thêm
-    setSelectedDate(0);
-    setSelectedTime('08:00');
-    setDuration(2);
-    setWeekDays([]);
-    setContractMonths(1);
-    setSessionsPerWeek(1);
-    setFlexibleSchedule(false);
-    setStartDate('');
-    setRecurringFrequency('weekly');
-    setRecurringDay('');
-    setExtras([]);
-    setExtrasScope({});
-    setStaffNote('');
-    // Địa chỉ
-    setAddressMode('saved');
-    setSelectedSavedAddress(0);
-    setNewAddress({ street: '', district: '', note: '' });
-    // Thanh toán: gói tháng không có mặc định, còn lại mặc định tiền mặt
-    setPaymentMethod(newFreq === 'monthly' ? null : 'cash');
-    setErrors({});
+  const isDateSelected = (day) => {
+    if (!day || !selectedDate) return false;
+    return selectedDate.year === calendarMonth.year &&
+           selectedDate.month === calendarMonth.month &&
+           selectedDate.day === day;
   };
-
-  const toggleWeekDay = (id) => {
-    setWeekDays((prev) =>
-      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
-    );
-    if (errors.weekDays) setErrors((prev) => ({ ...prev, weekDays: null }));
+  const handleDateSelect = (day) => {
+    if (!day || isDateDisabled(day)) return;
+    setSelectedDate({ year: calendarMonth.year, month: calendarMonth.month, day });
   };
+  const selectedDateLabel = selectedDate
+    ? `${['CN','T2','T3','T4','T5','T6','T7'][new Date(selectedDate.year, selectedDate.month, selectedDate.day).getDay()]}, ${selectedDate.day}/${selectedDate.month+1}/${selectedDate.year}`
+    : 'Chưa chọn';
 
+  // ── Toggle helpers ────────────────────────────────────────────────────────
   const toggleExtra = (id) => {
-    setExtras((prev) => {
-      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
-      if (prev.includes(id)) {
-        setExtrasScope((s) => { const ns = { ...s }; delete ns[id]; return ns; });
-      } else {
-        setExtrasScope((s) => ({ ...s, [id]: 'first' }));
-      }
-      return next;
-    });
+    setExtras(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const setExtraScope = (id, scope) => {
-    setExtrasScope((prev) => ({ ...prev, [id]: scope }));
+  // ── Promo apply ───────────────────────────────────────────────────────────
+  const applyPromo = () => {
+    if (promoCode.trim().toUpperCase() === 'CLEANTRUST10') {
+      setPromoDiscount(Math.round(subtotal * 0.1));
+      setPromoApplied(true);
+    } else {
+      setPromoApplied(false);
+      setPromoDiscount(0);
+      setErrors(prev => ({ ...prev, promo: 'Mã không hợp lệ hoặc đã hết hạn.' }));
+    }
   };
 
-  const travelFee = 15000;
-  const durationExtraPrice = durationOptions.find((d) => d.hours === duration)?.extraPrice ?? 0;
-  const staffExtraPrice = staffMode === 'manual' ? 30000 : 0;
-
-  const basePrice = selectedPackageData.price;
-  const contractDiscount = contractOptions.find((c) => c.months === contractMonths)?.discount ?? 0;
-
-  // ── FIX 2: Dùng số ngày thực tế khi chọn "Nhiều buổi" ──
-  const effectiveSessionsPerWeek = flexibleSchedule ? (weekDays.length || 1) : sessionsPerWeek;
-
-  // ── Gói tháng: tách 2 tầng ──────────────────────────────
-  const sessionsPerMonth = effectiveSessionsPerWeek * 4;
-  const totalSessions = sessionsPerMonth * contractMonths;
-
-  // Tầng 1 — Gói cơ bản (được discount)
-  const coreRaw = (basePrice + durationExtraPrice + staffExtraPrice) * sessionsPerMonth;
-  const coreDiscount = Math.round(coreRaw * contractDiscount / 100);
-  const coreMonthly = coreRaw - coreDiscount;
-  const coreTotal = coreMonthly * contractMonths;
-
-  // Tầng 2 — Add-ons (không discount, tính theo scope)
-  const addonsTotal = extraServices
-    .filter((s) => extras.includes(s.id))
-    .reduce((sum, s) => {
-      const scope = extrasScope[s.id] ?? 'first';
-      if (frequency === 'monthly') {
-        return sum + (scope === 'all' ? s.price * totalSessions : s.price);
-      }
-      return sum + s.price;
-    }, 0);
-
-  // ── Tổng theo từng gói ──────────────────────────────────
-  const totalSingle = basePrice + durationExtraPrice + staffExtraPrice + addonsTotal + travelFee;
-  const totalMonthly = coreTotal + addonsTotal + travelFee;
-  const totalRecurring = basePrice + durationExtraPrice + staffExtraPrice + addonsTotal + travelFee;
-
-  const total = frequency === 'single' ? totalSingle
-    : frequency === 'monthly' ? totalMonthly
-    : totalRecurring;
-
-  // ── Validate & submit ──────────────────────────────────
-  const handleSubmit = () => {
-    const newErrors = {};
-
-    if (frequency === 'monthly') {
-      const requiredDays = flexibleSchedule ? 1 : sessionsPerWeek;
-      if (weekDays.length < requiredDays) {
-        newErrors.weekDays = flexibleSchedule
-          ? 'Vui lòng chọn ít nhất 1 ngày làm việc.'
-          : `Vui lòng chọn đủ ${requiredDays} ngày làm việc.`;
-      }
-      if (!startDate) {
-        newErrors.startDate = 'Vui lòng chọn ngày bắt đầu hợp đồng.';
-      }
-    }
-
-    if (frequency === 'recurring') {
-      if (!recurringDay) {
-        newErrors.recurringDay = 'Vui lòng chọn ngày làm việc hàng tuần.';
-      }
-    }
-
-    if (addressMode === 'new') {
-      if (!newAddress.street.trim()) {
-        newErrors.street = 'Vui lòng nhập số nhà, tên đường.';
-      }
-      if (!newAddress.district.trim()) {
-        newErrors.district = 'Vui lòng nhập phường / quận.';
-      }
-    }
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) {
-      const firstKey = Object.keys(newErrors)[0];
-      const refMap = {
-        weekDays: scheduleHeadingRef,
-        startDate: scheduleHeadingRef,
-        recurringDay: scheduleHeadingRef,
-        street: addressHeadingRef,
-        district: addressHeadingRef,
-      };
-      const targetRef = refMap[firstKey];
-      if (targetRef?.current) {
-        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      return;
-    }
-
-    setStep(3);
+  // ── Validate step transitions ─────────────────────────────────────────────
+  const validateStep1 = () => {
+    const e = {};
+    if (!selectedArea) e.area = 'Vui lòng chọn diện tích nhà.';
+    if (hasPet === null) e.pet = 'Vui lòng cho biết nhà bạn có nuôi thú cưng không.';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  // ── Inline Error Message ──────────────────────────────
-  const ErrorMsg = ({ message }) => {
-    if (!message) return null;
-    return (
-      <div className="flex items-center gap-1.5 mt-2 text-error text-sm font-medium animate-pulse">
-        <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
-          error
-        </span>
-        {message}
-      </div>
-    );
+  const validateStep2 = () => {
+    const e = {};
+    if (repeatMode === 'once' && !selectedDate) e.date = 'Vui lòng chọn ngày làm việc.';
+    if ((repeatMode === 'weekly' || repeatMode === 'biweekly') && !recurringDay) e.recurringDay = 'Vui lòng chọn ngày làm việc trong tuần.';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  // ── Step Indicator ────────────────────────────────────
+  const validateStep3 = () => {
+    const e = {};
+    if (contactMode === 'new') {
+      if (!newContact.name.trim())     e.name     = 'Vui lòng nhập họ tên.';
+      if (!newContact.phone.trim())    e.phone    = 'Vui lòng nhập số điện thoại.';
+      if (!newContact.street.trim())   e.street   = 'Vui lòng nhập địa chỉ.';
+      if (!newContact.district.trim()) e.district = 'Vui lòng nhập phường/quận.';
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  // ── Step Indicator ────────────────────────────────────────────────────────
   const StepIndicator = () => {
     const steps = [
-      { num: 1, label: 'Dịch vụ & Gói' },
-      { num: 2, label: 'Thời gian & Địa chỉ' },
-      { num: 3, label: 'Xác nhận' },
+      { num: 1, label: 'Dịch vụ' },
+      { num: 2, label: 'Lịch hẹn' },
+      { num: 3, label: 'Thông tin' },
+      { num: 4, label: 'Thanh toán' },
     ];
-
     return (
-      <div className="flex items-center gap-4 text-on-surface-variant">
+      <div className="flex items-center gap-3 flex-wrap text-on-surface-variant mt-4">
         {steps.map((s, i) => {
           const isActive = step === s.num;
-          const isDone = step > s.num;
+          const isDone   = step > s.num;
           return (
             <React.Fragment key={s.num}>
               <span className={`flex items-center gap-2 ${isActive ? 'text-primary font-bold' : ''}`}>
-                <span
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-label-sm transition-all ${
-                    isActive
-                      ? 'bg-primary text-on-primary'
-                      : isDone
-                      ? 'bg-primary-fixed text-primary'
-                      : 'bg-surface-container-high text-on-surface-variant'
-                  }`}
-                >
-                  {isDone ? (
-                    <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
-                  ) : (
-                    s.num
-                  )}
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                  isActive ? 'bg-primary text-on-primary' :
+                  isDone   ? 'bg-primary-fixed text-primary' :
+                             'bg-surface-container-high text-on-surface-variant'
+                }`}>
+                  {isDone
+                    ? <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
+                    : s.num}
                 </span>
-                {s.label}
+                <span className="hidden sm:inline">{s.label}</span>
               </span>
               {i < steps.length - 1 && (
-                <div className={`h-px w-12 transition-all ${step > s.num ? 'bg-primary' : 'bg-outline-variant'}`} />
+                <div className={`h-px flex-1 min-w-4 max-w-12 transition-all ${step > s.num ? 'bg-primary' : 'bg-outline-variant'}`} />
               )}
             </React.Fragment>
           );
@@ -361,101 +280,333 @@ const BookingPage = () => {
     );
   };
 
-  // ── Accordion Section Header ──────────────────────────
-  const AccordionHeader = ({ sectionKey, icon, label }) => (
-    <button
-      onClick={() => toggleSection(sectionKey)}
-      className="w-full flex items-center gap-2 px-6 py-3 hover:bg-surface-container/50 transition-colors"
-    >
-      <span className="material-symbols-outlined text-primary text-base">{icon}</span>
-      <p className="flex-1 text-xs font-bold text-primary uppercase tracking-widest text-left">{label}</p>
-      <span
-        className="material-symbols-outlined text-on-surface-variant text-base transition-transform duration-200"
-        style={{ transform: openSections[sectionKey] ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-      >
-        expand_more
-      </span>
-    </button>
+  // ── Calendar Component ────────────────────────────────────────────────────
+  const CalendarPicker = () => {
+    const cells     = getCalendarDays(calendarMonth.year, calendarMonth.month);
+    const dayLabels = ['T2','T3','T4','T5','T6','T7','CN'];
+    return (
+      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/50 p-4 w-full">
+        <div className="flex justify-between items-center mb-4">
+          <button onClick={() => setCalendarMonth(prev => {
+            const m = prev.month === 0 ? 11 : prev.month - 1;
+            const y = prev.month === 0 ? prev.year - 1 : prev.year;
+            return { year: y, month: m };
+          })} className="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
+            <span className="material-symbols-outlined">chevron_left</span>
+          </button>
+          <span className="font-semibold text-on-surface">{MONTH_NAMES[calendarMonth.month]}, {calendarMonth.year}</span>
+          <button onClick={() => setCalendarMonth(prev => {
+            const m = prev.month === 11 ? 0 : prev.month + 1;
+            const y = prev.month === 11 ? prev.year + 1 : prev.year;
+            return { year: y, month: m };
+          })} className="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
+            <span className="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+          {dayLabels.map(d => (
+            <div key={d} className="text-xs text-on-surface-variant font-semibold py-1">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {cells.map((day, idx) => {
+            const disabled = isDateDisabled(day);
+            const selected = isDateSelected(day);
+            return (
+              <div key={idx} onClick={() => handleDateSelect(day)}
+                className={`p-2 text-sm rounded-full transition-all select-none
+                  ${!day ? '' : disabled
+                    ? 'text-outline cursor-not-allowed'
+                    : selected
+                    ? 'bg-primary text-on-primary font-bold shadow-sm cursor-pointer'
+                    : 'text-on-background cursor-pointer hover:bg-surface-container'}`}>
+                {day || ''}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Time Slots ────────────────────────────────────────────────────────────
+  const TimeSlotPicker = () => (
+    <div className="mt-6 space-y-4">
+      <p className="font-semibold flex items-center gap-2">
+        <span className="material-symbols-outlined text-primary text-base">schedule</span>
+        Chọn khung giờ
+      </p>
+      <div>
+        <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-1">
+          <span className="material-symbols-outlined text-base">light_mode</span>
+          Buổi sáng
+        </h4>
+        <div className="grid grid-cols-4 gap-2">
+          {TIME_SLOTS.morning.map(t => (
+            <button key={t} onClick={() => setSelectedTime(t)}
+              className={`py-2 px-3 border-2 rounded-xl text-sm font-semibold transition-all ${
+                selectedTime === t ? 'border-primary bg-primary/5 text-primary' : 'border-outline-variant/50 text-on-surface hover:border-primary'}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-1">
+          <span className="material-symbols-outlined text-base">dark_mode</span>
+          Buổi chiều
+        </h4>
+        <div className="grid grid-cols-4 gap-2">
+          {TIME_SLOTS.afternoon.map(t => (
+            <button key={t} onClick={() => setSelectedTime(t)}
+              className={`py-2 px-3 border-2 rounded-xl text-sm font-semibold transition-all ${
+                selectedTime === t ? 'border-primary bg-primary/5 text-primary' : 'border-outline-variant/50 text-on-surface hover:border-primary'}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 
+  // ── Order Summary Sidebar ─────────────────────────────────────────────────
+  const OrderSummary = ({ showActions = true, onPrimary, primaryLabel, onBack }) => (
+    <aside className="lg:col-span-4 sticky top-24">
+      <div className="bg-background-2 glass-card rounded-2xl shadow-xl border border-white/50 overflow-hidden">
+        <div className="px-6 py-5 border-b border-outline-variant/20">
+          <h3 className="font-h3 text-h3 text-primary">Tóm tắt đơn hàng</h3>
+        </div>
+        <div className="px-6 py-4 space-y-3 text-sm">
+          <div className="flex justify-between text-on-surface-variant">
+            <span>Dịch vụ</span>
+            <span className="font-semibold text-on-surface text-right">{pkgData.title}</span>
+          </div>
+          {areaData && (
+            <div className="flex justify-between text-on-surface-variant">
+              <span>Diện tích</span>
+              <span className="font-semibold text-on-surface">{areaData.label} ({baseHours}h)</span>
+            </div>
+          )}
+          {needTwoStaff && (
+            <div className="flex items-center gap-1 p-2 rounded-lg bg-tertiary-fixed/30 text-xs text-on-tertiary-fixed-variant">
+              <span className="material-symbols-outlined text-sm">group</span>
+              Cần 2 nhân viên (tổng {Math.ceil(totalMinutes/60*10)/10}h công)
+            </div>
+          )}
+          {extras.length > 0 && extras.map(id => {
+            const e = EXTRA_SERVICES.find(s => s.id === id);
+            return (
+              <div key={id} className="flex justify-between text-on-surface-variant">
+                <span>{e.title}</span>
+                <span>+{fmt(e.price)}</span>
+              </div>
+            );
+          })}
+          {staffMode === 'manual' && (
+            <div className="flex justify-between text-on-surface-variant">
+              <span>Phí chọn NV</span>
+              <span>+{fmt(staffExtraPrice)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-on-surface-variant">
+            <span>Phí di chuyển</span>
+            <span>{fmt(travelFee)}</span>
+          </div>
+          {promoDiscount > 0 && (
+            <div className="flex justify-between text-primary font-medium">
+              <span>Khuyến mãi</span>
+              <span>-{fmt(promoDiscount)}</span>
+            </div>
+          )}
+        </div>
+        <div className="px-6 pb-5 pt-4 border-t-2 border-dashed border-outline-variant/30">
+          <div className="flex justify-between items-end mb-4">
+            <span className="text-on-surface-variant font-medium text-sm">Tổng thanh toán</span>
+            <span className="text-2xl font-extrabold text-primary">{fmt(total)}</span>
+          </div>
+          {showActions && (
+            <>
+              <button onClick={onPrimary}
+                className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                {primaryLabel}
+                <span className="material-symbols-outlined">arrow_forward</span>
+              </button>
+              {onBack && (
+                <button onClick={onBack}
+                  className="w-full mt-3 border-2 border-outline-variant py-3.5 rounded-xl font-semibold hover:bg-surface-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined">arrow_back</span>
+                  Quay lại
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+
+  // ── Package Task Modal ────────────────────────────────────────────────────
+  const TaskModal = () => {
+    if (!showTasks) return null;
+    const pkg = PACKAGES.find(p => p.id === showTasks);
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        onClick={() => setShowTasks(null)}>
+        <div className="bg-surface rounded-2xl p-8 max-w-md w-full shadow-2xl border border-outline-variant/30"
+          onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h3 className="font-h3 text-h3 text-on-surface">{pkg.title}</h3>
+              <p className="text-sm text-on-surface-variant mt-1">Nhân viên sẽ thực hiện các công việc sau</p>
+            </div>
+            <button onClick={() => setShowTasks(null)} className="text-on-surface-variant hover:text-on-surface p-1">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <ul className="space-y-3">
+            {pkg.tasks.map((task, i) => (
+              <li key={i} className="flex items-center gap-3 text-on-surface-variant">
+                <span className="material-symbols-outlined text-primary text-base flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                {task}
+              </li>
+            ))}
+          </ul>
+          <button onClick={() => setShowTasks(null)}
+            className="w-full mt-6 py-3 bg-primary text-on-primary rounded-xl font-semibold transition-all hover:bg-primary-container">
+            Đã hiểu
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <main className="pt-32 pb-section-padding px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-screen">
+      <TaskModal />
 
-      {/* ── STEP 1 ── */}
+      {/* ══════════ STEP 1: Dịch vụ ══════════ */}
       {step === 1 && (
         <>
           <div ref={headingRef} className="mb-12 scroll-mt-24">
-            <h1 className="font-h2 text-h2 text-primary mb-2">Đặt lịch - Bước 1: Dịch vụ & Gói</h1>
+            <h1 className="font-h2 text-h2 text-primary mb-1">Bước 1: Chọn dịch vụ</h1>
             <StepIndicator />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-14">
 
-              {/* Tần suất */}
+              {/* 1A. Chọn gói dịch vụ */}
               <section>
-                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">event_repeat</span>
-                  Tần suất vệ sinh
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[
-                    { id: 'single', icon: 'event', title: 'Ca lẻ', desc: 'Vệ sinh một lần duy nhất theo yêu cầu.' },
-                    { id: 'monthly', icon: 'package_2', title: 'Gói tháng', desc: 'Lịch cố định hàng tháng, tiết kiệm từ 10% đến 20%.', badge: 'Ưu đãi nhất' },
-                    { id: 'recurring', icon: 'update', title: 'Gói lặp lại', desc: 'Tự động lặp lại hàng tuần hoặc 2 tuần. Hủy bất kỳ lúc nào.' },
-                  ].map((item) => (
-                    <label key={item.id} className="relative cursor-pointer">
-                      <input
-                        type="radio"
-                        name="frequency"
-                        checked={frequency === item.id}
-                        onChange={() => handleFrequencyChange(item.id)}
-                        className="peer sr-only"
-                      />
-                      <div className="bg-surface-container-item glass-card p-6 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all h-full">
-                        <div className="mb-4 w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
-                          <span className="material-symbols-outlined">{item.icon}</span>
-                        </div>
-                        <h3 className="font-bold text-on-surface text-body-lg mb-2">{item.title}</h3>
-                        <p className="text-on-surface-variant text-sm">{item.desc}</p>
-                        {item.badge && (
-                          <span className="inline-block mt-3 px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed-variant rounded text-[12px] font-bold">
-                            {item.badge}
-                          </span>
-                        )}
+                <SectionTitle icon="cleaning_services">Chọn gói dịch vụ</SectionTitle>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {PACKAGES.map(pkg => {
+                    const isSelected = selectedPackage === pkg.id;
+                    return (
+                      <div key={pkg.id} className="relative">
+                        <label className="cursor-pointer block h-full">
+                          <input type="radio" name="package" checked={isSelected} onChange={() => setSelectedPackage(pkg.id)} className="peer sr-only" />
+                          <div className={`glass-card p-6 rounded-xl border-2 transition-all flex gap-4 h-full ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/30 bg-surface-container-item'}`}>
+                            <div className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 ${pkg.iconBg}`}>
+                              <span className="material-symbols-outlined text-primary text-3xl">{pkg.icon}</span>
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-bold text-on-surface text-body-lg">{pkg.title}</h4>
+                              <p className="text-on-surface-variant text-sm mb-3">{pkg.description}</p>
+                              <span className="text-primary font-bold">{fmt(pkg.price)}/buổi</span>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="absolute top-5 right-5 text-primary">
+                              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            </div>
+                          )}
+                        </label>
+                        {/* Nút xem chi tiết công việc */}
+                        <button
+                          onClick={() => setShowTasks(pkg.id)}
+                          className="absolute bottom-5 right-5 flex items-center gap-1 text-xs text-primary font-semibold hover:underline"
+                        >
+                          <span className="material-symbols-outlined text-sm">info</span>
+                          Xem chi tiết
+                        </button>
                       </div>
-                      <div className="absolute top-4 right-4 text-primary opacity-0 peer-checked:opacity-100">
-                        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                      </div>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
 
-              {/* Chọn gói */}
+              {/* 1B. Diện tích + giờ gộp (Mô hình A từ thảo luận) */}
               <section>
-                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">cleaning_services</span>
-                  Chọn gói dịch vụ
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {packages.map((pkg) => {
-                    const isSelected = selectedPackage === pkg.id;
+                <SectionTitle icon="straighten">Diện tích nhà & Thời lượng làm việc</SectionTitle>
+                <p className="text-sm text-on-surface-variant mb-4 -mt-4">
+                  Thời lượng được hệ thống tính tự động dựa trên diện tích để đảm bảo chất lượng.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {AREA_OPTIONS.map(opt => {
+                    const isSelected = selectedArea === opt.id;
                     return (
-                      <label key={pkg.id} className="relative cursor-pointer">
-                        <input type="radio" name="package" checked={isSelected} onChange={() => setSelectedPackage(pkg.id)} className="peer sr-only" />
-                        <div className={`bg-surface-container-item glass-card p-6 rounded-xl border-2 transition-all flex gap-4 h-full ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/30'} peer-checked:bg-primary/5`}>
-                          <div className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 ${pkg.iconBg}`}>
-                            <span className="material-symbols-outlined text-primary text-3xl">{pkg.icon}</span>
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-bold text-on-surface text-body-lg">{pkg.title}</h4>
-                            <p className="text-on-surface-variant text-sm mb-3">{pkg.description}</p>
-                            <span className="text-primary font-bold">{pkg.price.toLocaleString('vi-VN')}đ/buổi</span>
+                      <label key={opt.id} className="relative cursor-pointer">
+                        <input type="radio" checked={isSelected} onChange={() => { setSelectedArea(opt.id); setErrors(p => ({...p, area: null})); }} className="peer sr-only" />
+                        <div className={`glass-card p-5 rounded-xl border-2 transition-all text-center h-full flex flex-col items-center gap-2 ${
+                          isSelected ? 'border-primary bg-primary/5' : errors.area ? 'border-error/40' : 'border-outline-variant/30 bg-surface-container-item'}`}>
+                          <span className="material-symbols-outlined text-3xl text-primary">home</span>
+                          <p className="font-bold text-on-surface text-body-lg">{opt.label}</p>
+                          <p className="text-xs text-on-surface-variant">{opt.sub}</p>
+                          <div className="mt-2 px-3 py-1 bg-primary/10 rounded-full">
+                            <span className="text-primary font-bold text-sm">{opt.hours} giờ làm việc</span>
                           </div>
                         </div>
-                        <div className="absolute top-6 right-6 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
-                          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                        {isSelected && (
+                          <div className="absolute top-3 right-3 text-primary">
+                            <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          </div>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+                <ErrorMsg message={errors.area} />
+
+                {/* Cảnh báo cần 2 nhân viên */}
+                {needTwoStaff && (
+                  <div className="mt-4 flex items-start gap-3 p-4 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed">
+                    <span className="material-symbols-outlined text-on-tertiary-fixed-variant mt-0.5">group</span>
+                    <div>
+                      <p className="font-semibold text-on-tertiary-fixed-variant text-sm">Cần 2 nhân viên</p>
+                      <p className="text-xs text-on-tertiary-fixed-variant/80 mt-0.5">
+                        Tổng thời gian ước tính {Math.ceil(totalMinutes / 60 * 10) / 10}h — hệ thống sẽ cử 2 nhân viên để đảm bảo chất lượng và không quá sức.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* 1C. Dịch vụ thêm */}
+              <section>
+                <SectionTitle icon="add_circle">Dịch vụ thêm (tùy chọn)</SectionTitle>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {EXTRA_SERVICES.map(service => {
+                    const isSelected = extras.includes(service.id);
+                    return (
+                      <label key={service.id} className="relative cursor-pointer">
+                        <input type="checkbox" checked={isSelected} onChange={() => toggleExtra(service.id)} className="sr-only" />
+                        <div className={`glass-card p-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-3 ${
+                          isSelected ? 'border-primary bg-surface-container-low' : 'border-outline-variant/50 bg-surface-container-lowest hover:border-primary/50'
+                        }`}>
+                          {isSelected && (
+                            <span className="material-symbols-outlined absolute top-3 right-3 text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          )}
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
+                            <span className={`material-symbols-outlined text-[28px] ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>{service.icon}</span>
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-on-surface text-body-lg">{service.title}</h4>
+                            <p className="text-primary font-semibold text-sm mt-1">+{fmt(service.price)}</p>
+                            <p className="text-on-surface-variant text-xs mt-0.5">+{service.addMinutes} phút</p>
+                          </div>
                         </div>
                       </label>
                     );
@@ -463,68 +614,49 @@ const BookingPage = () => {
                 </div>
               </section>
 
-              {/* Diện tích căn hộ */}
+              {/* 1D. Thú cưng */}
               <section>
-                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">straighten</span>
-                  Diện tích căn hộ
-                </h3>
-                <div className="border-2 glass-card bg-surface-container-item p-6 rounded-xl">
-                  <div className="flex flex-wrap gap-3 mb-6">
-                    {areaOptions.map((opt) => (
-                      <button
-                        key={opt.id}
-                        onClick={() => setAreaOption(opt.id)}
-                        className={`px-4 py-2 rounded-full border-2 text-sm font-semibold transition-all ${
-                          areaOption === opt.id
-                            ? 'border-primary bg-primary text-on-primary'
-                            : 'border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
-                        }`}
-                      >
-                        {opt.label}
+                <SectionTitle icon="pets">Nhà bạn có nuôi thú cưng không?</SectionTitle>
+                <div className="grid grid-cols-2 gap-4 max-w-sm">
+                  {[
+                    { val: false, icon: 'check_circle', label: 'Không có' },
+                    { val: true,  icon: 'pets',         label: 'Có (chó/mèo...)' },
+                  ].map(opt => {
+                    const isSelected = hasPet === opt.val;
+                    return (
+                      <button key={String(opt.val)}
+                        onClick={() => { setHasPet(opt.val); setErrors(p => ({...p, pet: null})); }}
+                        className={`glass-card p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
+                          isSelected ? 'border-primary bg-primary/5' : errors.pet ? 'border-error/40' : 'border-outline-variant/30 bg-surface-container-item hover:border-primary/50'
+                        }`}>
+                        <span className={`material-symbols-outlined text-2xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>{opt.icon}</span>
+                        <span className={`font-semibold text-sm ${isSelected ? 'text-primary' : 'text-on-surface'}`}>{opt.label}</span>
                       </button>
-                    ))}
-                  </div>
-                  <div className="max-w-xs">
-                    <label className="block text-sm font-semibold text-on-surface mb-2">
-                      Nhập diện tích chính xác (m²) <span className="text-on-surface-variant font-normal">(tùy chọn)</span>
-                    </label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl pointer-events-none">straighten</span>
-                      <input
-                        type="number"
-                        placeholder="Ví dụ: 65"
-                        value={areaCustom}
-                        onChange={(e) => setAreaCustom(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-outline-variant bg-surface focus:border-primary focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50"
-                      />
-                    </div>
-                    {areaCustom && (
-                      <p className="text-xs text-primary mt-2 font-medium flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">check_circle</span>
-                        Diện tích: {areaCustom} m²
-                      </p>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
+                {hasPet && (
+                  <p className="mt-3 text-xs text-on-surface-variant flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm text-primary">info</span>
+                    Nhân viên sẽ được thông báo trước. Bạn có thể ghi thêm ghi chú ở bước sau.
+                  </p>
+                )}
+                <ErrorMsg message={errors.pet} />
               </section>
 
-              {/* Chọn nhân viên */}
+              {/* 1E. Chọn nhân viên */}
               <section>
-                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">badge</span>
-                  Nhân viên phụ trách
-                </h3>
+                <SectionTitle icon="badge">Nhân viên phụ trách</SectionTitle>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
-                    { id: 'auto', icon: 'smart_toy', title: 'Hệ thống tự chọn', desc: 'Tối ưu hoá thời gian và đảm bảo chất lượng.', badge: 'Miễn phí', badgeColor: 'bg-secondary-container text-on-secondary-container' },
-                    { id: 'manual', icon: 'person_search', title: 'Tự chọn nhân viên', desc: 'Chọn nhân viên từ danh sách những người nhận lịch.', badge: '+30.000đ/buổi', badgeColor: 'bg-tertiary-fixed text-on-tertiary-fixed-variant' },
-                  ].map((item) => {
+                    { id: 'auto',   icon: 'smart_toy',    title: 'Hệ thống tự chọn',   desc: 'Tối ưu hoá thời gian và đảm bảo chất lượng.', badge: 'Miễn phí',       badgeColor: 'bg-secondary-container text-on-secondary-container' },
+                    { id: 'manual', icon: 'person_search', title: 'Tự chọn nhân viên',  desc: 'Chọn nhân viên từ danh sách những người nhận lịch.', badge: '+30.000đ/buổi', badgeColor: 'bg-tertiary-fixed text-on-tertiary-fixed-variant' },
+                  ].map(item => {
                     const isSelected = staffMode === item.id;
                     return (
                       <label key={item.id} className="relative cursor-pointer">
                         <input type="radio" name="staffMode" checked={isSelected} onChange={() => setStaffMode(item.id)} className="peer sr-only" />
-                        <div className="bg-surface-container-item glass-card p-6 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all h-full">
+                        <div className="glass-card bg-surface-container-item p-6 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all h-full">
                           <div className="mb-4 w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
                             <span className="material-symbols-outlined">{item.icon}</span>
                           </div>
@@ -532,9 +664,11 @@ const BookingPage = () => {
                           <p className="text-on-surface-variant text-sm mb-3">{item.desc}</p>
                           <span className={`inline-block px-3 py-1 rounded text-[12px] font-bold ${item.badgeColor}`}>{item.badge}</span>
                         </div>
-                        <div className="absolute top-4 right-4 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
-                          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                        </div>
+                        {isSelected && (
+                          <div className="absolute top-4 right-4 text-primary">
+                            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          </div>
+                        )}
                       </label>
                     );
                   })}
@@ -542,1022 +676,560 @@ const BookingPage = () => {
               </section>
             </div>
 
-            {/* Sidebar Step 1 */}
-            <aside className="lg:col-span-4 sticky top-24">
-              <div className="bg-background-2 glass-card p-8 rounded-2xl shadow-xl border border-white/50">
-                <h3 className="font-h3 text-h3 text-primary mb-6">Tóm tắt dịch vụ</h3>
-                <div className="space-y-4 mb-8">
-                  <div className="flex justify-between text-on-surface-variant">
-                    <span>Loại dịch vụ</span>
-                    <span className="font-semibold text-on-surface">{frequencyText[frequency]}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-on-surface-variant">
-                    <span>Gói dịch vụ</span>
-                    <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm">{selectedPackageData.title}</span>
-                  </div>
-                  <div className="flex justify-between text-on-surface-variant">
-                    <span>Nhân viên</span>
-                    <span className="font-semibold text-on-surface">{staffMode === 'auto' ? 'Hệ thống chọn' : 'Tự chọn'}</span>
-                  </div>
-                  <hr className="border-outline-variant/20" />
-                  <div className="flex justify-between text-on-surface-variant">
-                    <span>Giá cơ bản</span>
-                    <span className="font-semibold text-on-surface">{selectedPackageData.price.toLocaleString('vi-VN')}đ/buổi</span>
-                  </div>
-                  {staffMode === 'manual' && (
-                    <div className="flex justify-between text-on-surface-variant">
-                      <span>Phí chọn nhân viên</span>
-                      <span className="font-semibold text-on-surface">+30.000đ/buổi</span>
-                    </div>
-                  )}
-                </div>
-                <div className="pt-6 border-t-2 border-dashed border-outline-variant/30 mb-8">
-                  <div className="flex justify-between items-end">
-                    <span className="text-on-surface-variant font-medium">Giá / buổi</span>
-                    <span className="text-3xl font-h1 font-extrabold text-primary">
-                      {(selectedPackageData.price + staffExtraPrice).toLocaleString('vi-VN')}đ
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setStep(2)}
-                  className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                >
-                  Tiếp theo
-                  <span className="material-symbols-outlined">arrow_forward</span>
-                </button>
-                <p className="mt-4 text-xs text-center text-on-surface-variant">
-                  Bằng cách nhấn tiếp theo, bạn đồng ý với{' '}
-                  <Link to="/terms" className="underline hover:text-primary transition-colors">Điều khoản dịch vụ</Link>{' '}
-                  của CleanTrust.
-                </p>
-              </div>
-            </aside>
+            <OrderSummary
+              primaryLabel="Tiếp theo: Chọn lịch"
+              onPrimary={() => { if (validateStep1()) setStep(2); }}
+            />
           </div>
         </>
       )}
 
-      {/* ── STEP 2 ── */}
+      {/* ══════════ STEP 2: Lịch hẹn ══════════ */}
       {step === 2 && (
         <>
           <div ref={headingRef} className="mb-12 scroll-mt-24">
-            <h1 className="font-h2 text-h2 text-primary mb-2">Đặt lịch - Bước 2: Thời gian & Địa chỉ</h1>
+            <h1 className="font-h2 text-h2 text-primary mb-1">Bước 2: Chọn lịch hẹn</h1>
             <StepIndicator />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-            <div className="lg:col-span-8 space-y-6">
+            <div className="lg:col-span-8 space-y-8">
 
-              {/* Chọn thời gian */}
+              {/* 2A. Lặp lại hay không? */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <h3 ref={scheduleHeadingRef} className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2 scroll-mt-24">
-                  <span className="material-symbols-outlined text-primary">calendar_month</span>
-                  {frequency === 'single' ? 'Chọn thời gian' : 'Lịch làm việc'}
-                </h3>
-
-                {/* ── Ca lẻ ── */}
-                {frequency === 'single' && (
-                  <>
-                    <div className="flex gap-4 overflow-x-auto pb-4">
-                      {dates.map((item, index) => (
-                        <div
-                          key={index}
-                          onClick={() => setSelectedDate(index)}
-                          className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl border cursor-pointer transition-all ${
-                            selectedDate === index
-                              ? 'border-primary bg-primary-container text-on-primary-container'
-                              : 'border-outline-variant bg-surface'
-                          }`}
-                        >
-                          <span className="text-label-sm">{item.day}</span>
-                          <span className="text-h3">{item.date}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-8">
-                      <p className="font-semibold mb-3">Giờ bắt đầu</p>
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <select
-                            value={selectedTime.split(':')[0]}
-                            onChange={(e) => setSelectedTime(`${e.target.value}:${selectedTime.split(':')[1]}`)}
-                            className="appearance-none pl-4 pr-10 py-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold text-lg focus:outline-none cursor-pointer"
-                          >
-                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-primary text-base pointer-events-none">expand_more</span>
-                        </div>
-                        <span className="text-2xl font-bold text-on-surface-variant">:</span>
-                        <div className="relative">
-                          <select
-                            value={selectedTime.split(':')[1]}
-                            onChange={(e) => setSelectedTime(`${selectedTime.split(':')[0]}:${e.target.value}`)}
-                            className="appearance-none pl-4 pr-10 py-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold text-lg focus:outline-none cursor-pointer"
-                          >
-                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map((m) => (
-                              <option key={m} value={m}>{m}</option>
-                            ))}
-                          </select>
-                          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-primary text-base pointer-events-none">expand_more</span>
-                        </div>
-                        <div className="flex items-center gap-2 ml-2 px-3 py-2 bg-surface-container rounded-lg">
-                          <span className="material-symbols-outlined text-on-surface-variant text-base">schedule</span>
-                          <span className="text-sm text-on-surface-variant font-medium">{selectedTime}</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-on-surface-variant mt-2">Chọn bất kỳ giờ nào phù hợp với bạn.</p>
-                    </div>
-                  </>
-                )}
-
-                {/* ── Gói tháng ── */}
-                {frequency === 'monthly' && (
-                  <>
-                    <div className="mb-8">
-                      <p className="font-semibold mb-3">Số buổi mỗi tuần</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {[1, 2, 3].map((n) => (
-                          <label key={n} className="relative cursor-pointer">
-                            <input
-                              type="radio"
-                              checked={!flexibleSchedule && sessionsPerWeek === n}
-                              onChange={() => { setSessionsPerWeek(n); setWeekDays([]); setFlexibleSchedule(false); }}
-                              className="peer sr-only"
-                            />
-                            <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
-                              <p className="font-bold text-on-surface text-body-lg">{n} buổi</p>
-                              <p className="text-xs text-on-surface-variant mt-1">/ tuần</p>
-                            </div>
-                            <div className="absolute top-3 right-3 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
-                              <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                            </div>
-                          </label>
-                        ))}
-                        <label className="relative cursor-pointer">
-                          <input type="radio" checked={flexibleSchedule} onChange={() => { setFlexibleSchedule(true); setWeekDays([]); }} className="peer sr-only" />
-                          <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
-                            <p className="font-bold text-on-surface text-body-lg">Nhiều buổi</p>
-                            <p className="text-xs text-on-surface-variant mt-1">/ tuần</p>
+                <SectionTitle icon="event_repeat">Tần suất dọn</SectionTitle>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { id: 'once',      icon: 'event',    title: 'Một lần',       desc: 'Đặt lịch một lần duy nhất.',                         badge: null },
+                    { id: 'weekly',    icon: 'update',   title: 'Hàng tuần',     desc: 'Tự động lặp lại mỗi tuần. Hủy bất kỳ lúc nào.',     badge: 'Tiết kiệm 10%' },
+                    { id: 'biweekly',  icon: 'calendar_month', title: '2 tuần/lần', desc: 'Tự động lặp lại cách tuần.',                    badge: null },
+                  ].map(item => {
+                    const isSelected = repeatMode === item.id;
+                    return (
+                      <label key={item.id} className="relative cursor-pointer">
+                        <input type="radio" name="repeatMode" checked={isSelected} onChange={() => { setRepeatMode(item.id); setSelectedDate(null); setRecurringDay(''); setErrors({}); }} className="peer sr-only" />
+                        <div className="glass-card bg-surface-container-lowest p-5 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all h-full">
+                          <div className="mb-3 w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+                            <span className="material-symbols-outlined">{item.icon}</span>
                           </div>
-                          <div className="absolute top-3 right-3 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
-                            <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="mb-8" ref={weekDaysRef}>
-                      <p className="font-semibold mb-3">
-                        Chọn ngày làm việc
-                        <span className="ml-2 text-xs text-on-surface-variant font-normal">
-                          {flexibleSchedule ? '(chọn tối đa 7 ngày)' : `(chọn ${sessionsPerWeek} ngày)`}
-                        </span>
-                      </p>
-                      <div className={`flex gap-3 flex-wrap p-3 rounded-xl transition-colors ${errors.weekDays ? 'bg-error/5 border-2 border-error/40' : 'border-2 border-transparent'}`}>
-                        {weekDayOptions.map((d) => {
-                          const isSelected = weekDays.includes(d.id);
-                          const maxDays = flexibleSchedule ? 7 : sessionsPerWeek;
-                          const isDisabled = !isSelected && weekDays.length >= maxDays;
-                          return (
-                            <button
-                              key={d.id}
-                              onClick={() => !isDisabled && toggleWeekDay(d.id)}
-                              className={`w-12 h-12 rounded-xl border-2 font-bold text-sm transition-all ${
-                                isSelected
-                                  ? 'border-primary bg-primary text-on-primary'
-                                  : isDisabled
-                                  ? 'border-outline-variant/20 text-on-surface-variant/30 cursor-not-allowed'
-                                  : errors.weekDays
-                                  ? 'border-error/40 hover:border-error hover:text-error'
-                                  : 'border-outline-variant hover:border-primary hover:text-primary'
-                              }`}
-                            >
-                              {d.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {weekDays.length > 0 && (
-                        <p className="text-xs text-primary mt-2 font-medium">
-                          Đã chọn: {weekDays.map((id) => weekDayOptions.find((d) => d.id === id)?.label).join(', ')}
-                          {flexibleSchedule && (
-                            <span className="ml-2 text-on-surface-variant">({weekDays.length} buổi/tuần)</span>
-                          )}
-                        </p>
-                      )}
-                      <ErrorMsg message={errors.weekDays} />
-                    </div>
-
-                    <div className="mb-8" ref={startDateRef}>
-                      <p className="font-semibold mb-3">Ngày bắt đầu hợp đồng</p>
-                      <div className="relative w-fit">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl pointer-events-none">calendar_today</span>
-                        <input
-                          type="date"
-                          value={startDate}
-                          min={new Date().toISOString().split('T')[0]}
-                          onChange={(e) => {
-                            setStartDate(e.target.value);
-                            if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: null }));
-                          }}
-                          className={`pl-10 pr-4 py-3 rounded-xl border-2 bg-surface focus:outline-none transition-colors text-on-surface cursor-pointer ${
-                            errors.startDate ? 'border-error focus:border-error' : 'border-outline-variant focus:border-primary'
-                          }`}
-                        />
-                      </div>
-                      {startDate && (
-                        <p className="text-xs text-primary mt-2 font-medium flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">check_circle</span>
-                          Bắt đầu từ: {new Date(startDate).toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </p>
-                      )}
-                      <ErrorMsg message={errors.startDate} />
-                    </div>
-
-                    <div className="mb-8">
-                      <p className="font-semibold mb-3">Giờ bắt đầu mỗi buổi</p>
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <select
-                            value={selectedTime.split(':')[0]}
-                            onChange={(e) => setSelectedTime(`${e.target.value}:${selectedTime.split(':')[1]}`)}
-                            className="appearance-none pl-4 pr-10 py-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold text-lg focus:outline-none cursor-pointer"
-                          >
-                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-primary text-base pointer-events-none">expand_more</span>
-                        </div>
-                        <span className="text-2xl font-bold text-on-surface-variant">:</span>
-                        <div className="relative">
-                          <select
-                            value={selectedTime.split(':')[1]}
-                            onChange={(e) => setSelectedTime(`${selectedTime.split(':')[0]}:${e.target.value}`)}
-                            className="appearance-none pl-4 pr-10 py-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold text-lg focus:outline-none cursor-pointer"
-                          >
-                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map((m) => (
-                              <option key={m} value={m}>{m}</option>
-                            ))}
-                          </select>
-                          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-primary text-base pointer-events-none">expand_more</span>
-                        </div>
-                        <div className="flex items-center gap-2 ml-2 px-3 py-2 bg-surface-container rounded-lg">
-                          <span className="material-symbols-outlined text-on-surface-variant text-base">schedule</span>
-                          <span className="text-sm text-on-surface-variant font-medium">{selectedTime}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="font-semibold mb-3">Thời hạn hợp đồng</p>
-                      <div className="grid grid-cols-3 gap-3">
-                        {contractOptions.map((opt) => (
-                          <label key={opt.months} className="relative cursor-pointer">
-                            <input type="radio" checked={contractMonths === opt.months} onChange={() => setContractMonths(opt.months)} className="peer sr-only" />
-                            <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
-                              <p className="font-bold text-on-surface text-body-lg">{opt.label}</p>
-                              <p className="text-xs text-primary font-semibold mt-1">Giảm {opt.discount}%</p>
-                            </div>
-                            <div className="absolute top-3 right-3 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
-                              <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ── Gói lặp lại ── */}
-                {frequency === 'recurring' && (
-                  <>
-                    <div className="flex items-start gap-3 p-4 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed mb-8">
-                      <span className="material-symbols-outlined text-on-tertiary-fixed-variant mt-0.5">info</span>
-                      <div>
-                        <p className="font-semibold text-on-tertiary-fixed-variant">Tự động lặp lại, không ràng buộc</p>
-                        <p className="text-sm text-on-tertiary-fixed-variant/80 mt-1">
-                          Buổi đầu được xác nhận, các buổi tiếp theo tự động lên lịch. Hủy hoặc tạm dừng bất kỳ lúc nào trước 24 giờ.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mb-8">
-                      <p className="font-semibold mb-3">Tần suất lặp lại</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {[
-                          { id: 'weekly', label: 'Mỗi tuần', sub: 'Lặp lại hàng tuần' },
-                          { id: 'biweekly', label: '2 tuần / lần', sub: 'Lặp lại cách tuần' },
-                        ].map((opt) => (
-                          <label key={opt.id} className="relative cursor-pointer">
-                            <input
-                              type="radio"
-                              checked={recurringFrequency === opt.id}
-                              onChange={() => setRecurringFrequency(opt.id)}
-                              className="peer sr-only"
-                            />
-                            <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
-                              <p className="font-bold text-on-surface text-body-lg">{opt.label}</p>
-                              <p className="text-xs text-on-surface-variant mt-1">{opt.sub}</p>
-                            </div>
-                            <div className="absolute top-3 right-3 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
-                              <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mb-8">
-                      <p className="font-semibold mb-3">
-                        Ngày làm việc
-                        <span className="ml-2 text-xs text-on-surface-variant font-normal">(chọn 1 ngày)</span>
-                      </p>
-                      <div className={`flex gap-3 flex-wrap p-3 rounded-xl transition-colors ${errors.recurringDay ? 'bg-error/5 border-2 border-error/40' : 'border-2 border-transparent'}`}>
-                        {weekDayOptions.map((d) => {
-                          const isSelected = recurringDay === d.id;
-                          return (
-                            <button
-                              key={d.id}
-                              onClick={() => {
-                                setRecurringDay(d.id);
-                                if (errors.recurringDay) setErrors((prev) => ({ ...prev, recurringDay: null }));
-                              }}
-                              className={`w-12 h-12 rounded-xl border-2 font-bold text-sm transition-all ${
-                                isSelected
-                                  ? 'border-primary bg-primary text-on-primary'
-                                  : errors.recurringDay
-                                  ? 'border-error/40 hover:border-error hover:text-error'
-                                  : 'border-outline-variant hover:border-primary hover:text-primary'
-                              }`}
-                            >
-                              {d.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {recurringDay && (
-                        <p className="text-xs text-primary mt-2 font-medium flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">check_circle</span>
-                          Mỗi {recurringFrequency === 'weekly' ? 'tuần' : '2 tuần'} vào {weekDayOptions.find((d) => d.id === recurringDay)?.label}
-                        </p>
-                      )}
-                      <ErrorMsg message={errors.recurringDay} />
-                    </div>
-
-                    <div className="mb-8">
-                      <p className="font-semibold mb-3">Giờ bắt đầu mỗi buổi</p>
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <select
-                            value={selectedTime.split(':')[0]}
-                            onChange={(e) => setSelectedTime(`${e.target.value}:${selectedTime.split(':')[1]}`)}
-                            className="appearance-none pl-4 pr-10 py-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold text-lg focus:outline-none cursor-pointer"
-                          >
-                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-primary text-base pointer-events-none">expand_more</span>
-                        </div>
-                        <span className="text-2xl font-bold text-on-surface-variant">:</span>
-                        <div className="relative">
-                          <select
-                            value={selectedTime.split(':')[1]}
-                            onChange={(e) => setSelectedTime(`${selectedTime.split(':')[0]}:${e.target.value}`)}
-                            className="appearance-none pl-4 pr-10 py-3 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold text-lg focus:outline-none cursor-pointer"
-                          >
-                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map((m) => (
-                              <option key={m} value={m}>{m}</option>
-                            ))}
-                          </select>
-                          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-primary text-base pointer-events-none">expand_more</span>
-                        </div>
-                        <div className="flex items-center gap-2 ml-2 px-3 py-2 bg-surface-container rounded-lg">
-                          <span className="material-symbols-outlined text-on-surface-variant text-base">schedule</span>
-                          <span className="text-sm text-on-surface-variant font-medium">{selectedTime}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Thời lượng (tất cả gói) */}
-                <div className="mt-8">
-                  <p className="font-semibold mb-3">Thời lượng mỗi buổi</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {durationOptions.map((opt) => (
-                      <label key={opt.hours} className="relative cursor-pointer">
-                        <input type="radio" checked={duration === opt.hours} onChange={() => setDuration(opt.hours)} className="peer sr-only" />
-                        <div className="p-4 rounded-xl border-2 border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/5 transition-all text-center">
-                          <p className="font-bold text-on-surface text-body-lg">{opt.label}</p>
-                          {opt.extraPrice > 0 ? (
-                            <p className="text-xs text-primary font-semibold mt-1">+{opt.extraPrice.toLocaleString('vi-VN')}đ</p>
-                          ) : (
-                            <p className="text-xs text-on-surface-variant mt-1">Giá cơ bản</p>
-                          )}
-                          {opt.hours === 4 && (
-                            <span className="inline-block mt-2 px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed-variant rounded text-[11px] font-bold">
-                              Triệt để nhất
+                          <h4 className="font-bold text-on-surface mb-1">{item.title}</h4>
+                          <p className="text-on-surface-variant text-xs">{item.desc}</p>
+                          {item.badge && (
+                            <span className="inline-block mt-3 px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed-variant rounded text-[11px] font-bold">
+                              {item.badge}
                             </span>
                           )}
                         </div>
-                        <div className="absolute top-3 right-3 text-primary opacity-0 peer-checked:opacity-100 transition-opacity">
-                          <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                        </div>
+                        {isSelected && (
+                          <div className="absolute top-3 right-3 text-primary">
+                            <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          </div>
+                        )}
                       </label>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               </section>
 
-              {/* Địa chỉ */}
-              <section className="glass-card bg-surface-container-item rounded-2xl p-8" ref={addressRef}>
-                <h3 ref={addressHeadingRef} className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2 scroll-mt-24">
-                  <span className="material-symbols-outlined text-primary">location_on</span>
-                  Địa chỉ vệ sinh
-                </h3>
+              {/* 2B. Chọn ngày (one-time) */}
+              {repeatMode === 'once' && (
+                <section className="glass-card bg-surface-container-item rounded-2xl p-8">
+                  <SectionTitle icon="calendar_today">Chọn ngày làm việc</SectionTitle>
+                  <CalendarPicker />
+                  {selectedDate && (
+                    <p className="text-xs text-primary mt-3 font-medium flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">check_circle</span>
+                      Đã chọn: {selectedDateLabel}
+                    </p>
+                  )}
+                  <ErrorMsg message={errors.date} />
+                  <TimeSlotPicker />
+                </section>
+              )}
+
+              {/* 2B. Chọn ngày trong tuần (recurring) */}
+              {(repeatMode === 'weekly' || repeatMode === 'biweekly') && (
+                <section className="glass-card bg-surface-container-item rounded-2xl p-8">
+                  <SectionTitle icon="calendar_month">Chọn ngày trong tuần</SectionTitle>
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed mb-6">
+                    <span className="material-symbols-outlined text-on-tertiary-fixed-variant mt-0.5 text-base">info</span>
+                    <p className="text-sm text-on-tertiary-fixed-variant">
+                      {repeatMode === 'weekly' ? 'Mỗi tuần' : 'Cách tuần'} vào đúng ngày bạn chọn. Hủy hoặc tạm dừng bất kỳ lúc nào trước 24 giờ.
+                    </p>
+                  </div>
+                  <div className={`flex gap-3 flex-wrap p-3 rounded-xl ${errors.recurringDay ? 'bg-error/5 border-2 border-error/40' : ''}`}>
+                    {WEEK_DAY_OPTIONS.map(d => {
+                      const isSelected = recurringDay === d.id;
+                      return (
+                        <button key={d.id}
+                          onClick={() => { setRecurringDay(d.id); setErrors(p => ({...p, recurringDay: null})); }}
+                          className={`w-12 h-12 rounded-xl border-2 font-bold text-sm transition-all ${
+                            isSelected ? 'border-primary bg-primary text-on-primary' :
+                            errors.recurringDay ? 'border-error/40 hover:border-error hover:text-error' :
+                            'border-outline-variant hover:border-primary hover:text-primary'
+                          }`}>
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {recurringDay && (
+                    <p className="text-xs text-primary mt-2 font-medium flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">check_circle</span>
+                      {repeatMode === 'weekly' ? 'Mỗi tuần' : 'Cách tuần'} vào {WEEK_DAY_OPTIONS.find(d => d.id === recurringDay)?.label}
+                    </p>
+                  )}
+                  <ErrorMsg message={errors.recurringDay} />
+                  <TimeSlotPicker />
+                </section>
+              )}
+            </div>
+
+            <OrderSummary
+              primaryLabel="Tiếp theo: Thông tin"
+              onPrimary={() => { if (validateStep2()) setStep(3); }}
+              onBack={() => setStep(1)}
+            />
+          </div>
+        </>
+      )}
+
+      {/* ══════════ STEP 3: Thông tin liên hệ ══════════ */}
+      {step === 3 && (
+        <>
+          <div ref={headingRef} className="mb-12 scroll-mt-24">
+            <h1 className="font-h2 text-h2 text-primary mb-1">Bước 3: Thông tin liên hệ</h1>
+            <StepIndicator />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+            <div className="lg:col-span-8 space-y-8">
+
+              {/* 3A. Chọn thông tin */}
+              <section className="glass-card bg-surface-container-item rounded-2xl p-8">
+                <SectionTitle icon="person">Thông tin liên hệ & Địa chỉ</SectionTitle>
+
+                {/* Tab chọn */}
                 <div className="flex gap-2 p-1 bg-surface-container rounded-xl mb-6 w-fit">
                   {[
-                    { id: 'saved', icon: 'bookmark', label: 'Địa chỉ đã lưu' },
-                    { id: 'new', icon: 'add_location_alt', label: 'Nhập địa chỉ mới' },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => { setAddressMode(tab.id); setErrors((prev) => ({ ...prev, street: null, district: null })); }}
+                    { id: 'saved', icon: 'bookmark',        label: 'Dùng thông tin tài khoản' },
+                    { id: 'new',   icon: 'person_add',      label: 'Nhập thông tin mới' },
+                  ].map(tab => (
+                    <button key={tab.id}
+                      onClick={() => { setContactMode(tab.id); setErrors({}); }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                        addressMode === tab.id ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
+                        contactMode === tab.id ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+                      }`}>
                       <span className="material-symbols-outlined text-base">{tab.icon}</span>
                       {tab.label}
                     </button>
                   ))}
                 </div>
 
-                {addressMode === 'saved' && (
+                {/* Saved addresses */}
+                {contactMode === 'saved' && (
                   <div className="space-y-3">
-                    {savedAddresses.map((addr) => (
-                      <label
-                        key={addr.id}
+                    {SAVED_ADDRESSES.map(addr => (
+                      <label key={addr.id}
                         className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                           selectedSavedAddress === addr.id ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'
-                        }`}
-                      >
+                        }`}>
                         <input type="radio" checked={selectedSavedAddress === addr.id} onChange={() => setSelectedSavedAddress(addr.id)} className="accent-primary w-4 h-4 shrink-0" />
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${selectedSavedAddress === addr.id ? 'bg-primary/10' : 'bg-surface-container'}`}>
                           <span className={`material-symbols-outlined text-xl ${selectedSavedAddress === addr.id ? 'text-primary' : 'text-on-surface-variant'}`}>{addr.icon}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-on-surface">{addr.label}</p>
-                          <p className="text-sm text-on-surface-variant mt-0.5 leading-relaxed">{addr.address}</p>
+                          <p className="text-sm text-on-surface-variant mt-0.5">{addr.address}</p>
                         </div>
                         {selectedSavedAddress === addr.id && (
                           <span className="material-symbols-outlined text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                         )}
                       </label>
                     ))}
-                    <button className="w-full mt-2 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-outline-variant/50 text-on-surface-variant hover:border-primary hover:text-primary transition-all text-sm font-semibold">
-                      <span className="material-symbols-outlined text-base">add</span>
-                      Thêm địa chỉ mới
-                    </button>
                   </div>
                 )}
 
-                {addressMode === 'new' && (
+                {/* New contact form */}
+                {contactMode === 'new' && (
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-on-surface mb-2">Số nhà, tên đường <span className="text-error">*</span></label>
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">signpost</span>
-                        <input
-                          type="text"
-                          placeholder="VD: 123 Nguyễn Huệ"
-                          value={newAddress.street}
-                          onChange={(e) => { setNewAddress((p) => ({ ...p, street: e.target.value })); if (errors.street) setErrors((prev) => ({ ...prev, street: null })); }}
-                          className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 bg-surface focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50 ${errors.street ? 'border-error focus:border-error' : 'border-outline-variant focus:border-primary'}`}
-                        />
+                    {[
+                      { key: 'name',     label: 'Họ và tên',             icon: 'person',          placeholder: 'Nguyễn Văn A',                   type: 'text' },
+                      { key: 'phone',    label: 'Số điện thoại',         icon: 'phone',           placeholder: '0901 234 567',                   type: 'tel' },
+                      { key: 'email',    label: 'Email (tùy chọn)',       icon: 'email',           placeholder: 'example@email.com',              type: 'email',   optional: true },
+                      { key: 'street',   label: 'Số nhà, tên đường',      icon: 'signpost',        placeholder: '123 Nguyễn Huệ',                 type: 'text' },
+                      { key: 'district', label: 'Phường / Quận',          icon: 'location_city',   placeholder: 'Phường Bến Nghé, Quận 1',        type: 'text' },
+                    ].map(field => (
+                      <div key={field.key}>
+                        <label className="block text-sm font-semibold text-on-surface mb-2">
+                          {field.label}
+                          {!field.optional && <span className="text-error"> *</span>}
+                          {field.optional && <span className="text-on-surface-variant font-normal"> (tùy chọn)</span>}
+                        </label>
+                        <div className="relative">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl pointer-events-none">{field.icon}</span>
+                          <input
+                            type={field.type}
+                            placeholder={field.placeholder}
+                            value={newContact[field.key]}
+                            onChange={e => {
+                              setNewContact(p => ({ ...p, [field.key]: e.target.value }));
+                              if (errors[field.key]) setErrors(p => ({ ...p, [field.key]: null }));
+                            }}
+                            className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 bg-surface focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50 ${
+                              errors[field.key] ? 'border-error focus:border-error' : 'border-outline-variant focus:border-primary'
+                            }`}
+                          />
+                        </div>
+                        <ErrorMsg message={errors[field.key]} />
                       </div>
-                      <ErrorMsg message={errors.street} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-on-surface mb-2">Phường / Quận <span className="text-error">*</span></label>
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">location_city</span>
-                        <input
-                          type="text"
-                          placeholder="VD: Phường Bến Nghé, Quận 1"
-                          value={newAddress.district}
-                          onChange={(e) => { setNewAddress((p) => ({ ...p, district: e.target.value })); if (errors.district) setErrors((prev) => ({ ...prev, district: null })); }}
-                          className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 bg-surface focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50 ${errors.district ? 'border-error focus:border-error' : 'border-outline-variant focus:border-primary'}`}
-                        />
-                      </div>
-                      <ErrorMsg message={errors.district} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-on-surface mb-2">Ghi chú thêm <span className="text-on-surface-variant font-normal">(tùy chọn)</span></label>
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-3.5 text-on-surface-variant text-xl">notes</span>
-                        <textarea
-                          rows={3}
-                          placeholder="VD: Tầng 5, toà nhà ABC, gọi trước 10 phút..."
-                          value={newAddress.note}
-                          onChange={(e) => setNewAddress((p) => ({ ...p, note: e.target.value }))}
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-outline-variant bg-surface focus:border-primary focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50 resize-none"
-                        />
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
               </section>
 
-              {/* Dịch vụ thêm */}
+              {/* 3B. Ghi chú */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <h3 className="font-h3 text-h3 mb-2 text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">add_circle</span>
-                  Dịch vụ thêm
-                </h3>
-                {frequency === 'monthly' && (
-                  <p className="text-xs text-on-surface-variant mb-6 flex gap-1">
-                    <span className="material-symbols-outlined text-sm" style={{ marginTop: '-2px' }}>info</span>
-                    <span>Dịch vụ thêm tính phí riêng (không áp dụng ưu đãi gói tháng). Bạn có thể chọn áp dụng dịch vụ này chỉ cho buổi làm đầu tiên hoặc cho tất cả các buổi trong hợp đồng.</span>
-                  </p>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {extraServices.map((service) => {
-                    const isSelected = extras.includes(service.id);
-                    const scope = extrasScope[service.id] ?? 'first';
-                    return (
-                      <div key={service.id} className="flex flex-col">
-                        <label
-                          className={`flex flex-col rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-                            isSelected ? 'border-primary' : 'border-outline-variant hover:border-outline-variant/80'
-                          }`}
-                        >
-                          <input type="checkbox" checked={isSelected} onChange={() => toggleExtra(service.id)} className="sr-only" />
-                          <div className="h-32 overflow-hidden relative">
-                            <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
-                            {isSelected && (
-                              <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                                <span className="material-symbols-outlined text-white text-4xl drop-shadow" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className={`p-4 flex-1 flex flex-col justify-between transition-all ${isSelected ? 'bg-primary/5' : 'bg-surface'}`}>
-                            <div>
-                              <h4 className="font-bold text-on-surface">{service.title}</h4>
-                              <p className="font-semibold mt-1 text-primary">
-                                {frequency === 'monthly' && isSelected && scope === 'all'
-                                  ? `${(service.price * totalSessions).toLocaleString('vi-VN')}đ / ${contractMonths} tháng`
-                                  : `${service.price.toLocaleString('vi-VN')}đ / lần`
-                                }
-                              </p>
-                            </div>
-                            <div className={`mt-3 flex items-center gap-2 text-sm font-semibold ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>
-                              <span className="material-symbols-outlined text-base" style={isSelected ? { fontVariationSettings: "'FILL' 1" } : {}}>
-                                {isSelected ? 'check_circle' : 'add_circle'}
-                              </span>
-                              {isSelected ? 'Đã chọn' : 'Thêm dịch vụ'}
-                            </div>
-                          </div>
-                        </label>
-
-                        {frequency === 'monthly' && isSelected && (
-                          <div className="mt-2 flex gap-2">
-                            {[
-                              { value: 'first', label: 'Buổi đầu tiên' },
-                              { value: 'all', label: 'Tất cả buổi' },
-                            ].map((opt) => (
-                              <button
-                                key={opt.value}
-                                onClick={() => setExtraScope(service.id, opt.value)}
-                                className={`flex-1 py-2 px-2 rounded-lg border-2 text-xs font-semibold transition-all ${
-                                  scope === opt.value
-                                    ? 'border-primary bg-primary text-on-primary'
-                                    : 'border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
-                                }`}
-                              >
-                                {opt.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* Ghi chú */}
-              <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <h3 className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">edit_note</span>
-                  Ghi chú cho nhân viên
-                </h3>
+                <SectionTitle icon="edit_note">Ghi chú cho nhân viên</SectionTitle>
                 <div className="relative">
                   <textarea
                     rows={4}
-                    placeholder="VD: Nhà có chó, cần gọi trước khi đến. Tập trung vệ sinh phòng bếp và phòng tắm..."
+                    placeholder={`VD: Nhà có chó, cần gọi trước khi đến.\nTập trung vệ sinh phòng bếp và phòng tắm...${hasPet ? '\n⚠️ Nhà có nuôi thú cưng.' : ''}`}
                     value={staffNote}
-                    onChange={(e) => setStaffNote(e.target.value)}
+                    onChange={e => setStaffNote(e.target.value)}
+                    maxLength={300}
                     className="w-full px-4 py-4 rounded-xl border-2 border-outline-variant/30 bg-surface focus:border-primary focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/40 resize-none"
                   />
                   <div className="absolute bottom-3 right-4 text-xs text-on-surface-variant/50">{staffNote.length}/300</div>
                 </div>
-                <p className="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">info</span>
-                  Ghi chú sẽ được gửi trực tiếp đến nhân viên phụ trách.
-                </p>
-              </section>
-
-              {/* Thanh toán */}
-              <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <h3 className="font-h3 text-h3 mb-2 text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">payments</span>
-                  Phương thức thanh toán
-                </h3>
-
-                {/* Gói tháng: chỉ online, không mặc định */}
-                {frequency === 'monthly' && (
-                  <div className="flex items-center gap-1 mb-6 p-3 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed">
-                    <span className="material-symbols-outlined text-on-tertiary-fixed-variant text-sm">info</span>
-                    <p className="text-xs text-on-tertiary-fixed-variant">Gói tháng yêu cầu thanh toán online để đảm bảo hợp đồng.</p>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  {/* ── Ví CleanTrust — vị trí đầu nếu gói tháng ── */}
-                  {frequency === 'monthly' && (() => {
-                    const isSelected = paymentMethod === 'cleantrust';
-                    return (
-                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
-                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('cleantrust')} className="accent-primary w-4 h-4 shrink-0" />
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
-                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>account_balance_wallet</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-on-surface">Ví CleanTrust</p>
-                          <p className="text-xs text-on-surface-variant mt-0.5">
-                            Số dư: <span className="font-semibold text-primary">{walletBalance.toLocaleString('vi-VN')}đ</span>
-                          </p>
-                        </div>
-                        <span className="inline-block px-2 py-0.5 bg-secondary-container text-primary rounded text-[11px] font-bold shrink-0">Hoàn tiền tự động</span>
-                        {isSelected && <span className="material-symbols-outlined text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
-                      </label>
-                    );
-                  })()}
-
-                  {/* Tiền mặt — chỉ ca lẻ & lặp lại */}
-                  {frequency !== 'monthly' && (() => {
-                    const isSelected = paymentMethod === 'cash';
-                    return (
-                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
-                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('cash')} className="accent-primary w-4 h-4 shrink-0" />
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
-                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>payments</span>
-                        </div>
-                        <span className="font-bold text-on-surface">Tiền mặt (COD)</span>
-                        {isSelected && <span className="material-symbols-outlined text-primary ml-auto shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
-                      </label>
-                    );
-                  })()}
-
-                  {/* Ví CleanTrust — ca lẻ & lặp lại: vị trí thứ 2 */}
-                  {frequency !== 'monthly' && (() => {
-                    const isSelected = paymentMethod === 'cleantrust';
-                    return (
-                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
-                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('cleantrust')} className="accent-primary w-4 h-4 shrink-0" />
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
-                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>account_balance_wallet</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-on-surface">Ví CleanTrust</p>
-                          <p className="text-xs text-on-surface-variant mt-0.5">
-                            Số dư: <span className="font-semibold text-primary">{walletBalance.toLocaleString('vi-VN')}đ</span>
-                          </p>
-                        </div>
-                        <span className="inline-block px-2 py-0.5 bg-secondary-container text-primary rounded text-[11px] font-bold shrink-0">Hoàn tiền tự động</span>
-                        {isSelected && <span className="material-symbols-outlined text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
-                      </label>
-                    );
-                  })()}
-
-                  {/* Visa/Mastercard */}
-                  {(() => {
-                    const isSelected = paymentMethod === 'card';
-                    return (
-                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
-                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('card')} className="accent-primary w-4 h-4 shrink-0" />
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
-                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>credit_card</span>
-                        </div>
-                        <span className="font-bold text-on-surface">Visa / Mastercard</span>
-                        {isSelected && <span className="material-symbols-outlined text-primary ml-auto shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
-                      </label>
-                    );
-                  })()}
-
-                  {/* MoMo/ZaloPay */}
-                  {(() => {
-                    const isSelected = paymentMethod === 'ewallet';
-                    return (
-                      <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/40 hover:border-outline-variant'}`}>
-                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod('ewallet')} className="accent-primary w-4 h-4 shrink-0" />
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
-                          <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>smartphone</span>
-                        </div>
-                        <span className="font-bold text-on-surface">MoMo / ZaloPay</span>
-                        {isSelected && <span className="material-symbols-outlined text-primary ml-auto shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
-                      </label>
-                    );
-                  })()}
-                </div>
-
-                {/* Chú thích Ví CleanTrust */}
-                {paymentMethod === 'cleantrust' && (
-                  <div className="mt-4 p-3 rounded-xl bg-secondary-container/40 border border-secondary-container flex items-start gap-2">
-                    <span className="material-symbols-outlined text-primary text-sm mt-0.5">info</span>
-                    <p className="text-xs text-on-surface-variant leading-relaxed">
-                      Số dư Ví CleanTrust là tiền hoàn từ các buổi đã thanh toán nhưng không sử dụng. Không thể rút ra ngân hàng, chỉ dùng thanh toán dịch vụ CleanTrust.
-                    </p>
-                  </div>
+                {hasPet && !staffNote.toLowerCase().includes('thú') && (
+                  <button
+                    onClick={() => setStaffNote(prev => prev ? prev + '\nNhà có nuôi thú cưng.' : 'Nhà có nuôi thú cưng.')}
+                    className="mt-2 text-xs text-primary font-medium flex items-center gap-1 hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    Thêm ghi chú về thú cưng
+                  </button>
                 )}
               </section>
             </div>
 
-            {/* ── SIDEBAR STEP 2 ── */}
-            <aside className="lg:col-span-4 sticky top-24">
-              <div className="bg-background-2 glass-card rounded-2xl shadow-xl border border-white/50 overflow-hidden flex flex-col">
+            <OrderSummary
+              primaryLabel="Tiếp theo: Thanh toán"
+              onPrimary={() => { if (validateStep3()) setStep(4); }}
+              onBack={() => setStep(2)}
+            />
+          </div>
+        </>
+      )}
 
-                <div className="px-6 py-5 border-b border-outline-variant/20">
-                  <h3 className="font-h3 text-h3 text-primary">Tóm tắt đặt lịch</h3>
+      {/* ══════════ STEP 4: Thanh toán & Xác nhận ══════════ */}
+      {step === 4 && (
+        <>
+          <div ref={headingRef} className="mb-12 scroll-mt-24">
+            <h1 className="font-h2 text-h2 text-primary mb-1">Bước 4: Thanh toán & Xác nhận</h1>
+            <StepIndicator />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+            <div className="lg:col-span-8 space-y-8">
+
+              {/* 4A. Phương thức thanh toán */}
+              <section className="glass-card bg-surface-container-item rounded-2xl p-8">
+                <SectionTitle icon="payments">Phương thức thanh toán</SectionTitle>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {PAYMENT_METHODS.filter(m => !m.onlyFor || m.onlyFor.includes(repeatMode === 'once' ? 'single' : 'recurring')).map(method => {
+                    const isSelected = paymentMethod === method.id;
+                    return (
+                      <label key={method.id} className="relative cursor-pointer">
+                        <input type="radio" checked={isSelected} onChange={() => setPaymentMethod(method.id)} className="peer sr-only" />
+                        <div className={`h-full bg-surface-container-lowest border-2 rounded-xl p-4 flex flex-col items-center justify-center gap-3 transition-all ${
+                          isSelected ? 'border-primary bg-surface-container-low' : 'border-outline-variant/50 hover:border-primary/50'
+                        }`}>
+                          {isSelected && (
+                            <span className="material-symbols-outlined absolute top-3 right-3 text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          )}
+                          <span className="material-symbols-outlined text-[32px] text-primary">{method.icon}</span>
+                          <span className="text-center text-sm font-semibold text-on-surface leading-tight">{method.label}</span>
+                          {method.badge && (
+                            <span className="px-2 py-0.5 bg-secondary-container text-primary rounded text-[11px] font-bold">{method.badge}</span>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
-
-                <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
-
-                  <div className="border-b border-outline-variant/20">
-                    <AccordionHeader sectionKey="service" icon="cleaning_services" label="Dịch vụ đã chọn" />
-                    {openSections.service && (
-                      <div className="px-6 pb-4 space-y-2">
-                        <div className="flex justify-between items-center text-on-surface-variant">
-                          <span>Loại</span>
-                          <span className="font-semibold text-on-surface">{frequencyText[frequency]}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-on-surface-variant">
-                          <span>Gói dịch vụ</span>
-                          <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm">{selectedPackageData.title}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-on-surface-variant">
-                          <span>Nhân viên</span>
-                          <span className="font-semibold text-on-surface">{staffMode === 'auto' ? 'Hệ thống chọn' : 'Tự chọn'}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="border-b border-outline-variant/20">
-                    <AccordionHeader sectionKey="schedule" icon="calendar_month" label="Lịch làm việc" />
-                    {openSections.schedule && (
-                      <div className="px-6 pb-4 space-y-2">
-                        <div className="flex justify-between text-on-surface-variant">
-                          <span>Địa chỉ</span>
-                          <span className="font-semibold text-on-surface text-right max-w-[60%] leading-snug">
-                            {addressMode === 'saved' ? savedAddresses[selectedSavedAddress].label : newAddress.street || 'Chưa nhập'}
-                          </span>
-                        </div>
-
-                        {frequency === 'single' && (
-                          <div className="flex justify-between text-on-surface-variant">
-                            <span>Thời gian</span>
-                            <span className="font-semibold text-on-surface">
-                              {dates[selectedDate].day}, {dates[selectedDate].date} — {selectedTime} ({duration}h)
-                            </span>
-                          </div>
-                        )}
-
-                        {frequency === 'monthly' && (
-                          <>
-                            <div className="flex justify-between text-on-surface-variant">
-                              <span>Tần suất</span>
-                              <span className="font-semibold text-on-surface">
-                                {flexibleSchedule ? `${weekDays.length || '?'} buổi/tuần` : `${sessionsPerWeek} buổi/tuần`}
-                              </span>
-                            </div>
-                            {weekDays.length > 0 && (
-                              <div className="flex justify-between text-on-surface-variant">
-                                <span>Ngày làm</span>
-                                <span className="font-semibold text-on-surface">
-                                  {weekDays.map((id) => weekDayOptions.find((d) => d.id === id)?.label).join(', ')}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex justify-between text-on-surface-variant">
-                              <span>Giờ bắt đầu</span>
-                              <span className="font-semibold text-on-surface">{selectedTime} ({duration}h)</span>
-                            </div>
-                            <div className="flex justify-between text-on-surface-variant">
-                              <span>Hợp đồng</span>
-                              <span className="font-semibold text-on-surface">{contractMonths} tháng</span>
-                            </div>
-                          </>
-                        )}
-
-                        {frequency === 'recurring' && (
-                          <>
-                            <div className="flex justify-between text-on-surface-variant">
-                              <span>Lặp lại</span>
-                              <span className="font-semibold text-on-surface">
-                                {recurringFrequency === 'weekly' ? 'Mỗi tuần' : '2 tuần / lần'}
-                              </span>
-                            </div>
-                            {recurringDay && (
-                              <div className="flex justify-between text-on-surface-variant">
-                                <span>Ngày làm</span>
-                                <span className="font-semibold text-on-surface">
-                                  {weekDayOptions.find((d) => d.id === recurringDay)?.label}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex justify-between text-on-surface-variant">
-                              <span>Giờ bắt đầu</span>
-                              <span className="font-semibold text-on-surface">{selectedTime} ({duration}h)</span>
-                            </div>
-                            <div className="flex justify-between text-on-surface-variant">
-                              <span>Thời hạn</span>
-                              <span className="font-semibold text-on-surface">Không giới hạn</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <AccordionHeader sectionKey="cost" icon="receipt_long" label="Chi phí" />
-                    {openSections.cost && (
-                      <div className="px-6 pb-5 space-y-2">
-
-                        {frequency === 'single' && (
-                          <>
-                            <div className="flex justify-between text-on-surface-variant">
-                              <span>Giá cơ bản</span>
-                              <span>{selectedPackageData.price.toLocaleString('vi-VN')}đ</span>
-                            </div>
-                            {durationExtraPrice > 0 && (
-                              <div className="flex justify-between text-on-surface-variant">
-                                <span>Phụ thu thời lượng</span>
-                                <span>+{durationExtraPrice.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                            {staffExtraPrice > 0 && (
-                              <div className="flex justify-between text-on-surface-variant">
-                                <span>Phí chọn nhân viên</span>
-                                <span>+{staffExtraPrice.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                            {addonsTotal > 0 && (
-                              <div className="flex justify-between text-on-surface-variant">
-                                <span>Dịch vụ thêm</span>
-                                <span>+{addonsTotal.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        {frequency === 'monthly' && (
-                          <>
-                            <div className="bg-surface-container/30 rounded-xl p-3 border border-outline-variant/30">
-                              <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Gói cơ bản</p>
-                              <div className="flex justify-between text-on-surface-variant text-sm mt-2">
-                                <span className="leading-snug">
-                                  {effectiveSessionsPerWeek} buổi/tuần × {duration}h × {contractMonths} tháng
-                                  <br />
-                                  <span className="text-xs text-on-surface-variant/60">= {totalSessions} buổi</span>
-                                </span>
-                                <span className="text-right shrink-0 ml-2">
-                                  {((basePrice + durationExtraPrice + staffExtraPrice) * totalSessions).toLocaleString('vi-VN')}đ
-                                </span>
-                              </div>
-                              {staffExtraPrice > 0 && (
-                                <div className="flex justify-between text-on-surface-variant text-sm mt-1">
-                                  <span>Phí chọn nhân viên</span>
-                                  <span>+{staffExtraPrice.toLocaleString('vi-VN')}đ/buổi</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between text-primary font-medium mt-1">
-                                <span>Ưu đãi hợp đồng ({contractDiscount}%)</span>
-                                <span>-{(coreDiscount * contractMonths).toLocaleString('vi-VN')}đ</span>
-                              </div>
-                              <div className="flex justify-between text-on-surface font-semibold text-sm border-t border-outline-variant/20 pt-2 mt-2">
-                                <span>Thành tiền gói cơ bản</span>
-                                <span>{coreTotal.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            </div>
-
-                            {extras.length > 0 && (
-                              <div className="bg-surface-container/20 rounded-xl p-3 mt-3 border border-outline-variant/30">
-                                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Dịch vụ thêm</p>
-                                {extraServices.filter((s) => extras.includes(s.id)).map((s) => {
-                                  const scope = extrasScope[s.id] ?? 'first';
-                                  const amount = scope === 'all' ? s.price * totalSessions : s.price;
-                                  return (
-                                    <div key={s.id} className="flex justify-between text-on-surface-variant text-sm mt-2">
-                                      <span className="leading-snug">
-                                        {s.title}
-                                        <br />
-                                        <span className="text-xs text-on-surface-variant/60">
-                                          {scope === 'all' ? `${totalSessions} buổi` : 'Buổi đầu tiên'}
-                                        </span>
-                                      </span>
-                                      <span className="shrink-0 ml-2">+{amount.toLocaleString('vi-VN')}đ</span>
-                                    </div>
-                                  );
-                                })}
-                                <div className="flex justify-between text-on-surface font-semibold text-sm border-t border-outline-variant/20 pt-2 mt-2">
-                                  <span>Thành tiền dịch vụ thêm</span>
-                                  <span>{addonsTotal.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        {frequency === 'recurring' && (
-                          <>
-                            <div className="flex justify-between text-on-surface-variant">
-                              <span>Giá cơ bản/buổi</span>
-                              <span>{selectedPackageData.price.toLocaleString('vi-VN')}đ</span>
-                            </div>
-                            {durationExtraPrice > 0 && (
-                              <div className="flex justify-between text-on-surface-variant">
-                                <span>Phụ thu thời lượng</span>
-                                <span>+{durationExtraPrice.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                            {staffExtraPrice > 0 && (
-                              <div className="flex justify-between text-on-surface-variant">
-                                <span>Phí chọn nhân viên</span>
-                                <span>+{staffExtraPrice.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                            {addonsTotal > 0 && (
-                              <div className="flex justify-between text-on-surface-variant">
-                                <span>Dịch vụ thêm</span>
-                                <span>+{addonsTotal.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        <div className="flex justify-between text-on-surface-variant pt-1">
-                          <span>Phí di chuyển</span>
-                          <span>{travelFee.toLocaleString('vi-VN')}đ</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="px-6 pt-4 pb-5 border-t-2 border-dashed border-outline-variant/30 bg-surface-container-low/60 flex flex-col gap-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-on-surface-variant font-medium">
-                      {frequency === 'recurring' ? 'Thanh toán buổi đầu' : 'Tổng thanh toán'}
-                    </span>
-                    <span className="text-2xl font-h1 font-extrabold text-primary">
-                      {total.toLocaleString('vi-VN')}đ
-                    </span>
-                  </div>
-                  {frequency === 'monthly' && (
-                    <p className="text-xs text-on-surface-variant text-right -mt-2">cho {contractMonths} tháng ({totalSessions} buổi)</p>
-                  )}
-                  {frequency === 'recurring' && (
-                    <p className="text-xs text-on-surface-variant text-right -mt-2">
-                      các buổi tiếp theo: {(basePrice + durationExtraPrice + staffExtraPrice + travelFee).toLocaleString('vi-VN')}đ/buổi
+                {paymentMethod === 'cleantrust' && (
+                  <div className="mt-4 p-3 rounded-xl bg-secondary-container/40 border border-secondary-container flex items-start gap-2">
+                    <span className="material-symbols-outlined text-primary text-sm mt-0.5">info</span>
+                    <p className="text-xs text-on-surface-variant">
+                      Số dư ví: <span className="font-semibold text-primary">{fmt(walletBalance)}</span>. Chỉ dùng thanh toán dịch vụ CleanTrust.
                     </p>
-                  )}
+                  </div>
+                )}
+              </section>
 
-                  <button
-                    onClick={handleSubmit}
-                    className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                  >
-                    Hoàn tất đặt lịch
-                    <span className="material-symbols-outlined">check</span>
-                  </button>
-                  <button
-                    onClick={() => setStep(1)}
-                    className="w-full border-2 border-outline-variant py-3.5 rounded-xl font-semibold hover:bg-surface-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined">arrow_back</span>
-                    Quay lại
+              {/* 4B. Mã khuyến mãi */}
+              <section className="glass-card bg-surface-container-item rounded-2xl p-8">
+                <SectionTitle icon="redeem">Mã khuyến mãi</SectionTitle>
+                <div className="flex gap-2">
+                  <div className="relative flex-grow">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl pointer-events-none">confirmation_number</span>
+                    <input
+                      type="text"
+                      placeholder="Nhập mã ưu đãi (VD: CLEANTRUST10)"
+                      value={promoCode}
+                      onChange={e => { setPromoCode(e.target.value); setErrors(p => ({...p, promo: null})); setPromoApplied(false); setPromoDiscount(0); }}
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 bg-surface focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50 ${
+                        errors.promo ? 'border-error focus:border-error' : promoApplied ? 'border-primary' : 'border-outline-variant focus:border-primary'
+                      }`}
+                    />
+                  </div>
+                  <button onClick={applyPromo}
+                    className="px-6 py-3 bg-primary text-on-primary font-semibold rounded-xl hover:bg-primary-container transition-colors whitespace-nowrap">
+                    Áp dụng
                   </button>
                 </div>
+                {promoApplied && (
+                  <p className="text-xs text-primary mt-2 font-medium flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                    Áp dụng thành công! Giảm {fmt(promoDiscount)}
+                  </p>
+                )}
+                <ErrorMsg message={errors.promo} />
+              </section>
+
+              {/* 4C. Xác nhận - tất cả thông tin */}
+              <section className="glass-card bg-surface-container-item rounded-2xl p-8">
+                <SectionTitle icon="receipt_long">Xác nhận thông tin đặt lịch</SectionTitle>
+                <div className="space-y-4">
+
+                  {/* Dịch vụ */}
+                  <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
+                    <span className="material-symbols-outlined text-primary text-2xl mt-0.5">cleaning_services</span>
+                    <div className="flex-1">
+                      <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide">Dịch vụ</p>
+                      <p className="font-bold text-on-surface mt-0.5">{pkgData.title}</p>
+                      {areaData && <p className="text-sm text-on-surface-variant mt-0.5">{areaData.label} — {baseHours} giờ</p>}
+                      {extras.length > 0 && (
+                        <p className="text-sm text-on-surface-variant mt-0.5">
+                          Thêm: {extras.map(id => EXTRA_SERVICES.find(s => s.id === id)?.title).join(', ')}
+                        </p>
+                      )}
+                      {hasPet && <p className="text-xs text-on-surface-variant mt-1 flex items-center gap-1"><span className="material-symbols-outlined text-sm">pets</span>Nhà có thú cưng</p>}
+                    </div>
+                  </div>
+
+                  {/* Lịch hẹn */}
+                  <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
+                    <span className="material-symbols-outlined text-primary text-2xl mt-0.5">calendar_month</span>
+                    <div className="flex-1">
+                      <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide">Lịch hẹn</p>
+                      {repeatMode === 'once' && (
+                        <p className="font-bold text-on-surface mt-0.5">{selectedDateLabel} lúc {selectedTime}</p>
+                      )}
+                      {repeatMode !== 'once' && (
+                        <p className="font-bold text-on-surface mt-0.5">
+                          {repeatMode === 'weekly' ? 'Mỗi tuần' : 'Cách tuần'} vào {WEEK_DAY_OPTIONS.find(d => d.id === recurringDay)?.label}, lúc {selectedTime}
+                        </p>
+                      )}
+                      <p className="text-sm text-on-surface-variant mt-0.5">Nhân viên: {staffMode === 'auto' ? 'Hệ thống tự chọn' : 'Tự chọn'}</p>
+                    </div>
+                  </div>
+
+                  {/* Địa chỉ */}
+                  <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
+                    <span className="material-symbols-outlined text-primary text-2xl mt-0.5">location_on</span>
+                    <div className="flex-1">
+                      <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide">Địa chỉ</p>
+                      {contactMode === 'saved' ? (
+                        <>
+                          <p className="font-bold text-on-surface mt-0.5">{SAVED_ADDRESSES[selectedSavedAddress].label}</p>
+                          <p className="text-sm text-on-surface-variant">{SAVED_ADDRESSES[selectedSavedAddress].address}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold text-on-surface mt-0.5">{newContact.name}</p>
+                          <p className="text-sm text-on-surface-variant">{newContact.street}, {newContact.district}</p>
+                          <p className="text-sm text-on-surface-variant">{newContact.phone}</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Ghi chú */}
+                  {staffNote && (
+                    <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
+                      <span className="material-symbols-outlined text-primary text-2xl mt-0.5">edit_note</span>
+                      <div className="flex-1">
+                        <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide">Ghi chú cho nhân viên</p>
+                        <p className="text-sm text-on-surface mt-0.5 whitespace-pre-line">{staffNote}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chi phí tổng */}
+                  <div className="p-4 bg-surface rounded-xl border border-outline-variant/20">
+                    <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-wide mb-3">Chi phí</p>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between text-on-surface-variant">
+                        <span>{pkgData.title}</span>
+                        <span>{fmt(pkgData.price)}</span>
+                      </div>
+                      {extras.map(id => {
+                        const e = EXTRA_SERVICES.find(s => s.id === id);
+                        return (
+                          <div key={id} className="flex justify-between text-on-surface-variant">
+                            <span>{e.title}</span>
+                            <span>+{fmt(e.price)}</span>
+                          </div>
+                        );
+                      })}
+                      {staffMode === 'manual' && (
+                        <div className="flex justify-between text-on-surface-variant">
+                          <span>Phí chọn nhân viên</span>
+                          <span>+{fmt(staffExtraPrice)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-on-surface-variant">
+                        <span>Phí di chuyển</span>
+                        <span>{fmt(travelFee)}</span>
+                      </div>
+                      {promoDiscount > 0 && (
+                        <div className="flex justify-between text-primary font-medium">
+                          <span>Khuyến mãi</span>
+                          <span>-{fmt(promoDiscount)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-on-surface font-bold text-base border-t border-outline-variant/20 pt-2 mt-2">
+                        <span>Tổng thanh toán</span>
+                        <span className="text-primary text-xl">{fmt(total)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chính sách */}
+                  <div className="flex gap-3 p-4 bg-surface-container/30 rounded-xl text-sm text-on-surface-variant">
+                    <span className="material-symbols-outlined text-primary text-base flex-shrink-0 mt-0.5">verified_user</span>
+                    <span>Miễn phí hủy trước 24 giờ. Bảo hiểm thiệt hại 100% do lỗi nhân viên.</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* Sidebar bước 4: Xác nhận nhanh + tổng */}
+            <aside className="lg:col-span-4 sticky top-24">
+              <div className="bg-background-2 glass-card p-8 rounded-2xl shadow-xl border border-white/50">
+                <h3 className="font-h3 text-h3 text-primary mb-4">Thanh toán</h3>
+                <div className="space-y-2 text-sm mb-6">
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Dịch vụ</span>
+                    <span className="font-semibold text-on-surface">{pkgData.title}</span>
+                  </div>
+                  {areaData && (
+                    <div className="flex justify-between text-on-surface-variant">
+                      <span>Diện tích / Giờ</span>
+                      <span className="font-semibold text-on-surface">{areaData.label} ({baseHours}h)</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Thanh toán qua</span>
+                    <span className="font-semibold text-on-surface">{PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label}</span>
+                  </div>
+                  {promoDiscount > 0 && (
+                    <div className="flex justify-between text-primary">
+                      <span>Khuyến mãi</span>
+                      <span>-{fmt(promoDiscount)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="pt-4 border-t-2 border-dashed border-outline-variant/30 mb-6">
+                  <div className="flex justify-between items-center">
+                    <span className="text-on-surface-variant">Tổng</span>
+                    <span className="text-3xl font-extrabold text-primary">{fmt(total)}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-center text-on-surface-variant mb-4">
+                  Bằng việc bấm Xác nhận, bạn đồng ý với{' '}
+                  <Link to="/terms" className="text-primary underline">Điều khoản sử dụng</Link> của CleanTrust.
+                </p>
+                <button onClick={() => setStep(5)}
+                  className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  Xác nhận đặt lịch — {fmt(total)}
+                  <span className="material-symbols-outlined">check</span>
+                </button>
+                <button onClick={() => setStep(3)}
+                  className="w-full mt-3 border-2 border-outline-variant py-3.5 rounded-xl font-semibold hover:bg-surface-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined">arrow_back</span>
+                  Quay lại
+                </button>
               </div>
             </aside>
           </div>
         </>
+      )}
+
+      {/* ══════════ STEP 5: Hoàn tất ══════════ */}
+      {step === 5 && (
+        <div ref={headingRef} className="flex flex-col items-center justify-center py-20 text-center scroll-mt-24">
+          <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-8">
+            <span className="material-symbols-outlined text-primary text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+          </div>
+          <h1 className="font-h2 text-h2 text-primary mb-4">Đặt lịch thành công!</h1>
+          <p className="text-on-surface-variant text-body-lg max-w-md mb-8">
+            Chúng tôi đã nhận được yêu cầu của bạn. Thông tin xác nhận đã được gửi qua SMS và Email.
+          </p>
+          <div className="glass-card bg-surface-container-item rounded-2xl p-8 max-w-md w-full text-left mb-8">
+            <div className="space-y-3">
+              <div className="flex justify-between text-on-surface-variant text-sm">
+                <span>Mã đặt lịch</span>
+                <span className="font-bold text-primary">#CT{Math.floor(Math.random() * 90000) + 10000}</span>
+              </div>
+              <div className="flex justify-between text-on-surface-variant text-sm">
+                <span>Dịch vụ</span>
+                <span className="font-semibold text-on-surface">{pkgData.title}</span>
+              </div>
+              {areaData && (
+                <div className="flex justify-between text-on-surface-variant text-sm">
+                  <span>Diện tích</span>
+                  <span className="font-semibold text-on-surface">{areaData.label} ({baseHours}h)</span>
+                </div>
+              )}
+              <div className="flex justify-between text-on-surface-variant text-sm">
+                <span>Tổng tiền</span>
+                <span className="font-bold text-primary">{fmt(total)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <Link to="/"
+              className="px-8 py-3 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary-container transition-all">
+              Về trang chủ
+            </Link>
+            <button onClick={() => {
+              setStep(1);
+              setSelectedPackage('standard');
+              setSelectedArea(null);
+              setExtras([]);
+              setHasPet(null);
+              setStaffMode('auto');
+              setRepeatMode('once');
+              setSelectedDate(null);
+              setRecurringDay('');
+              setContactMode('saved');
+              setSelectedSavedAddress(0);
+              setNewContact({ name: '', phone: '', email: '', street: '', district: '', note: '' });
+              setStaffNote('');
+              setPaymentMethod('cash');
+              setPromoCode('');
+              setPromoApplied(false);
+              setPromoDiscount(0);
+              setErrors({});
+            }} className="px-8 py-3 border-2 border-outline-variant rounded-xl font-semibold hover:bg-surface-container transition-all">
+              Đặt lịch mới
+            </button>
+          </div>
+        </div>
       )}
     </main>
   );
