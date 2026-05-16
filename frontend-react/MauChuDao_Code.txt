@@ -1,0 +1,27 @@
+-- Trắng đậm nhất[Dùng cho Div/Card nhỏ nổi bật nhất trong Div To]
+"on-error": "#ffffff"
+
+
+-- Trắng đậm nhì(ám xanh nước)[Dùng cho Div bọc các Div nhỏ]
+"background-2": "#fdfdff"
+"surface-container-item": "#fdfdff"
+
+
+-- Trắng + xanh nước(nhạt nhất)[Dùng cho background toàn cảnh]
+"surface": "#f8f9ff"
+"background": "#f8f9ff"
+"surface-bright": "#f8f9ff"
+
+
+-- Trắng + xanh nước(nhạt nhì)
+"surface-container-low": "#eff4ff"[Dùng cho các card nhỏ trong menu sidebar dọc khi checked/focus]
+
+
+-- Xanh dương đậm
+"primary": "#00288e"[Màu chủ đạo]
+"primary-container": "#1e40af"[[Màu chủ đạo : hover/focus]
+
+
+-- Trắng + xám
+- className="bg-primary/5"[Dùng cho các Div/Card nhỏ đã Checked
+
