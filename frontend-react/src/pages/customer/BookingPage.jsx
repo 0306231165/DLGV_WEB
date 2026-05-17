@@ -10,7 +10,7 @@ const PACKAGE_GROUPS = [
     groupIcon: 'star',
     packages: [
       { id: 'basic-single',  type: 'single',  title: 'Dọn dẹp hằng ngày',      subtitle: 'Ca lẻ',     price: 200000, icon: 'home',            iconBg: 'bg-secondary-container', isDeep: false },
-      { id: 'basic-monthly', type: 'monthly', title: 'Dọn dẹp định kỳ',          subtitle: 'Gói tháng', price: 180000, icon: 'home',            iconBg: 'bg-secondary-container', isDeep: false },
+      { id: 'basic-monthly', type: 'monthly', title: 'Dọn dẹp định kỳ',         subtitle: 'Gói tháng', price: 180000, icon: 'home',            iconBg: 'bg-secondary-container', isDeep: false },
       { id: 'office',        type: 'monthly', title: 'Dọn văn phòng',            subtitle: 'Gói tháng', price: 160000, icon: 'business_center', iconBg: 'bg-secondary-container', isDeep: false },
     ],
   },
@@ -40,9 +40,9 @@ const PACKAGE_GROUPS = [
 const PACKAGES = PACKAGE_GROUPS.flatMap(g => g.packages);
 
 const AREA_OPTIONS_NORMAL = [
-  { id: 'under-55', label: 'Dưới 55m²',   sub: 'Khoảng 1–2 phòng', baseHours: 2, price: 200000 },
-  { id: '55-85',    label: '55 – 85m²',   sub: 'Khoảng 2–3 phòng', baseHours: 3, price: 260000 },
-  { id: '85-120',   label: '85 – 120m²',  sub: 'Khoảng 3–4 phòng', baseHours: 4, price: 350000 },
+  { id: 'under-55', label: 'Dưới 55m²',  sub: 'Khoảng 1–2 phòng', baseHours: 2, price: 200000 },
+  { id: '55-85',    label: '55 – 85m²',  sub: 'Khoảng 2–3 phòng', baseHours: 3, price: 260000 },
+  { id: '85-120',   label: '85 – 120m²', sub: 'Khoảng 3–4 phòng', baseHours: 4, price: 350000 },
 ];
 
 const AREA_OPTIONS_DEEP = [
@@ -66,29 +66,31 @@ const TIME_SLOTS = {
 };
 
 const URGENT_THRESHOLD_HOURS = 1.5;
-const URGENT_FEE = 50000;
+const URGENT_FEE   = 50000;
 const SELF_PICK_FEE = 20000;
+const MAX_HOURS_NORMAL = 4;
+const MAX_HOURS_DEEP   = 8;
 
 const WEEK_DAY_OPTIONS = [
   { id: 'mon', label: 'T2', full: 'Thứ Hai' },
-  { id: 'tue', label: 'T3', full: 'Thứ Ba' },
-  { id: 'wed', label: 'T4', full: 'Thứ Tư' },
+  { id: 'tue', label: 'T3', full: 'Thứ Ba'  },
+  { id: 'wed', label: 'T4', full: 'Thứ Tư'  },
   { id: 'thu', label: 'T5', full: 'Thứ Năm' },
   { id: 'fri', label: 'T6', full: 'Thứ Sáu' },
   { id: 'sat', label: 'T7', full: 'Thứ Bảy' },
-  { id: 'sun', label: 'CN', full: 'Chủ Nhật' },
+  { id: 'sun', label: 'CN', full: 'Chủ Nhật'},
 ];
 
 const MONTHLY_DURATION_OPTIONS = [
-  { id: '1', label: '1 tháng', months: 1,  discount: 0  },
-  { id: '2', label: '2 tháng', months: 2,  discount: 5  },
-  { id: '3', label: '3 tháng', months: 3,  discount: 10 },
-  { id: '6', label: '6 tháng', months: 6,  discount: 20 },
+  { id: '1', label: '1 tháng', months: 1, discount: 0  },
+  { id: '2', label: '2 tháng', months: 2, discount: 5  },
+  { id: '3', label: '3 tháng', months: 3, discount: 10 },
+  { id: '6', label: '6 tháng', months: 6, discount: 20 },
 ];
 
 const SAVED_ADDRESSES = [
-  { id: 0, label: 'Nhà riêng', address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM', icon: 'home' },
-  { id: 1, label: 'Văn phòng', address: '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM',  icon: 'business' },
+  { id: 0, label: 'Nhà riêng', address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM', icon: 'home'     },
+  { id: 1, label: 'Văn phòng', address: '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM', icon: 'business' },
 ];
 
 const SAVED_CONTACTS = [
@@ -97,10 +99,10 @@ const SAVED_CONTACTS = [
 ];
 
 const PAYMENT_METHODS = [
-  { id: 'cash',       icon: 'payments',               label: 'Tiền mặt' },
-  { id: 'cleantrust', icon: 'account_balance_wallet',  label: 'Ví CleanTrust', badge: 'Hoàn tiền TĐ' },
-  { id: 'card',       icon: 'credit_card',             label: 'Visa / Mastercard' },
-  { id: 'ewallet',    icon: 'smartphone',              label: 'MoMo / ZaloPay' },
+  { id: 'cash',       icon: 'payments',              label: 'Tiền mặt'                               },
+  { id: 'cleantrust', icon: 'account_balance_wallet', label: 'Ví CleanTrust', badge: 'Hoàn tiền TĐ'  },
+  { id: 'card',       icon: 'credit_card',            label: 'Visa / Mastercard'                      },
+  { id: 'ewallet',    icon: 'smartphone',             label: 'MoMo / ZaloPay'                         },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -115,10 +117,10 @@ const getNext7Days = () => {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     days.push({
-      label: i === 0 ? 'Hôm nay' : dayNames[d.getDay()],
+      label:   i === 0 ? 'Hôm nay' : dayNames[d.getDay()],
       dateNum: d.getDate(),
-      month: d.getMonth(),
-      year: d.getFullYear(),
+      month:   d.getMonth(),
+      year:    d.getFullYear(),
       isToday: i === 0,
       dateObj: d,
     });
@@ -127,13 +129,8 @@ const getNext7Days = () => {
 };
 
 const isUrgentSlot = (dayObj, timeStr) => {
-  if (!dayObj || !dayObj.isToday || !timeStr) return false;
-  const now = new Date();
-  const [h, m] = timeStr.split(':').map(Number);
-  const slotTime = new Date();
-  slotTime.setHours(h, m, 0, 0);
-  const diffHours = (slotTime - now) / 3600000;
-  return diffHours >= 0 && diffHours < URGENT_THRESHOLD_HOURS;
+  if (!dayObj || !timeStr) return false;
+  return dayObj.isToday === true;
 };
 
 const isSlotDisabled = (dayObj, timeStr) => {
@@ -142,14 +139,11 @@ const isSlotDisabled = (dayObj, timeStr) => {
   const [h, m] = timeStr.split(':').map(Number);
   const slotTime = new Date();
   slotTime.setHours(h, m, 0, 0);
-  const diffHours = (slotTime - now) / 3600000;
-  return diffHours < URGENT_THRESHOLD_HOURS;
+  return (slotTime - now) / 3600000 < URGENT_THRESHOLD_HOURS;
 };
 
-const getEarliestBookableTime = () => {
-  const now = new Date();
-  return new Date(now.getTime() + URGENT_THRESHOLD_HOURS * 3600000);
-};
+const getEarliestBookableTime = () =>
+  new Date(new Date().getTime() + URGENT_THRESHOLD_HOURS * 3600000);
 
 const formatTimeHM = (date) => {
   const h = String(date.getHours()).padStart(2, '0');
@@ -157,16 +151,11 @@ const formatTimeHM = (date) => {
   return `${h}:${m}`;
 };
 
-const calcTotalHours = (baseHours, extraIds) => {
-  const extraHours = EXTRA_SERVICES.filter(s => extraIds.includes(s.id))
-    .reduce((sum, s) => sum + s.addHours, 0);
-  return baseHours + extraHours;
-};
+const calcTotalHours = (baseHours, extraIds) =>
+  baseHours + EXTRA_SERVICES.filter(s => extraIds.includes(s.id)).reduce((sum, s) => sum + s.addHours, 0);
 
-// FIX #4: tổng số buổi = days/week * ~4.33 weeks/month * months
-const calcMonthlySessions = (weekDayCount, months) => {
-  return Math.round(weekDayCount * 4.33 * months);
-};
+const calcMonthlySessions = (weekDayCount, months) =>
+  Math.round(weekDayCount * 4.33 * months);
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -180,7 +169,6 @@ const ErrorMsg = ({ message }) => {
   );
 };
 
-// FIX #5: SectionTitle nhận thêm refProp để focus vào heading khi có lỗi
 const SectionTitle = ({ icon, children, refProp }) => (
   <h3 ref={refProp} className="font-h3 text-h3 mb-6 text-on-surface flex items-center gap-2 scroll-mt-28">
     <span className="material-symbols-outlined text-primary">{icon}</span>
@@ -194,7 +182,7 @@ const SelectedCheck = () => (
   </div>
 );
 
-// ─── Toggle Switch Component ──────────────────────────────────────────────────
+// ─── Toggle Switch ────────────────────────────────────────────────────────────
 
 const ToggleRow = ({ icon, title, description, checked, onChange, extraBadge }) => (
   <div className="flex items-center justify-between gap-4 p-5 rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest">
@@ -213,52 +201,103 @@ const ToggleRow = ({ icon, title, description, checked, onChange, extraBadge }) 
       </div>
     </div>
     <button
-      role="switch"
-      aria-checked={checked}
-      onClick={onChange}
-      className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-        checked ? 'bg-primary' : 'bg-outline-variant'
-      }`}
+      role="switch" aria-checked={checked} onClick={onChange}
+      className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${checked ? 'bg-primary' : 'bg-outline-variant'}`}
     >
       <span className={`pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-200 ${checked ? 'translate-x-7' : 'translate-x-0'}`} />
     </button>
   </div>
 );
 
-// ─── FIX #3: Custom Time Picker — cho nhập tự do, báo lỗi sau khi nhập ──────
+// ─── CustomTimePicker — NGOÀI BookingPage ────────────────────────────────────
+// Quan trọng: phải đặt NGOÀI BookingPage để tránh re-mount mỗi render
 
-const CustomTimePicker = ({ value, onChange, dayObj }) => {
-  const [hour, setHour]         = useState(value ? value.split(':')[0] : '08');
-  const [minute, setMinute]     = useState(value ? value.split(':')[1] : '00');
-  const [customError, setCustomError] = useState(null);
+const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest }) => {
+  const [displayHour,   setDisplayHour]   = useState('08');
+  const [displayMinute, setDisplayMinute] = useState('00');
+  const [customError,   setCustomError]   = useState(null);
+
+  // lastEmittedRef: track giá trị ta vừa emit ra ngoài
+  // → phân biệt "prop đổi do external (nút chọn sớm nhất)" vs "prop = null do ta emit null"
+  const lastEmittedRef = useRef(null);
+  const initializedRef = useRef(false);
+
+  // Init MỘT LẦN khi mount
+  useEffect(() => {
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      if (value && typeof value === 'string') {
+        const [h, m] = value.split(':');
+        setDisplayHour(h || '08');
+        setDisplayMinute(m || '00');
+        // Validate ngay khi init (để hiện lỗi nếu giờ khởi tạo không hợp lệ)
+        _checkAndEmit(h || '08', m || '00');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync từ prop CHỈ KHI prop là string mới từ bên ngoài
+  // (ví dụ: parent set lại giờ hợp lệ sau khi click "Chọn XX:XX ngay")
+  useEffect(() => {
+    if (
+      value &&
+      typeof value === 'string' &&
+      value !== lastEmittedRef.current
+    ) {
+      const [h, m] = value.split(':');
+      setDisplayHour(h || '08');
+      setDisplayMinute(m || '00');
+      setCustomError(null);
+      lastEmittedRef.current = value;
+    }
+    // Khi value = null (do ta vừa emit null vì invalid) → KHÔNG làm gì
+    // → dropdown giữ nguyên giá trị user đang chọn + hiện bảng lỗi
+  }, [value]);
 
   const hours   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
   const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 
-  // FIX #3: validate AFTER user picks, but ALWAYS emit a value — never block
-  const validateAndEmit = (h, m) => {
-    const timeStr = `${h}:${m}`;
+  const _checkAndEmit = (h, m) => {
     if (dayObj && dayObj.isToday) {
-      const now = new Date();
+      const now      = new Date();
       const slotTime = new Date();
       slotTime.setHours(parseInt(h), parseInt(m), 0, 0);
       const diffHours = (slotTime - now) / 3600000;
       if (diffHours < URGENT_THRESHOLD_HOURS) {
         const earliest = getEarliestBookableTime();
-        setCustomError(`Giờ không hợp lệ cho hôm nay. Cần đặt trước ít nhất 1 tiếng 30 phút. Giờ sớm nhất: ${formatTimeHM(earliest)}`);
-        // FIX #3: vẫn emit null để bước không pass validation, nhưng không reset dropdown
+        setCustomError(
+          `Giờ không hợp lệ cho hôm nay. Cần đặt trước ít nhất 1 tiếng 30 phút. Giờ sớm nhất: ${formatTimeHM(earliest)}`
+        );
+        lastEmittedRef.current = null;
         onChange(null);
         return;
       }
     }
+    const timeStr = `${h}:${m}`;
     setCustomError(null);
+    lastEmittedRef.current = timeStr;
     onChange(timeStr);
   };
 
-  const handleHourChange   = (h) => { setHour(h);   validateAndEmit(h, minute); };
-  const handleMinuteChange = (m) => { setMinute(m); validateAndEmit(hour, m); };
+  const handleHourChange   = (h) => { setDisplayHour(h);   _checkAndEmit(h, displayMinute); };
+  const handleMinuteChange = (m) => { setDisplayMinute(m); _checkAndEmit(displayHour, m);   };
 
-  const earliest = dayObj?.isToday ? getEarliestBookableTime() : null;
+  const earliest    = dayObj?.isToday ? getEarliestBookableTime() : null;
+  const earliestStr = earliest ? formatTimeHM(earliest) : null;
+
+  const handlePickEarliest = () => {
+    if (!earliest) return;
+    const eh = String(earliest.getHours()).padStart(2, '0');
+    const em = String(earliest.getMinutes()).padStart(2, '0');
+    setDisplayHour(eh);
+    setDisplayMinute(em);
+    setCustomError(null);
+    const timeStr = `${eh}:${em}`;
+    lastEmittedRef.current = timeStr;
+    onChange(timeStr);
+    if (onSelectEarliest) onSelectEarliest(timeStr);
+  };
 
   return (
     <div className="mt-3 p-4 rounded-xl border-2 border-primary bg-primary/5 space-y-3">
@@ -268,7 +307,7 @@ const CustomTimePicker = ({ value, onChange, dayObj }) => {
         <div className="flex items-center gap-2 ml-2">
           <div className="flex flex-col items-center">
             <span className="text-xs text-on-surface-variant mb-1 font-medium">Giờ</span>
-            <select value={hour} onChange={e => handleHourChange(e.target.value)}
+            <select value={displayHour} onChange={e => handleHourChange(e.target.value)}
               className="w-16 py-2 px-1 rounded-lg border-2 border-primary/40 bg-surface text-on-surface font-bold text-center focus:outline-none focus:border-primary appearance-none cursor-pointer">
               {hours.map(h => <option key={h} value={h}>{h}</option>)}
             </select>
@@ -276,26 +315,191 @@ const CustomTimePicker = ({ value, onChange, dayObj }) => {
           <span className="text-xl font-bold text-primary mt-4">:</span>
           <div className="flex flex-col items-center">
             <span className="text-xs text-on-surface-variant mb-1 font-medium">Phút</span>
-            <select value={minute} onChange={e => handleMinuteChange(e.target.value)}
+            <select value={displayMinute} onChange={e => handleMinuteChange(e.target.value)}
               className="w-16 py-2 px-1 rounded-lg border-2 border-primary/40 bg-surface text-on-surface font-bold text-center focus:outline-none focus:border-primary appearance-none cursor-pointer">
               {minutes.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-          <span className="text-sm font-bold text-primary mt-4 ml-1">{hour}:{minute}</span>
+          <span className={`text-sm font-bold mt-4 ml-1 ${customError ? 'text-error' : 'text-primary'}`}>
+            {displayHour}:{displayMinute}
+          </span>
         </div>
       </div>
+
       {earliest && (
         <p className="text-xs text-on-surface-variant flex items-center gap-1">
           <span className="material-symbols-outlined text-xs text-primary">info</span>
-          Hôm nay cần đặt trước 1 tiếng 30 phút — giờ sớm nhất: <span className="font-bold text-primary ml-1">{formatTimeHM(earliest)}</span>
+          Hôm nay cần đặt trước 1 tiếng 30 phút — giờ sớm nhất:{' '}
+          <span className="font-bold text-primary ml-1">{earliestStr}</span>
         </p>
       )}
+
       {customError && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-error/10 border border-error/30">
-          <span className="material-symbols-outlined text-error text-base mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>error</span>
-          <p className="text-sm text-error font-medium">{customError}</p>
+          <span className="material-symbols-outlined text-error text-base mt-0.5"
+            style={{ fontVariationSettings: "'FILL' 1" }}>error</span>
+          <div className="flex-1">
+            <p className="text-sm text-error font-medium">{customError}</p>
+            {earliestStr && (
+              <button onClick={handlePickEarliest}
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-error text-white rounded-lg text-xs font-bold hover:bg-error/80 transition-colors">
+                <span className="material-symbols-outlined text-sm">schedule</span>
+                Chọn {earliestStr} ngay
+              </button>
+            )}
+          </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// ─── TimeSlotPicker — NGOÀI BookingPage ──────────────────────────────────────
+// Quan trọng: phải đặt NGOÀI BookingPage để CustomTimePicker bên trong
+// không bị unmount/remount mỗi khi BookingPage re-render
+
+const TimeSlotPicker = ({
+  periods,
+  showCustom,
+  selectedDayObj,
+  selectedTime,
+  setSelectedTime,
+  showCustomTime,
+  setShowCustomTime,
+  customTimeValue,
+  setCustomTimeValue,
+  errors,
+  setErrors,
+  isUrgent,
+  urgentFee,
+}) => {
+  const labels  = { morning: 'Buổi sáng', afternoon: 'Buổi chiều', evening: 'Buổi tối' };
+  const icons   = { morning: 'light_mode', afternoon: 'wb_twilight', evening: 'dark_mode' };
+  const earliest = selectedDayObj?.isToday ? getEarliestBookableTime() : null;
+
+  const handleToggleCustom = () => {
+    const next = !showCustomTime;
+    setShowCustomTime(next);
+    if (next) {
+      setSelectedTime(null);
+      // Khởi tạo giờ hợp lệ: nếu hôm nay → giờ sớm nhất + 1 phút, else 08:00
+      if (selectedDayObj?.isToday) {
+        const e2 = getEarliestBookableTime();
+        e2.setSeconds(0, 0);
+        e2.setMinutes(e2.getMinutes() + 1);
+        const eh = String(e2.getHours()).padStart(2, '0');
+        const em = String(e2.getMinutes()).padStart(2, '0');
+        setCustomTimeValue(`${eh}:${em}`);
+      } else {
+        setCustomTimeValue('08:00');
+      }
+      setErrors(p => ({ ...p, time: null }));
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Cảnh báo phí gấp khi chọn hôm nay */}
+      {selectedDayObj?.isToday && (
+        <div className="flex items-start gap-3 p-3 rounded-xl bg-error/5 border border-error/30 text-sm">
+          <span className="material-symbols-outlined text-error text-base mt-0.5">bolt</span>
+          <div>
+            <p className="font-semibold text-error">
+              Đặt hôm nay — áp dụng phí đặt gấp <span className="font-bold">+{fmt(URGENT_FEE)}</span>
+            </p>
+            <p className="text-error/80 mt-0.5">
+              Mọi lịch đặt trong ngày hôm nay đều tính phí gấp, bất kể khung giờ.
+              {earliest && <> Giờ sớm nhất có thể đặt: <strong className="text-error">{formatTimeHM(earliest)}</strong></>}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Các slot giờ cố định */}
+      {periods.map(period => (
+        <div key={period}>
+          <h4 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-base">{icons[period]}</span>
+            {labels[period]}
+          </h4>
+          <div className="flex gap-2 flex-wrap">
+            {TIME_SLOTS[period].map(t => {
+              const disabled    = isSlotDisabled(selectedDayObj, t);
+              const urgentBadge = selectedDayObj?.isToday && !disabled;
+              const isSelected  = !showCustomTime && selectedTime === t;
+              return (
+                <button key={t}
+                  disabled={disabled}
+                  onClick={() => {
+                    if (disabled) return;
+                    setSelectedTime(t);
+                    setShowCustomTime(false);
+                    setErrors(p => ({ ...p, time: null }));
+                  }}
+                  className={`relative py-2 px-3 border-2 rounded-xl text-sm font-semibold transition-all ${
+                    disabled
+                      ? 'border-outline-variant/20 text-on-surface-variant/30 bg-surface-container-lowest cursor-not-allowed line-through'
+                      : isSelected
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-outline-variant/50 text-on-surface hover:border-primary'
+                  }`}>
+                  {t}
+                  {urgentBadge && (
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-error rounded-full flex items-center justify-center">
+                      <span className="material-symbols-outlined text-white text-[10px]">bolt</span>
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Giờ tùy chọn */}
+      {showCustom && (
+        <div>
+          <h4 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-base">tune</span>
+            Giờ khác
+          </h4>
+          <button
+            onClick={handleToggleCustom}
+            className={`py-2 px-4 border-2 rounded-xl text-sm font-semibold transition-all ${
+              showCustomTime
+                ? 'border-primary bg-primary/5 text-primary'
+                : 'border-outline-variant/50 text-on-surface hover:border-primary'
+            }`}
+          >
+            {showCustomTime && customTimeValue ? `Giờ tùy chọn: ${customTimeValue}` : 'Tự nhập giờ'}
+          </button>
+
+          {showCustomTime && (
+            <CustomTimePicker
+              value={customTimeValue}
+              dayObj={selectedDayObj}
+              onChange={(val) => {
+                setCustomTimeValue(val);
+                if (val) setErrors(p => ({ ...p, time: null }));
+              }}
+              onSelectEarliest={(val) => {
+                setCustomTimeValue(val);
+                setErrors(p => ({ ...p, time: null }));
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Badge phí gấp dưới cùng (chỉ khi đã chọn giờ hợp lệ hôm nay) */}
+      {isUrgent && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-error/10 border border-error/30 text-sm text-error font-medium">
+          <span className="material-symbols-outlined text-base">bolt</span>
+          Đặt hôm nay — áp dụng phí gấp <span className="font-bold ml-1">+{fmt(urgentFee)}</span>
+        </div>
+      )}
+
+      <ErrorMsg message={errors.time} />
     </div>
   );
 };
@@ -320,14 +524,14 @@ const BookingPage = () => {
   const [staffSelfPick, setStaffSelfPick]     = useState(false);
 
   // ── Step 2 state ──
-  const [repeatMode, setRepeatMode]             = useState('once');
-  const [selectedDayIdx, setSelectedDayIdx]     = useState(null);
-  const [monthlyDuration, setMonthlyDuration]   = useState('1');
+  const [repeatMode, setRepeatMode]           = useState('once');
+  const [selectedDayIdx, setSelectedDayIdx]   = useState(null);
+  const [monthlyDuration, setMonthlyDuration] = useState('1');
   const [selectedWeekDays, setSelectedWeekDays] = useState([]);
-  const [selectedTime, setSelectedTime]         = useState(null);
-  const [customTimeValue, setCustomTimeValue]   = useState(null);
-  const [showCustomTime, setShowCustomTime]     = useState(false);
-  const [recurringDay, setRecurringDay]         = useState('');
+  const [selectedTime, setSelectedTime]       = useState(null);
+  const [customTimeValue, setCustomTimeValue] = useState(null);
+  const [showCustomTime, setShowCustomTime]   = useState(false);
+  const [recurringDay, setRecurringDay]       = useState('');
 
   // ── Step 3 state ──
   const [contactMode, setContactMode]                   = useState('saved');
@@ -350,15 +554,14 @@ const BookingPage = () => {
   // ── Errors & refs ──
   const [errors, setErrors] = useState({});
 
-  // FIX #5: refs point to section headings (h3), not just error fields
   const sectionRefs = {
-    area:         useRef(null), // heading "Diện tích nhà & Thời lượng"
-    pet:          useRef(null), // heading "Nhà bạn có nuôi thú cưng"
-    date:         useRef(null), // heading "Chọn ngày làm việc" / "Chọn ngày làm việc hằng tuần"
-    time:         useRef(null), // heading "Khung giờ mỗi buổi" / "Chọn khung giờ"
-    recurringDay: useRef(null), // heading "Chọn ngày trong tuần"
-    name:         useRef(null), // heading "Thông tin liên hệ"
-    street:       useRef(null), // heading "Địa chỉ vệ sinh"
+    area:         useRef(null),
+    pet:          useRef(null),
+    date:         useRef(null),
+    time:         useRef(null),
+    recurringDay: useRef(null),
+    name:         useRef(null),
+    street:       useRef(null),
   };
 
   // ── Derived ──
@@ -371,12 +574,12 @@ const BookingPage = () => {
   const next7Days      = getNext7Days();
   const selectedDayObj = selectedDayIdx !== null ? next7Days[selectedDayIdx] : null;
 
-  const baseHours         = areaData ? areaData.baseHours : 2;
-  const totalHours        = isDeep ? baseHours : calcTotalHours(baseHours, extras);
-  const MAX_HOURS         = 4;
-  const isOverMax         = !isDeep && totalHours > MAX_HOURS;
-  const allowedExtraHours = !isDeep ? MAX_HOURS - baseHours : 99;
-  const extraHoursUsed    = EXTRA_SERVICES.filter(s => extras.includes(s.id)).reduce((sum, s) => sum + s.addHours, 0);
+  const baseHours      = areaData ? areaData.baseHours : 2;
+  const totalHours     = calcTotalHours(baseHours, extras);
+  const MAX_HOURS      = isDeep ? MAX_HOURS_DEEP : MAX_HOURS_NORMAL;
+  const isOverMax      = totalHours > MAX_HOURS;
+  const allowedExtraHours = MAX_HOURS - baseHours;
+  const extraHoursUsed = EXTRA_SERVICES.filter(s => extras.includes(s.id)).reduce((sum, s) => sum + s.addHours, 0);
 
   const effectiveTime = showCustomTime ? customTimeValue : selectedTime;
   const isUrgent      = effectiveTime ? isUrgentSlot(selectedDayObj, effectiveTime) : false;
@@ -386,24 +589,15 @@ const BookingPage = () => {
   const extrasTotal   = EXTRA_SERVICES.filter(s => extras.includes(s.id)).reduce((sum, s) => sum + s.price, 0);
   const basePrice     = areaData ? areaData.price : pkgData.price;
 
-  const monthlyDurationData = MONTHLY_DURATION_OPTIONS.find(d => d.id === monthlyDuration);
-
-  // FIX #4: Tính tiền gói tháng đúng cách
-  // Giá mỗi tháng = basePrice (giá/buổi) × số ngày/tuần × 4.33 tuần
-  // Tổng = giá/tháng × số tháng
-  // Discount = % off trên tổng trước discount
-  const weeklySessionCount   = isMonthly && selectedWeekDays.length > 0 ? selectedWeekDays.length : 1;
+  const monthlyDurationData     = MONTHLY_DURATION_OPTIONS.find(d => d.id === monthlyDuration);
+  const weeklySessionCount      = isMonthly && selectedWeekDays.length > 0 ? selectedWeekDays.length : 1;
   const monthlySessionsPerMonth = Math.round(weeklySessionCount * 4.33);
-  const monthlyRawTotal      = isMonthly
-    ? basePrice * monthlySessionsPerMonth * (monthlyDurationData?.months || 1)
-    : 0;
-  const monthlyDiscount      = isMonthly && monthlyDurationData
-    ? Math.round(monthlyRawTotal * (monthlyDurationData.discount / 100))
-    : 0;
-
+  const monthlyRawTotal         = isMonthly
+    ? basePrice * monthlySessionsPerMonth * (monthlyDurationData?.months || 1) : 0;
+  const monthlyDiscount = isMonthly && monthlyDurationData
+    ? Math.round(monthlyRawTotal * (monthlyDurationData.discount / 100)) : 0;
   const totalSessions = isMonthly && selectedWeekDays.length > 0 && monthlyDurationData
-    ? calcMonthlySessions(selectedWeekDays.length, monthlyDurationData.months)
-    : null;
+    ? calcMonthlySessions(selectedWeekDays.length, monthlyDurationData.months) : null;
 
   const subtotal = isMonthly
     ? monthlyRawTotal + extrasTotal + travelFee + urgentFee + selfPickFee
@@ -411,17 +605,21 @@ const BookingPage = () => {
   const total = Math.max(0, subtotal - promoDiscount - monthlyDiscount);
   const walletBalance = 320000;
 
+  // Props bundle để truyền vào TimeSlotPicker
+  const timeSlotPickerProps = {
+    selectedDayObj,
+    selectedTime,    setSelectedTime,
+    showCustomTime,  setShowCustomTime,
+    customTimeValue, setCustomTimeValue,
+    errors,          setErrors,
+    isUrgent,        urgentFee,
+  };
+
   const handleSelectPackage = (id) => {
     setSelectedPackage(id);
-    setSelectedArea(null);
-    setExtras([]);
-    setRepeatMode('once');
-    setSelectedDayIdx(null);
-    setSelectedWeekDays([]);
-    setSelectedTime(null);
-    setCustomTimeValue(null);
-    setShowCustomTime(false);
-    setRecurringDay('');
+    setSelectedArea(null); setExtras([]);
+    setRepeatMode('once'); setSelectedDayIdx(null); setSelectedWeekDays([]);
+    setSelectedTime(null); setCustomTimeValue(null); setShowCustomTime(false); setRecurringDay('');
   };
 
   const toggleExtra = (id) => {
@@ -430,7 +628,7 @@ const BookingPage = () => {
     if (extras.includes(id)) {
       setExtras(prev => prev.filter(i => i !== id));
     } else {
-      if (!isDeep && extraHoursUsed + svc.addHours > allowedExtraHours) return;
+      if (extraHoursUsed + svc.addHours > allowedExtraHours) return;
       setExtras(prev => [...prev, id]);
     }
   };
@@ -451,13 +649,11 @@ const BookingPage = () => {
       setPromoApplied(true);
       setErrors(p => ({ ...p, promo: null }));
     } else {
-      setPromoApplied(false);
-      setPromoDiscount(0);
+      setPromoApplied(false); setPromoDiscount(0);
       setErrors(p => ({ ...p, promo: 'Mã không hợp lệ hoặc đã hết hạn.' }));
     }
   };
 
-  // FIX: nhận trực tiếp object lỗi e (không đọc từ state vì setErrors là async)
   const focusFirstErrorSection = (errorObj, keys) => {
     for (const key of keys) {
       if (errorObj[key] && sectionRefs[key]?.current) {
@@ -470,13 +666,10 @@ const BookingPage = () => {
   const validateStep1 = () => {
     const e = {};
     if (!selectedArea)   e.area = 'Vui lòng chọn diện tích nhà.';
-    if (isOverMax)       e.area = 'Tổng thời gian vượt 4 giờ! Vui lòng bỏ bớt dịch vụ thêm.';
+    if (isOverMax)       e.area = `Tổng thời gian vượt ${MAX_HOURS} giờ! Vui lòng bỏ bớt dịch vụ thêm.`;
     if (hasPet === null) e.pet  = 'Vui lòng cho biết nhà bạn có nuôi thú cưng không.';
     setErrors(e);
-    if (Object.keys(e).length > 0) {
-      focusFirstErrorSection(e, ['area', 'pet']);
-      return false;
-    }
+    if (Object.keys(e).length > 0) { focusFirstErrorSection(e, ['area', 'pet']); return false; }
     return true;
   };
 
@@ -498,14 +691,8 @@ const BookingPage = () => {
       if (selectedDayIdx === null) e.date = 'Vui lòng chọn ngày làm việc.';
       if (!effectiveTime)          e.time = 'Vui lòng chọn hoặc nhập giờ làm việc.';
     }
-
     setErrors(e);
-
-    if (Object.keys(e).length > 0) {
-      focusFirstErrorSection(e, ['recurringDay', 'date', 'time']);
-      return false;
-    }
-    
+    if (Object.keys(e).length > 0) { focusFirstErrorSection(e, ['recurringDay', 'date', 'time']); return false; }
     return true;
   };
 
@@ -520,21 +707,18 @@ const BookingPage = () => {
       if (!newAddress.district.trim()) e.district = 'Vui lòng nhập phường / quận.';
     }
     setErrors(e);
-    if (Object.keys(e).length > 0) {
-      focusFirstErrorSection(e, ['name', 'street']);
-      return false;
-    }
+    if (Object.keys(e).length > 0) { focusFirstErrorSection(e, ['name', 'street']); return false; }
     return true;
   };
 
-  // ── Step indicator ──
+  // ── Step Indicator ──
   const StepIndicator = () => {
     const steps = [
-      { num: 1, label: 'Dịch vụ' },
-      { num: 2, label: 'Lịch hẹn' },
+      { num: 1, label: 'Dịch vụ'   },
+      { num: 2, label: 'Lịch hẹn'  },
       { num: 3, label: 'Thông tin' },
-      { num: 4, label: 'Thanh toán' },
-      { num: 5, label: 'Xác nhận' },
+      { num: 4, label: 'Thanh toán'},
+      { num: 5, label: 'Xác nhận'  },
     ];
     return (
       <div className="flex items-center gap-2 flex-wrap text-on-surface-variant mt-4">
@@ -580,20 +764,19 @@ const BookingPage = () => {
             </span>
           </div>
           {areaData && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Diện tích</span>
-              <span className="font-semibold text-on-surface">{areaData.label}</span>
-            </div>
+            <>
+              <div className="flex justify-between text-on-surface-variant">
+                <span>Diện tích</span>
+                <span className="font-semibold text-on-surface">{areaData.label}</span>
+              </div>
+              <div className="flex justify-between text-on-surface-variant">
+                <span>Thời lượng</span>
+                <span className="font-semibold text-on-surface">
+                  {baseHours}h{isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} NV` : ''}
+                </span>
+              </div>
+            </>
           )}
-          {areaData && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Thời lượng</span>
-              <span className="font-semibold text-on-surface">
-                {baseHours}h{isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} NV` : ''}
-              </span>
-            </div>
-          )}
-          {/* FIX #4: monthly — hiển thị số buổi/tháng và tổng buổi */}
           {isMonthly && selectedWeekDays.length > 0 && (
             <>
               <div className="flex justify-between text-on-surface-variant">
@@ -645,7 +828,7 @@ const BookingPage = () => {
           )}
           {isUrgent && (
             <div className="flex justify-between text-error font-medium">
-              <span>Phí đặt gấp</span>
+              <span>Phí đặt gấp (hôm nay)</span>
               <span>+{fmt(urgentFee)}</span>
             </div>
           )}
@@ -664,7 +847,6 @@ const BookingPage = () => {
             </div>
           )}
         </div>
-
         <div className="px-6 pb-5 pt-4 border-t-2 border-dashed border-outline-variant/30">
           <div className="flex justify-between items-end mb-4">
             <span className="text-on-surface-variant font-medium text-sm">Tổng thanh toán</span>
@@ -734,128 +916,6 @@ const BookingPage = () => {
     );
   };
 
-  // ── Shared time slot picker ──
-  // FIX #2: khi show custom time, auto set 08:00 là giá trị hợp lệ ngay
-  const TimeSlotPicker = ({ periods = ['morning', 'afternoon', 'evening'], showCustom = true }) => {
-    const labels = { morning: 'Buổi sáng', afternoon: 'Buổi chiều', evening: 'Buổi tối' };
-    const icons  = { morning: 'light_mode', afternoon: 'wb_twilight', evening: 'dark_mode' };
-    const earliest = selectedDayObj?.isToday ? getEarliestBookableTime() : null;
-
-    return (
-      <div className="space-y-5">
-        {selectedDayObj?.isToday && earliest && (
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20 text-sm text-on-surface-variant">
-            <span className="material-symbols-outlined text-primary text-base mt-0.5">schedule</span>
-            <span>
-              Hôm nay cần đặt trước tối thiểu <strong className="text-on-surface">1 tiếng 30 phút</strong>.
-              Giờ sớm nhất có thể đặt: <strong className="text-primary">{formatTimeHM(earliest)}</strong>
-            </span>
-          </div>
-        )}
-
-        {periods.map(period => (
-          <div key={period}>
-            <h4 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-1">
-              <span className="material-symbols-outlined text-base">{icons[period]}</span>
-              {labels[period]}
-            </h4>
-            <div className="flex gap-2 flex-wrap">
-              {TIME_SLOTS[period].map(t => {
-                const urgent   = isUrgentSlot(selectedDayObj, t);
-                const disabled = isSlotDisabled(selectedDayObj, t);
-                const isSelected = !showCustomTime && selectedTime === t;
-                return (
-                  <button key={t}
-                    disabled={disabled}
-                    onClick={() => {
-                      if (disabled) return;
-                      setSelectedTime(t);
-                      setShowCustomTime(false);
-                      setErrors(p => ({ ...p, time: null }));
-                    }}
-                    className={`relative py-2 px-3 border-2 rounded-xl text-sm font-semibold transition-all ${
-                      disabled
-                        ? 'border-outline-variant/20 text-on-surface-variant/30 bg-surface-container-lowest cursor-not-allowed line-through'
-                        : isSelected
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-outline-variant/50 text-on-surface hover:border-primary'
-                    }`}>
-                    {t}
-                    {urgent && !disabled && (
-                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-error rounded-full flex items-center justify-center">
-                        <span className="material-symbols-outlined text-white text-[10px]">bolt</span>
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-
-        {showCustom && (
-          <div>
-            <h4 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-1">
-              <span className="material-symbols-outlined text-base">tune</span>
-              Giờ khác
-            </h4>
-            <button
-              onClick={() => {
-                const next = !showCustomTime;
-                setShowCustomTime(next);
-                if (next) {
-                  setSelectedTime(null);
-                  // FIX #2: auto-set 08:00 làm giờ mặc định ngay khi bật custom time
-                  // Nếu không phải hôm nay, 08:00 luôn hợp lệ
-                  // Nếu hôm nay, kiểm tra 08:00 có đủ 1.5h không; nếu không, để null (user tự chọn)
-                  const defaultTime = '08:00';
-                  const wouldBeValid = !selectedDayObj?.isToday || !isSlotDisabled(selectedDayObj, defaultTime);
-                  if (wouldBeValid) {
-                    setCustomTimeValue(defaultTime);
-                    setErrors(p => ({ ...p, time: null }));
-                  } else {
-                    // Hôm nay 08:00 đã qua — set earliest possible
-                    const earliest2 = getEarliestBookableTime();
-                    const eh = String(earliest2.getHours()).padStart(2, '0');
-                    const em = String(earliest2.getMinutes()).padStart(2, '0');
-                    const fallback = `${eh}:${em}`;
-                    setCustomTimeValue(fallback);
-                    setErrors(p => ({ ...p, time: null }));
-                  }
-                }
-              }}
-              className={`py-2 px-4 border-2 rounded-xl text-sm font-semibold transition-all ${
-                showCustomTime
-                  ? 'border-primary bg-primary/5 text-primary'
-                  : 'border-outline-variant/50 text-on-surface hover:border-primary'
-              }`}
-            >
-              {showCustomTime && customTimeValue ? `Giờ tùy chọn: ${customTimeValue}` : 'Tự nhập giờ'}
-            </button>
-            {showCustomTime && (
-              <CustomTimePicker
-                value={customTimeValue || '08:00'}
-                dayObj={selectedDayObj}
-                onChange={(val) => {
-                  setCustomTimeValue(val);
-                  if (val) setErrors(p => ({ ...p, time: null }));
-                }}
-              />
-            )}
-          </div>
-        )}
-
-        {isUrgent && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-error/10 border border-error/30 text-sm text-error font-medium">
-            <span className="material-symbols-outlined text-base">bolt</span>
-            Khung giờ này áp dụng phí đặt gấp <span className="font-bold ml-1">+{fmt(urgentFee)}</span>
-          </div>
-        )}
-        <ErrorMsg message={errors.time} />
-      </div>
-    );
-  };
-
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
     <main className="pt-32 pb-section-padding px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-screen">
@@ -869,14 +929,12 @@ const BookingPage = () => {
             <h1 className="font-h2 text-h2 text-primary mb-1">Bước 1: Chọn dịch vụ</h1>
             <StepIndicator />
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
 
-              {/* 1A. Chọn gói dịch vụ — FIX #1: card to hơn, badge ra rìa phải, cách đều */}
+              {/* 1A. Gói dịch vụ */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="cleaning_services">Chọn gói dịch vụ</SectionTitle>
-
                 <div className="space-y-8">
                   {PACKAGE_GROUPS.map(group => (
                     <div key={group.groupId}>
@@ -885,7 +943,6 @@ const BookingPage = () => {
                         <h4 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">{group.groupLabel}</h4>
                         <div className="flex-1 h-px bg-outline-variant/30 ml-1" />
                       </div>
-
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {group.packages.map(pkg => {
                           const isSelected = selectedPackage === pkg.id;
@@ -893,39 +950,33 @@ const BookingPage = () => {
                             <div key={pkg.id} className="relative">
                               <label className="cursor-pointer block h-full">
                                 <input type="radio" name="package" checked={isSelected} onChange={() => handleSelectPackage(pkg.id)} className="peer sr-only" />
-                                {/* FIX #1: layout dọc, tên to hơn, badge nằm riêng dòng, giá cách đều */}
                                 <div className={`glass-card px-5 py-4 rounded-xl border-2 transition-all flex items-start gap-4 h-full ${
                                   isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40'
                                 }`}>
-                                  {/* Icon */}
                                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
                                     <span className={`material-symbols-outlined text-2xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>{pkg.icon}</span>
                                   </div>
-                                  {/* Text block */}
-                                  <div className="flex-1 min-w-0">
-                                    {/* Row: name + badge pushed to right */}
+                                  <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: '72px' }}>
                                     <div className="flex items-start justify-between gap-2">
-                                      <h4 className="font-bold text-on-surface text-base leading-snug">{pkg.title}</h4>
-                                      {/* FIX #1: badge sát rìa phải */}
+                                      <h4 className="font-bold text-on-surface text-base leading-snug flex-1" style={{ minHeight: '2.5rem' }}>
+                                        {pkg.title}
+                                      </h4>
                                       <span className="text-xs font-bold px-2 py-0.5 bg-surface-container text-on-surface-variant rounded-full shrink-0 whitespace-nowrap mt-0.5">
                                         {pkg.subtitle}
                                       </span>
                                     </div>
-                                    {/* Price — cách đều với tên */}
-                                    <span className="text-primary font-extrabold text-base mt-2 block">{fmt(pkg.price)}<span className="text-sm font-semibold text-on-surface-variant">/buổi</span></span>
+                                    <span className="text-primary font-extrabold text-base mt-auto pt-2 block">
+                                      {fmt(pkg.price)}<span className="text-sm font-semibold text-on-surface-variant">/buổi</span>
+                                    </span>
                                   </div>
                                   {isSelected && (
                                     <span className="material-symbols-outlined text-primary text-xl shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                                   )}
                                 </div>
                               </label>
-                              {/* Chi tiết button — positioned bottom-right */}
-                              <button
-                                onClick={() => setShowTasksId(pkg.id)}
-                                className="absolute bottom-3 right-4 flex items-center gap-1 text-xs text-primary font-semibold hover:underline"
-                              >
-                                <span className="material-symbols-outlined text-sm">info</span>
-                                Chi tiết
+                              <button onClick={() => setShowTasksId(pkg.id)}
+                                className="absolute bottom-3 right-4 flex items-center gap-1 text-xs text-primary font-semibold hover:underline">
+                                <span className="material-symbols-outlined text-sm">info</span>Chi tiết
                               </button>
                             </div>
                           );
@@ -936,18 +987,15 @@ const BookingPage = () => {
                 </div>
               </section>
 
-              {/* 1B. Diện tích & Thời lượng */}
-              {/* FIX #5: refProp points to h3 heading so scroll lands on the card title */}
+              {/* 1B. Diện tích */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="straighten" refProp={sectionRefs.area}>Diện tích nhà & Thời lượng làm việc</SectionTitle>
-
                 {isDeep && (
                   <div className="flex items-start gap-3 p-3 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed mb-5 text-sm text-on-tertiary-fixed-variant">
                     <span className="material-symbols-outlined text-base mt-0.5">group</span>
                     <span>Tổng vệ sinh cần nhiều nhân viên theo diện tích. Giá đã bao gồm nhân sự.</span>
                   </div>
                 )}
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {areaList.map(opt => {
                     const isSelected = selectedArea === opt.id;
@@ -972,13 +1020,14 @@ const BookingPage = () => {
                   })}
                 </div>
                 <ErrorMsg message={errors.area} />
-
-                {!isDeep && isOverMax && (
+                {isOverMax && (
                   <div className="mt-4 flex items-start gap-3 p-4 rounded-xl bg-error/5 border border-error/40">
                     <span className="material-symbols-outlined text-error mt-0.5">warning</span>
                     <div>
-                      <p className="font-semibold text-error text-sm">Tổng thời gian vượt 4 giờ!</p>
-                      <p className="text-sm text-error/80 mt-0.5">Ca dịch vụ đơn lẻ tối đa 4 giờ. Vui lòng bỏ bớt dịch vụ thêm hoặc chọn diện tích nhỏ hơn.</p>
+                      <p className="font-semibold text-error text-sm">Tổng thời gian vượt {MAX_HOURS} giờ!</p>
+                      <p className="text-sm text-error/80 mt-0.5">
+                        Ca dịch vụ {isDeep ? 'chuyên sâu' : 'đơn lẻ'} tối đa {MAX_HOURS} giờ. Vui lòng bỏ bớt dịch vụ thêm hoặc chọn diện tích nhỏ hơn.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -987,18 +1036,16 @@ const BookingPage = () => {
               {/* 1C. Dịch vụ thêm */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="add_circle">Dịch vụ thêm (tùy chọn)</SectionTitle>
-
-                {!isDeep && areaData && (
+                {areaData && (
                   <p className="text-sm text-on-surface-variant mb-4 -mt-3 flex items-center gap-1">
                     <span className="material-symbols-outlined text-base">info</span>
                     Thời lượng còn lại: <span className="font-bold text-primary ml-1">{MAX_HOURS - baseHours - extraHoursUsed}h</span> / tối đa {MAX_HOURS}h
                   </p>
                 )}
-
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {EXTRA_SERVICES.map(service => {
-                    const isSelected = extras.includes(service.id);
-                    const wouldExceed = !isDeep && !isSelected && (extraHoursUsed + service.addHours > allowedExtraHours);
+                    const isSelected  = extras.includes(service.id);
+                    const wouldExceed = !isSelected && (extraHoursUsed + service.addHours > allowedExtraHours);
                     return (
                       <label key={service.id} className={`relative cursor-pointer ${wouldExceed ? 'opacity-40 cursor-not-allowed' : ''}`}>
                         <input type="checkbox" checked={isSelected} onChange={() => !wouldExceed && toggleExtra(service.id)} className="sr-only" />
@@ -1023,12 +1070,11 @@ const BookingPage = () => {
 
               {/* 1D. Thú cưng */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                {/* FIX #5: heading ref */}
                 <SectionTitle icon="pets" refProp={sectionRefs.pet}>Nhà bạn có nuôi thú cưng không?</SectionTitle>
                 <div className="grid grid-cols-2 gap-4 max-w-sm">
                   {[
-                    { val: false, icon: 'check_circle', label: 'Không có' },
-                    { val: true,  icon: 'pets',         label: 'Có (chó/mèo...)' },
+                    { val: false, icon: 'check_circle', label: 'Không có'       },
+                    { val: true,  icon: 'pets',         label: 'Có (chó/mèo...)'},
                   ].map(opt => {
                     const isSelected = hasPet === opt.val;
                     return (
@@ -1052,10 +1098,9 @@ const BookingPage = () => {
                 <ErrorMsg message={errors.pet} />
               </section>
 
-              {/* 1E. Nhân viên phụ trách */}
+              {/* 1E. Nhân viên */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="badge">Nhân viên phụ trách</SectionTitle>
-
                 <p className="text-sm text-on-surface-variant -mt-4 mb-5 flex items-start gap-2 p-3 bg-surface-container/50 rounded-xl border border-outline-variant/20">
                   <span className="material-symbols-outlined text-base text-primary shrink-0 mt-0.5">info</span>
                   <span>
@@ -1064,29 +1109,20 @@ const BookingPage = () => {
                     Bạn có thể bật các tùy chọn bên dưới để kiểm soát việc chọn nhân viên theo ý muốn.
                   </span>
                 </p>
-
                 <div className="space-y-3">
-                  <ToggleRow
-                    icon="favorite"
-                    title="Ưu tiên nhân viên yêu thích"
+                  <ToggleRow icon="favorite" title="Ưu tiên nhân viên yêu thích"
                     description="Ưu tiên gửi lịch đến những nhân viên bạn đã đánh dấu yêu thích."
-                    checked={staffFavorite}
-                    onChange={() => setStaffFavorite(prev => !prev)}
-                  />
+                    checked={staffFavorite} onChange={() => setStaffFavorite(prev => !prev)} />
                   {staffFavorite && (
                     <p className="flex items-center gap-1.5 text-sm text-on-surface-variant px-1">
                       <span className="material-symbols-outlined text-base text-primary">info</span>
                       Nếu không có nhân viên yêu thích nào rảnh, hệ thống sẽ tự động chọn người phù hợp nhất.
                     </p>
                   )}
-                  <ToggleRow
-                    icon="manage_accounts"
-                    title="Bạn tự chọn nhân viên làm việc"
+                  <ToggleRow icon="manage_accounts" title="Bạn tự chọn nhân viên làm việc"
                     description="Xem danh sách và chọn nhân viên cụ thể bạn muốn đặt lịch."
-                    checked={staffSelfPick}
-                    onChange={() => setStaffSelfPick(prev => !prev)}
-                    extraBadge={`+${fmt(SELF_PICK_FEE)}`}
-                  />
+                    checked={staffSelfPick} onChange={() => setStaffSelfPick(prev => !prev)}
+                    extraBadge={`+${fmt(SELF_PICK_FEE)}`} />
                   {staffSelfPick && (
                     <p className="flex items-center gap-1.5 text-sm text-on-surface-variant px-1">
                       <span className="material-symbols-outlined text-base text-primary">info</span>
@@ -1096,11 +1132,7 @@ const BookingPage = () => {
                 </div>
               </section>
             </div>
-
-            <OrderSummary
-              primaryLabel="Tiếp theo"
-              onPrimary={() => { if (validateStep1()) setStep(2); }}
-            />
+            <OrderSummary primaryLabel="Tiếp theo" onPrimary={() => { if (validateStep1()) setStep(2); }} />
           </div>
         </>
       )}
@@ -1112,24 +1144,29 @@ const BookingPage = () => {
             <h1 className="font-h2 text-h2 text-primary mb-1">Bước 2: Chọn lịch hẹn</h1>
             <StepIndicator />
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
 
+              {/* Tần suất — chỉ cho single */}
               {isSingle && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="event_repeat">Tần suất dọn</SectionTitle>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
-                      { id: 'once',     icon: 'event',          title: 'Một lần',    desc: 'Đặt lịch một lần duy nhất.',                    badge: null },
-                      { id: 'weekly',   icon: 'update',         title: 'Hàng tuần',  desc: 'Tự động lặp lại mỗi tuần. Hủy bất kỳ lúc nào.', badge: 'Tiết kiệm 10%' },
-                      { id: 'biweekly', icon: 'calendar_month', title: '2 tuần/lần', desc: 'Tự động lặp lại cách tuần.',                     badge: null },
+                      { id: 'once',     icon: 'event',          title: 'Một lần',    desc: 'Đặt lịch một lần duy nhất.',                    badge: null           },
+                      { id: 'weekly',   icon: 'update',         title: 'Hàng tuần',  desc: 'Tự động lặp lại mỗi tuần. Hủy bất kỳ lúc nào.', badge: 'Tiết kiệm 10%'},
+                      { id: 'biweekly', icon: 'calendar_month', title: '2 tuần/lần', desc: 'Tự động lặp lại cách tuần.',                     badge: null           },
                     ].map(item => {
                       const isSelected = repeatMode === item.id;
                       return (
                         <label key={item.id} className="relative cursor-pointer">
                           <input type="radio" name="repeatMode" checked={isSelected}
-                            onChange={() => { setRepeatMode(item.id); setSelectedDayIdx(null); setSelectedTime(null); setCustomTimeValue(null); setShowCustomTime(false); setRecurringDay(''); setErrors({}); }}
+                            onChange={() => {
+                              setRepeatMode(item.id);
+                              setSelectedDayIdx(null); setSelectedTime(null);
+                              setCustomTimeValue(null); setShowCustomTime(false);
+                              setRecurringDay(''); setErrors({});
+                            }}
                             className="peer sr-only" />
                           <div className={`glass-card p-5 rounded-xl border-2 transition-all h-full ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/30'}`}>
                             <div className="mb-3 w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-primary">
@@ -1149,7 +1186,7 @@ const BookingPage = () => {
                 </section>
               )}
 
-              {/* FIX #4: Gói tháng — loại gói */}
+              {/* Loại gói — monthly */}
               {isMonthly && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="calendar_month">Loại gói</SectionTitle>
@@ -1178,15 +1215,12 @@ const BookingPage = () => {
                 </section>
               )}
 
-              {/* FIX #4 & #5: monthly — ngày làm việc + heading ref */}
+              {/* Ngày weekly — monthly */}
               {isMonthly && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                  {/* FIX #5: ref trỏ đến heading này */}
                   <SectionTitle icon="calendar_today" refProp={sectionRefs.date}>
                     Chọn ngày làm việc hằng tuần
-                    <span className="ml-auto text-sm font-normal text-on-surface-variant">
-                      {selectedWeekDays.length}/7 ngày
-                    </span>
+                    <span className="ml-auto text-sm font-normal text-on-surface-variant">{selectedWeekDays.length}/7 ngày</span>
                   </SectionTitle>
                   <p className="text-sm text-on-surface-variant -mt-4 mb-5">
                     Chọn tối thiểu 1 ngày, tối đa 7 ngày mỗi tuần. Giá sẽ được tính theo số ngày chọn.
@@ -1198,42 +1232,39 @@ const BookingPage = () => {
                       return (
                         <button key={d.id} disabled={isDisabled} onClick={() => toggleWeekDay(d.id)}
                           className={`relative w-14 h-14 rounded-xl border-2 font-bold text-sm transition-all flex flex-col items-center justify-center gap-0.5 ${
-                            isSelected
-                              ? 'border-primary bg-primary text-on-primary'
-                              : isDisabled
-                              ? 'border-outline-variant/20 text-on-surface-variant/30 cursor-not-allowed bg-surface-container-lowest'
-                              : errors.date
-                              ? 'border-error/40 hover:border-error hover:text-error'
-                              : 'border-outline-variant hover:border-primary hover:text-primary bg-surface-container-lowest'
-                          }`}>
-                          {d.label}
-                        </button>
+                            isSelected ? 'border-primary bg-primary text-on-primary' :
+                            isDisabled ? 'border-outline-variant/20 text-on-surface-variant/30 cursor-not-allowed bg-surface-container-lowest' :
+                            errors.date ? 'border-error/40 hover:border-error hover:text-error' :
+                            'border-outline-variant hover:border-primary hover:text-primary bg-surface-container-lowest'
+                          }`}>{d.label}</button>
                       );
                     })}
                   </div>
                   <ErrorMsg message={errors.date} />
-
-                  {/* FIX #5: time heading ref */}
                   <div className="mt-6 space-y-5" ref={sectionRefs.time}>
                     <p className="font-semibold flex items-center gap-2">
                       <span className="material-symbols-outlined text-primary text-base">schedule</span>
                       Khung giờ mỗi buổi
                     </p>
-                    <TimeSlotPicker periods={['morning', 'afternoon', 'evening']} showCustom={true} />
+                    <TimeSlotPicker periods={['morning', 'afternoon', 'evening']} showCustom={true} {...timeSlotPickerProps} />
                   </div>
                 </section>
               )}
 
-              {/* Ca lẻ — một lần */}
+              {/* Ca lẻ một lần */}
               {isSingle && repeatMode === 'once' && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                  {/* FIX #5: heading ref */}
                   <SectionTitle icon="calendar_today" refProp={sectionRefs.date}>Chọn ngày làm việc</SectionTitle>
                   <div className="flex gap-3 overflow-x-auto pb-2">
                     {next7Days.map((d, idx) => {
                       const isSelected = selectedDayIdx === idx;
                       return (
-                        <button key={idx} onClick={() => { setSelectedDayIdx(idx); setSelectedTime(null); setCustomTimeValue(null); setShowCustomTime(false); setErrors(p => ({...p, date: null})); }}
+                        <button key={idx}
+                          onClick={() => {
+                            setSelectedDayIdx(idx);
+                            setSelectedTime(null); setCustomTimeValue(null); setShowCustomTime(false);
+                            setErrors(p => ({...p, date: null}));
+                          }}
                           className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl border-2 cursor-pointer transition-all ${
                             isSelected ? 'border-primary bg-primary text-on-primary' : 'border-outline-variant/50 bg-surface-container-lowest hover:border-primary/60'
                           }`}>
@@ -1244,35 +1275,31 @@ const BookingPage = () => {
                     })}
                   </div>
                   <ErrorMsg message={errors.date} />
-
                   {selectedDayIdx === 0 && (
                     <div className="mt-4 flex items-start gap-3 p-4 rounded-xl bg-error/5 border border-error/30">
                       <span className="material-symbols-outlined text-error mt-0.5 text-base">bolt</span>
                       <div>
-                        <p className="font-semibold text-error text-sm">Đặt hôm nay — có thể tính phí gấp</p>
+                        <p className="font-semibold text-error text-sm">Đặt hôm nay — áp dụng phí gấp +{fmt(URGENT_FEE)}</p>
                         <p className="text-sm text-error/80 mt-0.5">
-                          Khung giờ trong vòng 1 tiếng 30 phút tới sẽ tính thêm <span className="font-bold">+{fmt(URGENT_FEE)}</span> phí đặt gấp.
-                          Các giờ đã qua hoặc chưa đủ 1 tiếng 30 phút sẽ bị khóa.
+                          Tất cả lịch đặt trong ngày hôm nay đều tính thêm phí gấp, không phân biệt khung giờ.
+                          Thời gian đặt tối thiểu là 1 tiếng 30 phút từ bây giờ.
                         </p>
                       </div>
                     </div>
                   )}
-
-                  {/* FIX #5: time section heading ref */}
                   <div className="mt-6 space-y-5" ref={sectionRefs.time}>
                     <p className="font-semibold flex items-center gap-2">
                       <span className="material-symbols-outlined text-primary text-base">schedule</span>
                       Chọn khung giờ
                     </p>
-                    <TimeSlotPicker periods={['morning', 'afternoon', 'evening']} showCustom={true} />
+                    <TimeSlotPicker periods={['morning', 'afternoon', 'evening']} showCustom={true} {...timeSlotPickerProps} />
                   </div>
                 </section>
               )}
 
-              {/* Ca lẻ — lặp lại */}
+              {/* Ca lẻ lặp lại */}
               {isSingle && (repeatMode === 'weekly' || repeatMode === 'biweekly') && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                  {/* FIX #5: heading ref */}
                   <SectionTitle icon="calendar_month" refProp={sectionRefs.recurringDay}>Chọn ngày trong tuần</SectionTitle>
                   <div className={`flex gap-3 flex-wrap p-3 rounded-xl ${errors.recurringDay ? 'bg-error/5 border-2 border-error/40' : ''}`}>
                     {WEEK_DAY_OPTIONS.map(d => {
@@ -1284,29 +1311,24 @@ const BookingPage = () => {
                             isSelected ? 'border-primary bg-primary text-on-primary' :
                             errors.recurringDay ? 'border-error/40 hover:border-error hover:text-error' :
                             'border-outline-variant hover:border-primary hover:text-primary'
-                          }`}>
-                          {d.label}
-                        </button>
+                          }`}>{d.label}</button>
                       );
                     })}
                   </div>
                   <ErrorMsg message={errors.recurringDay} />
-
-                  {/* FIX #5: time heading ref */}
                   <div className="mt-6 space-y-4" ref={sectionRefs.time}>
                     <p className="font-semibold flex items-center gap-2">
                       <span className="material-symbols-outlined text-primary text-base">schedule</span>
                       Chọn khung giờ mỗi buổi
                     </p>
-                    <TimeSlotPicker periods={['morning', 'afternoon', 'evening']} showCustom={true} />
+                    <TimeSlotPicker periods={['morning', 'afternoon', 'evening']} showCustom={true} {...timeSlotPickerProps} />
                   </div>
                 </section>
               )}
 
-              {/* Deep — ngày làm việc */}
+              {/* Deep */}
               {isDeep && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                  {/* FIX #5: heading ref */}
                   <SectionTitle icon="calendar_today" refProp={sectionRefs.date}>Chọn ngày làm việc</SectionTitle>
                   <div className="flex items-start gap-3 p-3 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed mb-5 text-sm text-on-tertiary-fixed-variant">
                     <span className="material-symbols-outlined text-base mt-0.5">group</span>
@@ -1316,7 +1338,12 @@ const BookingPage = () => {
                     {next7Days.map((d, idx) => {
                       const isSelected = selectedDayIdx === idx;
                       return (
-                        <button key={idx} onClick={() => { setSelectedDayIdx(idx); setSelectedTime(null); setCustomTimeValue(null); setShowCustomTime(false); setErrors(p => ({...p, date: null})); }}
+                        <button key={idx}
+                          onClick={() => {
+                            setSelectedDayIdx(idx);
+                            setSelectedTime(null); setCustomTimeValue(null); setShowCustomTime(false);
+                            setErrors(p => ({...p, date: null}));
+                          }}
                           className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl border-2 cursor-pointer transition-all ${
                             isSelected ? 'border-primary bg-primary text-on-primary' : 'border-outline-variant/50 bg-surface-container-lowest hover:border-primary/60'
                           }`}>
@@ -1327,24 +1354,28 @@ const BookingPage = () => {
                     })}
                   </div>
                   <ErrorMsg message={errors.date} />
-
-                  {/* FIX #5: time heading ref */}
+                  {selectedDayIdx === 0 && (
+                    <div className="mt-4 flex items-start gap-3 p-4 rounded-xl bg-error/5 border border-error/30">
+                      <span className="material-symbols-outlined text-error mt-0.5 text-base">bolt</span>
+                      <div>
+                        <p className="font-semibold text-error text-sm">Đặt hôm nay — áp dụng phí gấp +{fmt(URGENT_FEE)}</p>
+                        <p className="text-sm text-error/80 mt-0.5">
+                          Tất cả lịch đặt trong ngày hôm nay đều tính thêm phí gấp. Thời gian đặt tối thiểu là 1 tiếng 30 phút từ bây giờ.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-6 space-y-5" ref={sectionRefs.time}>
                     <p className="font-semibold flex items-center gap-2">
                       <span className="material-symbols-outlined text-primary text-base">schedule</span>
                       Giờ bắt đầu mong muốn
                     </p>
-                    <TimeSlotPicker periods={['morning', 'afternoon']} showCustom={true} />
+                    <TimeSlotPicker periods={['morning', 'afternoon']} showCustom={true} {...timeSlotPickerProps} />
                   </div>
                 </section>
               )}
             </div>
-
-            <OrderSummary
-              primaryLabel="Tiếp theo"
-              onPrimary={() => { if (validateStep2()) setStep(3); }}
-              onBack={() => setStep(1)}
-            />
+            <OrderSummary primaryLabel="Tiếp theo" onPrimary={() => { if (validateStep2()) setStep(3); }} onBack={() => setStep(1)} />
           </div>
         </>
       )}
@@ -1356,28 +1387,25 @@ const BookingPage = () => {
             <h1 className="font-h2 text-h2 text-primary mb-1">Bước 3: Thông tin liên hệ</h1>
             <StepIndicator />
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
 
+              {/* Liên hệ */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                {/* FIX #5: heading ref cho "Thông tin liên hệ" */}
                 <SectionTitle icon="person" refProp={sectionRefs.name}>Thông tin liên hệ</SectionTitle>
                 <div className="flex gap-2 p-1 bg-surface-container rounded-xl mb-6 w-fit">
                   {[
                     { id: 'saved', icon: 'bookmark',   label: 'Thông tin đã lưu' },
-                    { id: 'new',   icon: 'person_add', label: 'Nhập mới' },
+                    { id: 'new',   icon: 'person_add', label: 'Nhập mới'         },
                   ].map(tab => (
                     <button key={tab.id} onClick={() => { setContactMode(tab.id); setErrors({}); }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                         contactMode === tab.id ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
                       }`}>
-                      <span className="material-symbols-outlined text-base">{tab.icon}</span>
-                      {tab.label}
+                      <span className="material-symbols-outlined text-base">{tab.icon}</span>{tab.label}
                     </button>
                   ))}
                 </div>
-
                 {contactMode === 'saved' && (
                   <div className="space-y-3">
                     {SAVED_CONTACTS.map(c => (
@@ -1400,12 +1428,11 @@ const BookingPage = () => {
                     ))}
                   </div>
                 )}
-
                 {contactMode === 'new' && (
                   <div className="space-y-4">
                     {[
-                      { key: 'name',  label: 'Họ và tên',     icon: 'person', placeholder: 'Nguyễn Văn A',      type: 'text',  required: true },
-                      { key: 'phone', label: 'Số điện thoại', icon: 'phone',  placeholder: '0901 234 567',       type: 'tel',   required: true },
+                      { key: 'name',  label: 'Họ và tên',     icon: 'person', placeholder: 'Nguyễn Văn A',     type: 'text',  required: true  },
+                      { key: 'phone', label: 'Số điện thoại', icon: 'phone',  placeholder: '0901 234 567',      type: 'tel',   required: true  },
                       { key: 'email', label: 'Email',          icon: 'email',  placeholder: 'example@email.com', type: 'email', required: false },
                     ].map(f => (
                       <div key={f.key}>
@@ -1427,24 +1454,22 @@ const BookingPage = () => {
                 )}
               </section>
 
+              {/* Địa chỉ */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                {/* FIX #5: heading ref cho "Địa chỉ vệ sinh" */}
                 <SectionTitle icon="location_on" refProp={sectionRefs.street}>Địa chỉ vệ sinh</SectionTitle>
                 <div className="flex gap-2 p-1 bg-surface-container rounded-xl mb-6 w-fit">
                   {[
-                    { id: 'saved', icon: 'bookmark',         label: 'Địa chỉ đã lưu' },
+                    { id: 'saved', icon: 'bookmark',         label: 'Địa chỉ đã lưu'   },
                     { id: 'new',   icon: 'add_location_alt', label: 'Nhập địa chỉ mới' },
                   ].map(tab => (
                     <button key={tab.id} onClick={() => { setAddressMode(tab.id); setErrors(p => ({...p, street: null, district: null})); }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                         addressMode === tab.id ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
                       }`}>
-                      <span className="material-symbols-outlined text-base">{tab.icon}</span>
-                      {tab.label}
+                      <span className="material-symbols-outlined text-base">{tab.icon}</span>{tab.label}
                     </button>
                   ))}
                 </div>
-
                 {addressMode === 'saved' && (
                   <div className="space-y-3">
                     {SAVED_ADDRESSES.map(addr => (
@@ -1467,7 +1492,6 @@ const BookingPage = () => {
                     ))}
                   </div>
                 )}
-
                 {addressMode === 'new' && (
                   <div className="space-y-4">
                     {[
@@ -1500,6 +1524,7 @@ const BookingPage = () => {
                 )}
               </section>
 
+              {/* Ghi chú */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="edit_note">Ghi chú cho nhân viên</SectionTitle>
                 <div className="relative">
@@ -1511,12 +1536,7 @@ const BookingPage = () => {
                 </div>
               </section>
             </div>
-
-            <OrderSummary
-              primaryLabel="Tiếp theo"
-              onPrimary={() => { if (validateStep3()) setStep(4); }}
-              onBack={() => setStep(2)}
-            />
+            <OrderSummary primaryLabel="Tiếp theo" onPrimary={() => { if (validateStep3()) setStep(4); }} onBack={() => setStep(2)} />
           </div>
         </>
       )}
@@ -1528,10 +1548,8 @@ const BookingPage = () => {
             <h1 className="font-h2 text-h2 text-primary mb-1">Bước 4: Thanh toán</h1>
             <StepIndicator />
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
-
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="payments">Phương thức thanh toán</SectionTitle>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -1563,7 +1581,6 @@ const BookingPage = () => {
                   </div>
                 )}
               </section>
-
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="redeem">Mã khuyến mãi</SectionTitle>
                 <div className="flex gap-2">
@@ -1590,12 +1607,7 @@ const BookingPage = () => {
                 <ErrorMsg message={errors.promo} />
               </section>
             </div>
-
-            <OrderSummary
-              primaryLabel="Tiếp theo"
-              onPrimary={() => setStep(5)}
-              onBack={() => setStep(3)}
-            />
+            <OrderSummary primaryLabel="Tiếp theo" onPrimary={() => setStep(5)} onBack={() => setStep(3)} />
           </div>
         </>
       )}
@@ -1607,10 +1619,8 @@ const BookingPage = () => {
             <h1 className="font-h2 text-h2 text-primary mb-1">Bước 5: Xác nhận đặt lịch</h1>
             <StepIndicator />
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
-
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="receipt_long">Xác nhận thông tin đặt lịch</SectionTitle>
                 <div className="space-y-4">
@@ -1625,18 +1635,18 @@ const BookingPage = () => {
                         <span className="font-bold text-on-surface">{pkgData.title}</span>
                       </div>
                       {areaData && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-on-surface-variant">Diện tích</span>
-                          <span className="font-semibold text-on-surface">{areaData.label}</span>
-                        </div>
-                      )}
-                      {areaData && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-on-surface-variant">Thời lượng</span>
-                          <span className="font-semibold text-on-surface">
-                            {baseHours} giờ{isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} nhân viên` : ''}
-                          </span>
-                        </div>
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-on-surface-variant">Diện tích</span>
+                            <span className="font-semibold text-on-surface">{areaData.label}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-on-surface-variant">Thời lượng</span>
+                            <span className="font-semibold text-on-surface">
+                              {baseHours} giờ{isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} nhân viên` : ''}
+                            </span>
+                          </div>
+                        </>
                       )}
                       {extras.length > 0 && (
                         <div className="flex justify-between items-start pt-1 border-t border-outline-variant/10">
@@ -1658,10 +1668,8 @@ const BookingPage = () => {
                           <span className="font-semibold text-primary">~{totalSessions} buổi / {monthlyDurationData?.label}</span>
                         </div>
                       )}
-                      <button
-                        onClick={() => setShowStep5Tasks(true)}
-                        className="mt-1 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
-                      >
+                      <button onClick={() => setShowStep5Tasks(true)}
+                        className="mt-1 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">
                         <span className="material-symbols-outlined text-sm">checklist</span>
                         Xem công việc bao gồm
                       </button>
@@ -1744,7 +1752,7 @@ const BookingPage = () => {
                       {isUrgent && (
                         <div className="flex items-center gap-1 text-sm text-error font-medium pt-1 border-t border-outline-variant/10">
                           <span className="material-symbols-outlined text-base">bolt</span>
-                          Đặt gấp — phụ phí {fmt(urgentFee)}
+                          Đặt hôm nay — phụ phí gấp {fmt(urgentFee)}
                         </div>
                       )}
                       <div className="flex justify-between pt-1 border-t border-outline-variant/10">
@@ -1799,7 +1807,7 @@ const BookingPage = () => {
                     </div>
                   )}
 
-                  {/* Chi phí — FIX #4: tính đúng cho gói tháng */}
+                  {/* Chi phí */}
                   <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
                     <span className="material-symbols-outlined text-primary text-2xl mt-0.5">receipt_long</span>
                     <div className="flex-1">
@@ -1850,7 +1858,7 @@ const BookingPage = () => {
                         )}
                         {isUrgent && (
                           <div className="flex justify-between text-error font-medium">
-                            <span>Phí đặt gấp</span>
+                            <span>Phí đặt gấp (hôm nay)</span>
                             <span>+{fmt(urgentFee)}</span>
                           </div>
                         )}
@@ -1879,13 +1887,7 @@ const BookingPage = () => {
                 </div>
               </section>
             </div>
-
-            <OrderSummary
-              primaryLabel="Xác nhận đặt lịch"
-              onPrimary={() => setStep(6)}
-              onBack={() => setStep(4)}
-              confirmMode={true}
-            />
+            <OrderSummary primaryLabel="Xác nhận đặt lịch" onPrimary={() => setStep(6)} onBack={() => setStep(4)} confirmMode={true} />
           </div>
         </>
       )}
