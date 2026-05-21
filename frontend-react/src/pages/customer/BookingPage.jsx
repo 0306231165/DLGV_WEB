@@ -406,12 +406,13 @@ const getNext7Days = () => {
   return days;
 };
 
-const checkServiceHours = (h, m) => {
+const checkServiceHours = (h, m, durationHours = 0) => {
   const totalMin = h * 60 + m;
   const startMin = SERVICE_START_HOUR * 60;
   const endMin = SERVICE_END_HOUR * 60;
   if (totalMin < startMin) return { outsideHours: true, tooEarly: true, tooLate: false };
   if (totalMin >= endMin) return { outsideHours: true, tooEarly: false, tooLate: true };
+  if (totalMin + durationHours * 60 > endMin) return { outsideHours: true, tooEarly: false, tooLate: false, exceedEnd: true };
   return { outsideHours: false, tooEarly: false, tooLate: false };
 };
 
@@ -435,10 +436,10 @@ const formatTimeHM = date => {
   return `${h}:${m}`;
 };
 
-const isSlotDisabled = (dayObj, timeStr) => {
+const isSlotDisabled = (dayObj, timeStr, durationHours = 0) => {
   if (!dayObj || !timeStr) return false;
   const [h, m] = timeStr.split(':').map(Number);
-  const { outsideHours } = checkServiceHours(h, m);
+  const { outsideHours } = checkServiceHours(h, m, durationHours);
   if (outsideHours) return true;
   if (dayObj.isToday) {
     const earliest = getEarliestBookableTime();
@@ -450,10 +451,10 @@ const isSlotDisabled = (dayObj, timeStr) => {
   return false;
 };
 
-const isUrgentSlot = (dayObj, timeStr) => {
+const isUrgentSlot = (dayObj, timeStr, durationHours = 0) => {
   if (!dayObj || !timeStr || !dayObj.isToday) return false;
   const [h, m] = timeStr.split(':').map(Number);
-  const { outsideHours } = checkServiceHours(h, m);
+  const { outsideHours } = checkServiceHours(h, m, durationHours);
   if (outsideHours) return false;
   const earliest = getEarliestBookableTime();
   if (!earliest) return false;
@@ -529,7 +530,7 @@ const ToggleRow = ({ icon, title, description, checked, onChange, extraBadge }) 
 
 // ─── CustomTimePicker ────────────────────────────────────────────────────────
 
-const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) => {
+const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick, totalHours }) => {
   const [displayHour, setDisplayHour] = useState('08');
   const [displayMinute, setDisplayMinute] = useState('00');
   const [customError, setCustomError] = useState(null);
@@ -580,13 +581,15 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
     const hNum = parseInt(h, 10);
     const mNum = parseInt(m, 10);
 
-    const { outsideHours, tooEarly, tooLate } = checkServiceHours(hNum, mNum);
+    const { outsideHours, tooEarly, tooLate, exceedEnd } = checkServiceHours(hNum, mNum, totalHours);
     if (outsideHours) {
       let msg = '';
       if (tooEarly) {
         msg = `Giờ ${h}:${m} quá sớm. Dịch vụ hoạt động từ ${SERVICE_START_HOUR}:00 đến ${SERVICE_END_HOUR}:00 mỗi ngày.`;
       } else if (tooLate) {
         msg = `Giờ ${h}:${m} quá muộn. Dịch vụ chỉ nhận đặt lịch bắt đầu trước ${SERVICE_END_HOUR}:00.`;
+      } else if (exceedEnd) {
+        msg = `Giờ kết thúc dự kiến quá muộn (vượt quá ${SERVICE_END_HOUR}:00). Vui lòng chọn giờ bắt đầu sớm hơn.`;
       }
       setCustomError(msg);
       setErrorType('outside_hours');
@@ -763,6 +766,7 @@ const TimeSlotPicker = ({
   isUrgent,
   urgentFee,
   tick,
+  totalHours,
 }) => {
   const labels = { morning: 'Buổi sáng', afternoon: 'Buổi chiều', evening: 'Buổi tối' };
   const icons = { morning: 'light_mode', afternoon: 'wb_twilight', evening: 'dark_mode' };
@@ -831,7 +835,7 @@ const TimeSlotPicker = ({
           </h4>
           <div className="flex gap-2 flex-wrap">
             {TIME_SLOTS[period].map(t => {
-              const disabled = isSlotDisabled(selectedDayObj, t);
+              const disabled = isSlotDisabled(selectedDayObj, t, totalHours);
               const urgentBadge = selectedDayObj?.isToday && !disabled;
               const isSelected = !showCustomTime && selectedTime === t;
               return (
@@ -885,6 +889,7 @@ const TimeSlotPicker = ({
               value={customTimeValue}
               dayObj={selectedDayObj}
               tick={tick}
+              totalHours={totalHours}
               onChange={val => {
                 setCustomTimeValue(val);
                 if (val) setErrors(p => ({ ...p, time: null }));
@@ -1220,7 +1225,7 @@ const BookingPage = () => {
   const extraHoursUsed = EXTRA_SERVICES.filter(s => extras.includes(s.id)).reduce((sum, s) => sum + s.addHours, 0);
 
   const effectiveTime = showCustomTime ? customTimeValue : selectedTime;
-  const isUrgent = effectiveTime ? isUrgentSlot(selectedDayObj, effectiveTime) : false;
+  const isUrgent = effectiveTime ? isUrgentSlot(selectedDayObj, effectiveTime, totalHours) : false;
   const urgentFee = isUrgent ? URGENT_FEE : 0;
   const selfPickFee = staffSelfPick ? SELF_PICK_FEE : 0;
   const travelFee = 15000;
@@ -1285,6 +1290,7 @@ const BookingPage = () => {
     isUrgent,
     urgentFee: URGENT_FEE,
     tick,
+    totalHours,
   };
 
   const getFrequencyOptions = () => {
@@ -1394,11 +1400,10 @@ const BookingPage = () => {
     } else if (!isFamilyPackage) {
       if (!selectedArea) e.area = 'Vui lòng chọn diện tích nhà.';
       if (isOverMax) e.area = `Tổng thời gian vượt ${MAX_HOURS} giờ! Vui lòng bỏ bớt dịch vụ thêm.`;
-      if (hasPet === null) e.pet = 'Vui lòng cho biết nhà bạn có nuôi thú cưng không.';
     }
     setErrors(e);
     if (Object.keys(e).length > 0) {
-      focusFirstErrorSection(e, ['careOption', 'area', 'pet']);
+      focusFirstErrorSection(e, ['careOption', 'area']);
       return false;
     }
     return true;
@@ -1412,6 +1417,8 @@ const BookingPage = () => {
       setErrors(e);
       return false;
     }
+
+    if (hasPet === null) e.pet = 'Vui lòng cho biết nhà bạn có nuôi thú cưng không.';
 
     if (is247) {
       if (!shift247) e.shift247 = 'Vui lòng chọn ca làm việc.';
@@ -1428,10 +1435,11 @@ const BookingPage = () => {
         const [hStr, mStr] = effectiveTime.split(':');
         const hNum = parseInt(hStr, 10);
         const mNum = parseInt(mStr, 10);
-        const { outsideHours, tooEarly, tooLate } = checkServiceHours(hNum, mNum);
+        const { outsideHours, tooEarly, tooLate, exceedEnd } = checkServiceHours(hNum, mNum, totalHours);
         if (outsideHours) {
           if (tooEarly) e.time = `Giờ ${effectiveTime} quá sớm — dịch vụ hoạt động từ ${SERVICE_START_HOUR}:00 đến ${SERVICE_END_HOUR}:00.`;
           else if (tooLate) e.time = `Giờ ${effectiveTime} quá muộn — dịch vụ chỉ nhận đặt trước ${SERVICE_END_HOUR}:00.`;
+          else if (exceedEnd) e.time = `Giờ kết thúc dự kiến quá muộn (vượt quá ${SERVICE_END_HOUR}:00). Vui lòng chọn giờ bắt đầu sớm hơn.`;
         } else if (selectedDayObj?.isToday) {
           const earliest = getEarliestBookableTime();
           if (!earliest) {
@@ -1451,10 +1459,11 @@ const BookingPage = () => {
         e.time = 'Vui lòng chọn giờ làm việc.';
       } else {
         const [hStr, mStr] = effectiveTime.split(':');
-        const { outsideHours, tooEarly, tooLate } = checkServiceHours(parseInt(hStr, 10), parseInt(mStr, 10));
+        const { outsideHours, tooEarly, tooLate, exceedEnd } = checkServiceHours(parseInt(hStr, 10), parseInt(mStr, 10), totalHours);
         if (outsideHours) {
           if (tooEarly) e.time = `Giờ ${effectiveTime} quá sớm — dịch vụ hoạt động từ ${SERVICE_START_HOUR}:00.`;
           else if (tooLate) e.time = `Giờ ${effectiveTime} quá muộn — dịch vụ chỉ nhận đặt trước ${SERVICE_END_HOUR}:00.`;
+          else if (exceedEnd) e.time = `Giờ kết thúc dự kiến quá muộn (vượt quá ${SERVICE_END_HOUR}:00). Vui lòng chọn giờ bắt đầu sớm hơn.`;
         }
       }
     } else if (pkgData.type === 'deep') {
@@ -1469,10 +1478,11 @@ const BookingPage = () => {
         const [hStr, mStr] = effectiveTime.split(':');
         const hNum = parseInt(hStr, 10);
         const mNum = parseInt(mStr, 10);
-        const { outsideHours, tooEarly, tooLate } = checkServiceHours(hNum, mNum);
+        const { outsideHours, tooEarly, tooLate, exceedEnd } = checkServiceHours(hNum, mNum, totalHours);
         if (outsideHours) {
           if (tooEarly) e.time = `Giờ ${effectiveTime} quá sớm — dịch vụ hoạt động từ ${SERVICE_START_HOUR}:00 đến ${SERVICE_END_HOUR}:00.`;
           else if (tooLate) e.time = `Giờ ${effectiveTime} quá muộn — dịch vụ chỉ nhận đặt trước ${SERVICE_END_HOUR}:00.`;
+          else if (exceedEnd) e.time = `Giờ kết thúc dự kiến quá muộn (vượt quá ${SERVICE_END_HOUR}:00). Vui lòng chọn giờ bắt đầu sớm hơn.`;
         } else if (selectedDayObj?.isToday) {
           const earliest = getEarliestBookableTime();
           if (!earliest) {
@@ -1490,7 +1500,7 @@ const BookingPage = () => {
 
     setErrors(e);
     if (Object.keys(e).length > 0) {
-      focusFirstErrorSection(e, ['date', 'time', 'shift247']);
+      focusFirstErrorSection(e, ['pet', 'date', 'time', 'shift247']);
       return false;
     }
     return true;
@@ -2084,9 +2094,8 @@ const BookingPage = () => {
                                       : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40'
                                   }`}>
                                   <div
-                                    className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isSelected ? 'bg-primary/10' : 'bg-surface-container'}`}>
-                                    <span
-                                      className={`material-symbols-outlined text-2xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>
+                                    className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-all ${isSelected ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'}`}>
+                                    <span className="material-symbols-outlined text-2xl">
                                       {pkg.icon}
                                     </span>
                                   </div>
@@ -2265,8 +2274,8 @@ const BookingPage = () => {
                     </span>
                     <span>
                       Mặc định: lịch sẽ được gửi <strong className="text-on-surface">tất cả nhân viên</strong> phù hợp.
-                      Bật Dịch vụ Cao cấp để chỉ những nhân viên có đánh giá{' '}
-                      <strong className="text-on-surface">từ 4.7★ trở lên</strong> mới nhận được đơn hàng.
+                      Bật Dịch vụ Cao cấp để chỉ ưu tiên nhân viên có đánh giá{' '}
+                      <strong className="text-on-surface">từ 4.7★ trở lên.</strong>
                     </span>
                   </p>
                   <div className="space-y-3">
@@ -2355,94 +2364,7 @@ const BookingPage = () => {
                 </section>
               )}
 
-              {/* 1D. Thú cưng */}
-              {!isCare && !isFamilyPackage && (
-                <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                  <SectionTitle icon="pets" refProp={sectionRefs.pet}>
-                    Nhà bạn có nuôi thú cưng không?
-                  </SectionTitle>
-                  <div className="grid grid-cols-2 gap-4 max-w-sm">
-                    {[
-                      { val: false, icon: 'check_circle', label: 'Không có' },
-                      { val: true, icon: 'pets', label: 'Có (chó/mèo...)' },
-                    ].map(opt => {
-                      const isSelected = hasPet === opt.val;
-                      return (
-                        <button
-                          key={String(opt.val)}
-                          onClick={() => {
-                            setHasPet(opt.val);
-                            setErrors(p => ({ ...p, pet: null }));
-                          }}
-                          className={`glass-card p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
-                            isSelected
-                              ? 'border-primary bg-primary/5'
-                              : errors.pet
-                              ? 'border-error/40'
-                              : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/50'
-                          }`}>
-                          <span
-                            className={`material-symbols-outlined text-2xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>
-                            {opt.icon}
-                          </span>
-                          <span className={`font-semibold text-base ${isSelected ? 'text-primary' : 'text-on-surface'}`}>
-                            {opt.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {hasPet && (
-                    <p className="mt-3 text-sm text-on-surface-variant flex items-center gap-1">
-                      <span className="material-symbols-outlined text-base text-primary">info</span>
-                      Nhân viên sẽ được thông báo trước. Bạn có thể ghi thêm ghi chú ở bước sau.
-                    </p>
-                  )}
-                  <ErrorMsg message={errors.pet} />
-                </section>
-              )}
 
-              {/* 1E. Nhân viên */}
-              <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <SectionTitle icon="badge">Nhân viên phụ trách</SectionTitle>
-                <p className="text-sm text-on-surface-variant -mt-4 mb-5 flex items-start gap-2 p-3 bg-surface-container/50 rounded-xl border border-outline-variant/20">
-                  <span className="material-symbols-outlined text-base text-primary shrink-0 mt-0.5">info</span>
-                  <span>
-                    Mặc định: đơn hàng sẽ được gửi đến tất cả nhân viên phù hợp —
-                    <strong className="text-on-surface"> ai nhận trước, làm trước</strong>.
-                  </span>
-                </p>
-                <div className="space-y-3">
-                  <ToggleRow
-                    icon="favorite"
-                    title="Ưu tiên nhân viên yêu thích"
-                    description="Ưu tiên gửi lịch đến những nhân viên bạn đã đánh dấu yêu thích."
-                    checked={staffFavorite}
-                    onChange={() => setStaffFavorite(prev => !prev)}
-                  />
-                  {staffFavorite && (
-                    <p className="flex items-center gap-1.5 text-sm text-on-surface-variant px-1">
-                      <span className="material-symbols-outlined text-base text-primary">info</span>
-                      Nếu không có nhân viên yêu thích nào rảnh, hệ thống sẽ tự động chọn người phù hợp nhất.
-                    </p>
-                  )}
-                  <ToggleRow
-                    icon="manage_accounts"
-                    title="Bạn tự chọn nhân viên làm việc"
-                    description="Xem danh sách và chọn nhân viên cụ thể bạn muốn đặt lịch."
-                    checked={staffSelfPick}
-                    onChange={() => setStaffSelfPick(prev => !prev)}
-                    extraBadge={`+${fmt(SELF_PICK_FEE)}`}
-                  />
-                  {staffSelfPick && (
-                    <p className="flex items-center gap-1.5 text-sm text-on-surface-variant px-1">
-                      <span className="material-symbols-outlined text-base text-primary">info</span>
-                      Phụ phí <strong className="text-on-surface">+{fmt(SELF_PICK_FEE)}</strong> sẽ được thêm vào
-                      đơn. Bạn sẽ chọn nhân viên ở bước xác nhận.
-                    </p>
-                  )}
-                </div>
-              </section>
             </div>
             {renderOrderSummary({ primaryLabel: "Tiếp theo", onPrimary: () => { if (validateStep1()) setStep(2); } })}
           </div>
@@ -2742,6 +2664,103 @@ const BookingPage = () => {
                           showCustom={true}
                           {...timeSlotPickerProps}
                         />
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Thú cưng */}
+                  <section className="glass-card bg-surface-container-item rounded-2xl p-8">
+                    <SectionTitle icon="pets" refProp={sectionRefs.pet}>
+                      Nhà bạn có nuôi thú cưng không?
+                    </SectionTitle>
+                    <div className="grid grid-cols-2 gap-4 max-w-sm">
+                      {[
+                        { val: false, icon: 'check_circle', label: 'Không có' },
+                        { val: true, icon: 'pets', label: 'Có (chó/mèo...)' },
+                      ].map(opt => {
+                        const isSelected = hasPet === opt.val;
+                        return (
+                          <button
+                            key={String(opt.val)}
+                            onClick={() => {
+                              setHasPet(opt.val);
+                              setErrors(p => ({ ...p, pet: null }));
+                            }}
+                            className={`glass-card p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
+                              isSelected
+                                ? 'border-primary bg-primary/5'
+                                : errors.pet
+                                ? 'border-error/40'
+                                : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/50'
+                            }`}>
+                            <span
+                              className={`material-symbols-outlined text-2xl ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>
+                              {opt.icon}
+                            </span>
+                            <span className={`font-semibold text-base ${isSelected ? 'text-primary' : 'text-on-surface'}`}>
+                              {opt.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {hasPet && (
+                      <p className="mt-3 text-sm text-on-surface-variant flex items-center gap-1">
+                        <span className="material-symbols-outlined text-base text-primary">info</span>
+                        Nhân viên sẽ được thông báo trước. Bạn có thể ghi thêm ghi chú ở bước sau.
+                      </p>
+                    )}
+                    <ErrorMsg message={errors.pet} />
+                  </section>
+
+                  {/* Nhân viên phụ trách */}
+                  {selectedPackage === 'basic-single' && (
+                    <section className="glass-card bg-surface-container-item rounded-2xl p-8">
+                      <SectionTitle icon="badge">Nhân viên phụ trách</SectionTitle>
+                      <p className="text-sm text-on-surface-variant -mt-4 mb-5 flex items-start gap-2 p-3 bg-surface-container/50 rounded-xl border border-outline-variant/20">
+                        <span className="material-symbols-outlined text-base text-primary shrink-0 mt-0.5">info</span>
+                        <span>
+                          Mặc định: Lịch sẽ được gửi đến tất cả nhân viên phù hợp —
+                          <strong className="text-on-surface"> ai nhận trước, làm trước</strong>.
+                        </span>
+                      </p>
+                      <div className="space-y-3">
+                        <ToggleRow
+                          icon="favorite"
+                          title="Ưu tiên nhân viên yêu thích"
+                          description="Ưu tiên gửi lịch đến những nhân viên bạn đã đánh dấu yêu thích."
+                          checked={staffFavorite}
+                          onChange={() => setStaffFavorite(prev => !prev)}
+                        />
+                        {staffFavorite && (
+                          <p className="flex items-center gap-1.5 text-sm text-on-surface-variant px-1">
+                            <span className="material-symbols-outlined text-base text-primary">info</span>
+                            Nếu không có nhân viên yêu thích nào rảnh, hệ thống sẽ tự động chọn người phù hợp nhất.
+                          </p>
+                        )}
+                        <ToggleRow
+                          icon="manage_accounts"
+                          title="Bạn tự chọn nhân viên làm việc"
+                          description="Xem danh sách và chọn nhân viên cụ thể bạn muốn đặt lịch."
+                          checked={staffSelfPick}
+                          onChange={() => setStaffSelfPick(prev => !prev)}
+                          extraBadge={`+${fmt(SELF_PICK_FEE)}`}
+                        />
+                        {staffSelfPick && (
+                          <p className="flex items-start gap-1.5 text-sm text-on-surface-variant px-1">
+                            <span className="material-symbols-outlined text-base text-primary">
+                              info
+                            </span>
+                            <span className="flex flex-col">
+                              <span>
+                                Phụ phí <strong className="text-on-surface">+{fmt(SELF_PICK_FEE)}</strong> sẽ được tính vào tổng chi phí.
+                              </span>
+                              <span className="mt-1">
+                                Sau khi đăng lịch, nhân viên phù hợp sẽ nhận việc và bạn có thể chọn người phù hợp nhất.
+                              </span>
+                            </span>
+                          </p>
+                        )}
                       </div>
                     </section>
                   )}
