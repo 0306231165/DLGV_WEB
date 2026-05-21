@@ -5,10 +5,9 @@ import { Link } from 'react-router-dom';
 
 /**
  * frequencyMode:
- *  'single'   → Ca lẻ (1 lần, không chọn tần suất)
+ *  'none'     → Không chọn tần suất (chăm sóc nội thất, deep clean - làm 1 lần)
  *  'flexible' → Có 2 lựa chọn tần suất: ca lẻ + gói tháng
  *  'full'     → Có 3 lựa chọn tần suất: 24/7 + ca lẻ + gói tháng
- *  'none'     → Không chọn tần suất (chăm sóc nội thất, deep clean - làm 1 lần)
  */
 
 const PACKAGE_GROUPS = [
@@ -23,7 +22,7 @@ const PACKAGE_GROUPS = [
         type: 'single',
         title: 'Dọn dẹp hằng ngày',
         subtitle: 'Ca lẻ',
-        price: 200000,
+        base_price: 200000,
         icon: 'home',
         iconBg: 'bg-secondary-container',
         isDeep: false,
@@ -35,7 +34,7 @@ const PACKAGE_GROUPS = [
         type: 'monthly',
         title: 'Dọn dẹp định kỳ',
         subtitle: 'Gói tháng',
-        price: 180000,
+        base_price: 180000,
         icon: 'home',
         iconBg: 'bg-secondary-container',
         isDeep: false,
@@ -47,7 +46,7 @@ const PACKAGE_GROUPS = [
         type: 'deep',
         title: 'Tổng vệ sinh chuyên sâu',
         subtitle: 'Ca lẻ',
-        price: 450000,
+        base_price: 450000,
         icon: 'flare',
         iconBg: 'bg-tertiary-fixed',
         isDeep: true,
@@ -66,7 +65,7 @@ const PACKAGE_GROUPS = [
         type: 'flexible',
         title: 'Chăm sóc người lớn tuổi',
         subtitle: 'Linh hoạt',
-        price: 300000,
+        base_price: 300000,
         icon: 'elderly',
         iconBg: 'bg-tertiary-fixed',
         isDeep: false,
@@ -78,7 +77,7 @@ const PACKAGE_GROUPS = [
         type: 'single',
         title: 'Trông trẻ',
         subtitle: 'Ca lẻ',
-        price: 250000,
+        base_price: 250000,
         icon: 'child_care',
         iconBg: 'bg-secondary-container',
         isDeep: false,
@@ -90,7 +89,7 @@ const PACKAGE_GROUPS = [
         type: 'flexible',
         title: 'Chăm sóc người bệnh',
         subtitle: 'Đa tần suất',
-        price: 350000,
+        base_price: 350000,
         icon: 'medical_services',
         iconBg: 'bg-tertiary-fixed',
         isDeep: false,
@@ -109,7 +108,7 @@ const PACKAGE_GROUPS = [
         type: 'deep',
         title: 'Dọn sau xây dựng',
         subtitle: 'Ca lẻ',
-        price: 500000,
+        base_price: 500000,
         icon: 'construction',
         iconBg: 'bg-tertiary-fixed',
         isDeep: true,
@@ -128,7 +127,7 @@ const PACKAGE_GROUPS = [
         type: 'flexible',
         title: 'Vệ sinh máy lạnh',
         subtitle: 'Linh hoạt',
-        price: 180000,
+        base_price: 180000,
         icon: 'ac_unit',
         iconBg: 'bg-secondary-container',
         isDeep: false,
@@ -140,7 +139,7 @@ const PACKAGE_GROUPS = [
         type: 'flexible',
         title: 'Giặt ghế sofa',
         subtitle: 'Linh hoạt',
-        price: 250000,
+        base_price: 250000,
         icon: 'weekend',
         iconBg: 'bg-secondary-container',
         isDeep: false,
@@ -152,7 +151,7 @@ const PACKAGE_GROUPS = [
         type: 'flexible',
         title: 'Giặt nệm',
         subtitle: 'Linh hoạt',
-        price: 300000,
+        base_price: 300000,
         icon: 'bed',
         iconBg: 'bg-secondary-container',
         isDeep: false,
@@ -164,7 +163,7 @@ const PACKAGE_GROUPS = [
         type: 'flexible',
         title: 'Vệ sinh bếp chuyên sâu',
         subtitle: 'Linh hoạt',
-        price: 220000,
+        base_price: 220000,
         icon: 'soup_kitchen',
         iconBg: 'bg-secondary-container',
         isDeep: false,
@@ -176,7 +175,7 @@ const PACKAGE_GROUPS = [
         type: 'flexible',
         title: 'Giặt thảm',
         subtitle: 'Linh hoạt',
-        price: 200000,
+        base_price: 200000,
         icon: 'texture',
         iconBg: 'bg-secondary-container',
         isDeep: false,
@@ -195,7 +194,7 @@ const PACKAGE_GROUPS = [
         type: 'flexible',
         title: 'Dọn văn phòng',
         subtitle: 'Linh hoạt',
-        price: 160000,
+        base_price: 160000,
         icon: 'business_center',
         iconBg: 'bg-secondary-container',
         isDeep: false,
@@ -266,41 +265,58 @@ const SHIFT_247_OPTIONS = [
   { id: 'shift-full', label: 'Cả ngày lẫn đêm', hours: '24 giờ', icon: 'bedtime', desc: '24 giờ liên tục' },
 ];
 
-const CARE_OPTIONS_MAP = {
+// ── CARE_OPTIONS_MAP: giá card đầu = base_price của gói, các card sau tăng dần ──
+// Hàm tạo CARE_OPTIONS_MAP động theo base_price của từng gói
+const buildCareOptionsMap = () => ({
   aircon: [
-    { id: 'ac-wall', label: 'Máy lạnh treo tường', price: 200000, baseHours: 1 },
-    { id: 'ac-ceiling', label: 'Máy lạnh âm trần', price: 450000, baseHours: 2 },
+    // base_price của 'aircon' = 180000
+    { id: 'ac-wall', label: 'Máy lạnh treo tường', price: 180000, baseHours: 1 },
+    { id: 'ac-ceiling', label: 'Máy lạnh âm trần', price: 350000, baseHours: 2 },
   ],
   sofa: [
-    { id: 'sofa-fabric', label: 'Sofa vải / nỉ', price: 350000, baseHours: 2 },
-    { id: 'sofa-leather', label: 'Sofa da', price: 450000, baseHours: 2 },
+    // base_price của 'sofa' = 250000
+    { id: 'sofa-fabric', label: 'Sofa vải / nỉ', price: 250000, baseHours: 2 },
+    { id: 'sofa-leather', label: 'Sofa da', price: 400000, baseHours: 2 },
   ],
   mattress: [
+    // base_price của 'mattress' = 300000
     { id: 'mat-kymdan', label: 'Nệm cao su', price: 300000, baseHours: 1.5 },
-    { id: 'mat-spring', label: 'Nệm lò xo / bông ép', price: 250000, baseHours: 1 },
+    { id: 'mat-spring', label: 'Nệm lò xo / bông ép', price: 420000, baseHours: 1 },
   ],
   kitchen: [
-    { id: 'kit-std', label: 'Vệ sinh bếp tiêu chuẩn', price: 300000, baseHours: 2 },
-    { id: 'kit-deep', label: 'Vệ sinh bếp + Máy hút mùi', price: 500000, baseHours: 3 },
+    // base_price của 'kitchen' = 220000
+    { id: 'kit-std', label: 'Vệ sinh bếp tiêu chuẩn', price: 220000, baseHours: 2 },
+    { id: 'kit-deep', label: 'Vệ sinh bếp + Máy hút mùi', price: 420000, baseHours: 3 },
   ],
   carpet: [
+    // base_price của 'carpet' = 200000
     { id: 'carp-small', label: 'Thảm nhỏ (dưới 4m²)', price: 200000, baseHours: 1 },
-    { id: 'carp-large', label: 'Thảm lớn (trên 4m²)', price: 350000, baseHours: 2 },
+    { id: 'carp-large', label: 'Thảm lớn (trên 4m²)', price: 360000, baseHours: 2 },
   ],
-};
+  office: [
+    // base_price của 'office' = 160000
+    { id: 'office-small', label: 'Văn phòng nhỏ (dưới 50m²)', price: 160000, baseHours: 2 },
+    { id: 'office-medium', label: 'Văn phòng vừa (50–100m²)', price: 280000, baseHours: 3 },
+    { id: 'office-large', label: 'Văn phòng lớn (trên 100m²)', price: 450000, baseHours: 5 },
+  ],
+});
 
-const AREA_OPTIONS_NORMAL = [
-  { id: 'under-55', label: 'Dưới 55m²', sub: 'Khoảng 1–2 phòng', baseHours: 2, price: 200000 },
-  { id: '55-85', label: '55 – 85m²', sub: 'Khoảng 2–3 phòng', baseHours: 3, price: 260000 },
-  { id: '85-120', label: '85 – 120m²', sub: 'Khoảng 3–4 phòng', baseHours: 4, price: 350000 },
+const CARE_OPTIONS_MAP = buildCareOptionsMap();
+
+// ── AREA_OPTIONS: card đầu dùng base_price của gói, các card sau tăng dần ──
+// Hàm tạo area options theo base_price truyền vào
+const buildAreaOptionsNormal = (base_price) => [
+  { id: 'under-55', label: 'Dưới 55m²', sub: 'Khoảng 1–2 phòng', baseHours: 2, price: base_price },
+  { id: '55-85', label: '55 – 85m²', sub: 'Khoảng 2–3 phòng', baseHours: 3, price: Math.round(base_price * 1.3) },
+  { id: '85-120', label: '85 – 120m²', sub: 'Khoảng 3–4 phòng', baseHours: 4, price: Math.round(base_price * 1.75) },
 ];
 
-const AREA_OPTIONS_DEEP = [
-  { id: 'deep-60', label: 'Dưới 60m²', sub: 'Khoảng 1–2 phòng', baseHours: 3, staffCount: 2, price: 450000 },
-  { id: 'deep-80', label: '60 – 80m²', sub: 'Khoảng 2–3 phòng', baseHours: 4, staffCount: 2, price: 550000 },
-  { id: 'deep-150', label: '80 – 150m²', sub: 'Khoảng 3–5 phòng', baseHours: 4, staffCount: 3, price: 750000 },
-  { id: 'deep-200', label: '150 – 200m²', sub: 'Khoảng 5–7 phòng', baseHours: 4, staffCount: 4, price: 1000000 },
-  { id: 'deep-400', label: 'Trên 200m²', sub: 'Biệt thự / sàn lớn', baseHours: 8, staffCount: 4, price: 1800000 },
+const buildAreaOptionsDeep = (base_price) => [
+  { id: 'deep-60', label: 'Dưới 60m²', sub: 'Khoảng 1–2 phòng', baseHours: 3, staffCount: 2, price: base_price },
+  { id: 'deep-80', label: '60 – 80m²', sub: 'Khoảng 2–3 phòng', baseHours: 4, staffCount: 2, price: Math.round(base_price * 1.22) },
+  { id: 'deep-150', label: '80 – 150m²', sub: 'Khoảng 3–5 phòng', baseHours: 4, staffCount: 3, price: Math.round(base_price * 1.67) },
+  { id: 'deep-200', label: '150 – 200m²', sub: 'Khoảng 5–7 phòng', baseHours: 4, staffCount: 4, price: Math.round(base_price * 2.22) },
+  { id: 'deep-400', label: 'Trên 200m²', sub: 'Biệt thự / sàn lớn', baseHours: 8, staffCount: 4, price: Math.round(base_price * 4) },
 ];
 
 const EXTRA_SERVICES = [
@@ -390,40 +406,25 @@ const getNext7Days = () => {
   return days;
 };
 
-/**
- * Kiểm tra xem giờ hh:mm có nằm ngoài giờ hoạt động [6:00 - 23:00) không.
- * Trả về { outsideHours: bool, tooEarly: bool, tooLate: bool }
- */
 const checkServiceHours = (h, m) => {
   const totalMin = h * 60 + m;
-  const startMin = SERVICE_START_HOUR * 60;  // 6*60 = 360
-  const endMin = SERVICE_END_HOUR * 60;      // 23*60 = 1380
+  const startMin = SERVICE_START_HOUR * 60;
+  const endMin = SERVICE_END_HOUR * 60;
   if (totalMin < startMin) return { outsideHours: true, tooEarly: true, tooLate: false };
   if (totalMin >= endMin) return { outsideHours: true, tooEarly: false, tooLate: true };
   return { outsideHours: false, tooEarly: false, tooLate: false };
 };
 
-/**
- * Tính giờ sớm nhất có thể đặt lịch cho hôm nay.
- * = max(6:00, now + 1.5h)
- * Nếu kết quả >= 23:00 → trả về null (hết slot hôm nay)
- */
 const getEarliestBookableTime = () => {
   const now = new Date();
-  // now + 1.5h
   const earliest = new Date(now.getTime() + URGENT_THRESHOLD_HOURS * 3600000);
   earliest.setSeconds(0, 0);
-
-  // Không sớm hơn 6:00 sáng hôm nay
   const todayStart = new Date(now);
   todayStart.setHours(SERVICE_START_HOUR, 0, 0, 0);
   const result = earliest < todayStart ? todayStart : earliest;
-
-  // Nếu đã quá 23:00 → không còn slot nào hôm nay
   const todayEnd = new Date(now);
   todayEnd.setHours(SERVICE_END_HOUR, 0, 0, 0);
   if (result >= todayEnd) return null;
-
   return result;
 };
 
@@ -434,21 +435,11 @@ const formatTimeHM = date => {
   return `${h}:${m}`;
 };
 
-/**
- * Kiểm tra slot có bị disable không (cho day-picker)
- * Disabled khi:
- * 1. Giờ nằm ngoài [6:00, 23:00)
- * 2. Hôm nay: slot < now + 1.5h
- */
 const isSlotDisabled = (dayObj, timeStr) => {
   if (!dayObj || !timeStr) return false;
   const [h, m] = timeStr.split(':').map(Number);
-
-  // Luôn disable ngoài giờ hoạt động
   const { outsideHours } = checkServiceHours(h, m);
   if (outsideHours) return true;
-
-  // Nếu là hôm nay: kiểm tra khoảng cách tối thiểu 1.5h
   if (dayObj.isToday) {
     const earliest = getEarliestBookableTime();
     if (!earliest) return true;
@@ -456,14 +447,9 @@ const isSlotDisabled = (dayObj, timeStr) => {
     slotTime.setHours(h, m, 0, 0);
     if (slotTime < earliest) return true;
   }
-
   return false;
 };
 
-/**
- * Slot có tính phí urgent không?
- * = đặt hôm nay VÀ slot không bị disable VÀ nằm trong giờ hoạt động
- */
 const isUrgentSlot = (dayObj, timeStr) => {
   if (!dayObj || !timeStr || !dayObj.isToday) return false;
   const [h, m] = timeStr.split(':').map(Number);
@@ -473,7 +459,7 @@ const isUrgentSlot = (dayObj, timeStr) => {
   if (!earliest) return false;
   const slotTime = new Date();
   slotTime.setHours(h, m, 0, 0);
-  return slotTime >= earliest; // valid slot hôm nay → urgent
+  return slotTime >= earliest;
 };
 
 const calcTotalHours = (baseHours, extraIds) =>
@@ -542,20 +528,15 @@ const ToggleRow = ({ icon, title, description, checked, onChange, extraBadge }) 
 );
 
 // ─── CustomTimePicker ────────────────────────────────────────────────────────
-// LOGIC MỚI:
-// 1. Kiểm tra giờ nằm trong [6:00, 23:00) — ngoài giờ hoạt động → báo lỗi rõ
-// 2. Nếu hôm nay & giờ hợp lệ nhưng < now+1.5h → báo lỗi đặt gấp
-// 3. Earliest = max(6:00, now+1.5h); nếu null → hết slot hôm nay
 
 const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) => {
   const [displayHour, setDisplayHour] = useState('08');
   const [displayMinute, setDisplayMinute] = useState('00');
   const [customError, setCustomError] = useState(null);
-  const [errorType, setErrorType] = useState(null); // 'outside_hours' | 'too_soon' | 'no_slots_today'
+  const [errorType, setErrorType] = useState(null);
   const lastEmittedRef = useRef(null);
   const initializedRef = useRef(false);
 
-  // THÊM 2 ref này để tránh stale closure trong useEffect([tick])
   const displayHourRef = useRef('08');
   const displayMinuteRef = useRef('00');
 
@@ -567,7 +548,7 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
         setDisplayHour(h || '08');
         setDisplayMinute(m || '00');
         displayHourRef.current = h;
-      displayMinuteRef.current = m;
+        displayMinuteRef.current = m;
         _checkAndEmit(h || '08', m || '00');
       }
     }
@@ -587,10 +568,9 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
     }
   }, [value]);
 
-  // Re-validate khi thời gian thực thay đổi (tick mỗi 30s)
   useEffect(() => {
     _checkAndEmit(displayHourRef.current, displayMinuteRef.current);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
@@ -600,7 +580,6 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
     const hNum = parseInt(h, 10);
     const mNum = parseInt(m, 10);
 
-    // ── Kiểm tra giờ hoạt động [6:00, 23:00) ──
     const { outsideHours, tooEarly, tooLate } = checkServiceHours(hNum, mNum);
     if (outsideHours) {
       let msg = '';
@@ -616,11 +595,9 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
       return;
     }
 
-    // ── Nếu là hôm nay: kiểm tra khoảng cách 1.5h ──
     if (dayObj && dayObj.isToday) {
       const earliest = getEarliestBookableTime();
 
-      // Trường hợp đặc biệt: không còn slot nào hôm nay (earliest = null → now+1.5h >= 23:00)
       if (!earliest) {
         setCustomError(
           `Hôm nay đã hết khung giờ có thể đặt (quá ${SERVICE_END_HOUR}:00). Vui lòng chọn sang ngày mai.`
@@ -646,7 +623,6 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
       }
     }
 
-    // ── Hợp lệ ──
     const timeStr = `${h}:${m}`;
     setCustomError(null);
     setErrorType(null);
@@ -667,8 +643,6 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
 
   const earliest = dayObj?.isToday ? getEarliestBookableTime() : null;
   const earliestStr = earliest ? formatTimeHM(earliest) : null;
-
-  // Giờ gợi ý mặc định hợp lệ khi không có slot hôm nay → gợi ý chọn ngày khác
   const noSlotsToday = dayObj?.isToday && !earliest;
 
   const handlePickEarliest = () => {
@@ -726,7 +700,6 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
         </div>
       </div>
 
-      {/* Thông tin giờ hoạt động */}
       <p className="text-xs text-on-surface-variant flex items-center gap-1">
         <span className="material-symbols-outlined text-xs text-primary">info</span>
         Giờ hoạt động:{' '}
@@ -738,7 +711,6 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
         )}
       </p>
 
-      {/* Cảnh báo hết slot hôm nay */}
       {noSlotsToday && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-error/10 border border-error/30">
           <span className="material-symbols-outlined text-error text-base mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -750,7 +722,6 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
         </div>
       )}
 
-      {/* Lỗi từ input */}
       {customError && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-error/10 border border-error/30">
           <span
@@ -760,7 +731,6 @@ const CustomTimePicker = ({ value, onChange, dayObj, onSelectEarliest, tick }) =
           </span>
           <div className="flex-1">
             <p className="text-sm text-error font-medium">{customError}</p>
-            {/* Nút gợi ý chỉ hiện khi lỗi "quá sớm hôm nay" và còn slot */}
             {errorType === 'too_soon' && earliestStr && (
               <button
                 onClick={handlePickEarliest}
@@ -797,8 +767,6 @@ const TimeSlotPicker = ({
   const labels = { morning: 'Buổi sáng', afternoon: 'Buổi chiều', evening: 'Buổi tối' };
   const icons = { morning: 'light_mode', afternoon: 'wb_twilight', evening: 'dark_mode' };
   const earliest = selectedDayObj?.isToday ? getEarliestBookableTime() : null;
-
-  // Kiểm tra hôm nay còn slot không
   const noSlotsToday = selectedDayObj?.isToday && !earliest;
 
   const handleToggleCustom = () => {
@@ -808,16 +776,13 @@ const TimeSlotPicker = ({
       setSelectedTime(null);
       if (selectedDayObj?.isToday) {
         if (earliest) {
-          // Đề xuất giờ sớm nhất hợp lệ hôm nay
           const eh = String(earliest.getHours()).padStart(2, '0');
           const em = String(earliest.getMinutes()).padStart(2, '0');
           setCustomTimeValue(`${eh}:${em}`);
         } else {
-          // Hết slot hôm nay → không set giờ mặc định
           setCustomTimeValue(null);
         }
       } else {
-        // Ngày khác → mặc định 8:00
         setCustomTimeValue('08:00');
       }
       setErrors(p => ({ ...p, time: null }));
@@ -826,7 +791,6 @@ const TimeSlotPicker = ({
 
   return (
     <div className="space-y-5">
-      {/* Banner hôm nay đặt gấp */}
       {selectedDayObj?.isToday && !noSlotsToday && (
         <div className="flex items-start gap-3 p-3 rounded-xl bg-error/5 border border-error/30 text-sm">
           <span className="material-symbols-outlined text-error text-base mt-0.5">bolt</span>
@@ -847,7 +811,6 @@ const TimeSlotPicker = ({
         </div>
       )}
 
-      {/* Banner hôm nay đã hết giờ */}
       {noSlotsToday && (
         <div className="flex items-start gap-3 p-3 rounded-xl bg-error/10 border border-error/50 text-sm">
           <span className="material-symbols-outlined text-error text-base mt-0.5">event_busy</span>
@@ -869,7 +832,6 @@ const TimeSlotPicker = ({
           <div className="flex gap-2 flex-wrap">
             {TIME_SLOTS[period].map(t => {
               const disabled = isSlotDisabled(selectedDayObj, t);
-              // Urgent badge: hôm nay + slot hợp lệ (không disabled)
               const urgentBadge = selectedDayObj?.isToday && !disabled;
               const isSelected = !showCustomTime && selectedTime === t;
               return (
@@ -1160,7 +1122,8 @@ const BookingPage = () => {
   const [premiumStaff, setPremiumStaff] = useState(false);
 
   // ── Step 2 state ──
-  const [careOptionId, setCareOptionId] = useState('');
+  // careOptionId = null → chưa chọn (không tự chọn nữa)
+  const [careOptionId, setCareOptionId] = useState(null);
   const [frequencyChoice, setFrequencyChoice] = useState(null);
   const [isWeeklyRepeat, setIsWeeklyRepeat] = useState(false);
   const [selectedDayIdx, setSelectedDayIdx] = useState(null);
@@ -1198,7 +1161,7 @@ const BookingPage = () => {
   // ── Errors & refs ──
   const [errors, setErrors] = useState({});
 
-  // ── Tick mỗi 30s để re-validate giờ theo thời gian thực ──
+  // ── Tick mỗi 1s để re-validate giờ theo thời gian thực ──
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 1000);
@@ -1206,6 +1169,7 @@ const BookingPage = () => {
   }, []);
 
   const sectionRefs = {
+    careOption: useRef(null),
     area: useRef(null),
     pet: useRef(null),
     date: useRef(null),
@@ -1236,10 +1200,14 @@ const BookingPage = () => {
   const isMonthly = resolvedType === 'monthly';
   const isSingle = resolvedType === 'single';
   const is247 = resolvedType === '247';
-  const isCare = pkgData.groupId === 'care';
+  const isCare = pkgData.groupId === 'care' || pkgData.id === 'office';
   const currentCareOptions = CARE_OPTIONS_MAP[pkgData.id];
   const careData = isCare ? currentCareOptions?.find(o => o.id === careOptionId) : null;
-  const areaList = isDeep ? AREA_OPTIONS_DEEP : AREA_OPTIONS_NORMAL;
+
+  // ── Tạo areaList động theo base_price của gói hiện tại ──
+  const areaList = isDeep
+    ? buildAreaOptionsDeep(pkgData.base_price)
+    : buildAreaOptionsNormal(pkgData.base_price);
   const areaData = areaList.find(a => a.id === selectedArea);
   const next7Days = getNext7Days();
   const selectedDayObj = selectedDayIdx !== null ? next7Days[selectedDayIdx] : null;
@@ -1257,10 +1225,15 @@ const BookingPage = () => {
   const selfPickFee = staffSelfPick ? SELF_PICK_FEE : 0;
   const travelFee = 15000;
   const extrasTotal = EXTRA_SERVICES.filter(s => extras.includes(s.id)).reduce((sum, s) => sum + s.price, 0);
-  const basePrice = isCare ? (careData?.price || pkgData.price) : areaData ? areaData.price : pkgData.price;
+  // basePrice: dùng giá từ tùy chọn chi tiết (care/area) hoặc base_price của gói
+  const basePrice = isCare
+    ? (careData?.price || pkgData.base_price)
+    : areaData
+    ? areaData.price
+    : pkgData.base_price;
 
   const shiftMultiplier = shift247 === 'shift-full' ? 2 : 1;
-  const price247PerDay = pkgData.price * shiftMultiplier;
+  const price247PerDay = pkgData.base_price * shiftMultiplier;
   const duration247Data = DURATION_247_OPTIONS.find(d => d.id === duration247);
   const raw247Total = price247PerDay * (duration247Data?.days || 7);
   const discount247 = Math.round(raw247Total * ((duration247Data?.discount || 0) / 100));
@@ -1320,10 +1293,12 @@ const BookingPage = () => {
     return [];
   };
 
+  // ── handleSelectPackage: KHÔNG tự chọn careOptionId nữa ──
   const handleSelectPackage = id => {
     if (id === selectedPackage) return;
     setSelectedPackage(id);
-    setCareOptionId(CARE_OPTIONS_MAP[id]?.[0]?.id || '');
+    // Reset về null, khách tự chọn
+    setCareOptionId(null);
     setFrequencyChoice(null);
     setSelectedArea(null);
     setExtras([]);
@@ -1414,6 +1389,7 @@ const BookingPage = () => {
   const validateStep1 = () => {
     const e = {};
     if (isCare) {
+      // Phải tự chọn, không auto-select
       if (!careOptionId) e.careOption = 'Vui lòng chọn loại dịch vụ cụ thể.';
     } else if (!isFamilyPackage) {
       if (!selectedArea) e.area = 'Vui lòng chọn diện tích nhà.';
@@ -1428,11 +1404,6 @@ const BookingPage = () => {
     return true;
   };
 
-  /**
-   * Validate step 2 — bổ sung kiểm tra giờ hợp lệ:
-   * 1. Nếu effectiveTime nhưng bị lỗi ngoài giờ hoạt động → báo lỗi
-   * 2. Nếu hôm nay không còn slot → báo lỗi chọn ngày khác
-   */
   const validateStep2 = () => {
     const e = {};
 
@@ -1449,13 +1420,11 @@ const BookingPage = () => {
       if (selectedDayIdx === null) {
         e.date = 'Vui lòng chọn ngày làm việc.';
       } else if (selectedDayObj?.isToday && !getEarliestBookableTime()) {
-        // Hôm nay đã hết slot
         e.date = `Hôm nay đã hết khung giờ có thể đặt. Vui lòng chọn ngày mai hoặc ngày khác.`;
       }
       if (!effectiveTime) {
         e.time = 'Vui lòng chọn hoặc nhập giờ làm việc.';
       } else {
-        // Kiểm tra giờ hợp lệ
         const [hStr, mStr] = effectiveTime.split(':');
         const hNum = parseInt(hStr, 10);
         const mNum = parseInt(mStr, 10);
@@ -1549,7 +1518,7 @@ const BookingPage = () => {
   };
 
   // ── Step Indicator ──
-  const StepIndicator = () => {
+  const renderStepIndicator = () => {
     const steps = [
       { num: 1, label: 'Dịch vụ' },
       { num: 2, label: 'Lịch hẹn' },
@@ -1781,7 +1750,7 @@ const BookingPage = () => {
   };
 
   // ── Order Summary Sidebar ──
-  const OrderSummary = ({ onPrimary, primaryLabel, onBack, showActions = true, confirmMode = false }) => (
+  const renderOrderSummary = ({ onPrimary, primaryLabel, onBack, showActions = true, confirmMode = false }) => (
     <aside className="lg:col-span-4 sticky top-24">
       <div className="bg-background-2 glass-card rounded-2xl shadow-xl border border-white/50 overflow-hidden">
         <div className="px-6 py-5 border-b border-outline-variant/20">
@@ -1959,7 +1928,7 @@ const BookingPage = () => {
   );
 
   // ── Task Modal ──
-  const TaskModal = ({ pkgIdProp, onClose }) => {
+  const renderTaskModal = ({ pkgIdProp, onClose }) => {
     if (!pkgIdProp) return null;
     const pkg = PACKAGES.find(p => p.id === pkgIdProp);
 
@@ -2061,18 +2030,18 @@ const BookingPage = () => {
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
     <main className="pt-32 pb-section-padding px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-screen">
-      <TaskModal pkgIdProp={showTasksId} onClose={() => setShowTasksId(null)} />
-      <TaskModal
-        pkgIdProp={showStep5Tasks ? selectedPackage : null}
-        onClose={() => setShowStep5Tasks(false)}
-      />
+      {renderTaskModal({ pkgIdProp: showTasksId, onClose: () => setShowTasksId(null) })}
+      {renderTaskModal({
+        pkgIdProp: showStep5Tasks ? selectedPackage : null,
+        onClose: () => setShowStep5Tasks(false)
+      })}
 
       {/* ══════════ STEP 1 ══════════ */}
       {step === 1 && (
         <>
           <div ref={headingRef} className="mb-12 scroll-mt-24">
             <h1 className="font-h2 text-h2 text-primary mb-1">Bước 1: Chọn dịch vụ</h1>
-            <StepIndicator />
+            {renderStepIndicator()}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
@@ -2142,6 +2111,10 @@ const BookingPage = () => {
                                         {pkg.desc}
                                       </p>
                                     </div>
+                                    {/* Hiển thị giá gốc (base_price) trên card gói */}
+                                    <p className="text-sm font-bold text-primary">
+                                      từ {fmt(pkg.base_price)}
+                                    </p>
                                   </div>
                                   {isSelected && (
                                     <span
@@ -2166,10 +2139,13 @@ const BookingPage = () => {
                 </div>
               </section>
 
-              {/* 1A2. Chi tiết dịch vụ chăm sóc nội thất (isCare) */}
+              {/* 1A2. Tùy chọn chi tiết — isCare (care group + office) */}
               {isCare && currentCareOptions && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                  <SectionTitle icon="build">Tùy chọn dịch vụ</SectionTitle>
+                  <SectionTitle icon="build" refProp={sectionRefs.careOption}>Tùy chọn chi tiết</SectionTitle>
+                  <p className="text-sm text-on-surface-variant -mt-4 mb-5">
+                    Vui lòng chọn loại dịch vụ phù hợp bên dưới.
+                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {currentCareOptions.map(opt => {
                       const isSelected = careOptionId === opt.id;
@@ -2178,14 +2154,19 @@ const BookingPage = () => {
                           <input
                             type="radio"
                             checked={isSelected}
-                            onChange={() => setCareOptionId(opt.id)}
+                            onChange={() => {
+                              setCareOptionId(opt.id);
+                              setErrors(p => ({ ...p, careOption: null }));
+                            }}
                             className="peer sr-only"
                           />
                           <div
                             className={`glass-card p-5 rounded-xl border-2 transition-all h-full flex flex-col items-center gap-2 text-center ${
                               isSelected
                                 ? 'border-primary bg-primary/5'
-                                : 'border-outline-variant/30 bg-surface-container-lowest'
+                                : errors.careOption
+                                ? 'border-error/40 bg-surface-container-lowest'
+                                : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40'
                             }`}>
                             <p className="font-bold text-on-surface text-base">{opt.label}</p>
                             <div className="mt-1 px-3 py-1 bg-primary/10 rounded-full">
@@ -2198,15 +2179,19 @@ const BookingPage = () => {
                       );
                     })}
                   </div>
+                  <ErrorMsg message={errors.careOption} />
                 </section>
               )}
 
-              {/* 1B. Diện tích */}
+              {/* 1B. Tùy chọn chi tiết — Diện tích nhà (non-care, non-family) */}
               {!isCare && !isFamilyPackage && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="straighten" refProp={sectionRefs.area}>
-                    Diện tích nhà & Thời lượng làm việc
+                    Tùy chọn chi tiết
                   </SectionTitle>
+                  <p className="text-sm text-on-surface-variant -mt-4 mb-5">
+                    Chọn diện tích nhà để xác định thời lượng và nhân sự phù hợp.
+                  </p>
                   {isDeep && (
                     <div className="flex items-start gap-3 p-3 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed mb-5 text-sm text-on-tertiary-fixed-variant">
                       <span className="material-symbols-outlined text-base mt-0.5">group</span>
@@ -2235,7 +2220,7 @@ const BookingPage = () => {
                                 ? 'border-primary bg-primary/5'
                                 : errors.area
                                 ? 'border-error/40'
-                                : 'border-outline-variant/30 bg-surface-container-lowest'
+                                : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40'
                             }`}>
                             <span className="material-symbols-outlined text-3xl text-primary">home</span>
                             <p className="font-bold text-on-surface text-base">{opt.label}</p>
@@ -2459,7 +2444,7 @@ const BookingPage = () => {
                 </div>
               </section>
             </div>
-            <OrderSummary primaryLabel="Tiếp theo" onPrimary={() => { if (validateStep1()) setStep(2); }} />
+            {renderOrderSummary({ primaryLabel: "Tiếp theo", onPrimary: () => { if (validateStep1()) setStep(2); } })}
           </div>
         </>
       )}
@@ -2469,7 +2454,7 @@ const BookingPage = () => {
         <>
           <div ref={headingRef} className="mb-12 scroll-mt-24">
             <h1 className="font-h2 text-h2 text-primary mb-1">Bước 2: Chọn lịch hẹn</h1>
-            <StepIndicator />
+            {renderStepIndicator()}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
@@ -2598,7 +2583,6 @@ const BookingPage = () => {
                       <div className="flex gap-3 overflow-x-auto pb-2">
                         {next7Days.map((d, idx) => {
                           const isSelected = selectedDayIdx === idx;
-                          // Disable ngày hôm nay nếu không còn slot
                           const noSlots = d.isToday && !getEarliestBookableTime();
                           return (
                             <button
@@ -2778,11 +2762,11 @@ const BookingPage = () => {
                 </div>
               )}
             </div>
-            <OrderSummary
-              primaryLabel="Tiếp theo"
-              onPrimary={() => { if (validateStep2()) setStep(3); }}
-              onBack={() => setStep(1)}
-            />
+            {renderOrderSummary({
+              primaryLabel: "Tiếp theo",
+              onPrimary: () => { if (validateStep2()) setStep(3); },
+              onBack: () => setStep(1)
+            })}
           </div>
         </>
       )}
@@ -2792,7 +2776,7 @@ const BookingPage = () => {
         <>
           <div ref={headingRef} className="mb-12 scroll-mt-24">
             <h1 className="font-h2 text-h2 text-primary mb-1">Bước 3: Thông tin & Thanh toán</h1>
-            <StepIndicator />
+            {renderStepIndicator()}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
@@ -3124,11 +3108,11 @@ const BookingPage = () => {
                 <ErrorMsg message={errors.promo} />
               </section>
             </div>
-            <OrderSummary
-              primaryLabel="Tiếp theo"
-              onPrimary={() => { if (validateStep3()) setStep(4); }}
-              onBack={() => setStep(2)}
-            />
+            {renderOrderSummary({
+              primaryLabel: "Tiếp theo",
+              onPrimary: () => { if (validateStep3()) setStep(4); },
+              onBack: () => setStep(2)
+            })}
           </div>
         </>
       )}
@@ -3138,7 +3122,7 @@ const BookingPage = () => {
         <>
           <div ref={headingRef} className="mb-12 scroll-mt-24">
             <h1 className="font-h2 text-h2 text-primary mb-1">Bước 4: Xác nhận đặt lịch</h1>
-            <StepIndicator />
+            {renderStepIndicator()}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
@@ -3449,12 +3433,12 @@ const BookingPage = () => {
                 </div>
               </section>
             </div>
-            <OrderSummary
-              primaryLabel="Xác nhận đặt lịch"
-              onPrimary={() => setStep(5)}
-              onBack={() => setStep(3)}
-              confirmMode={true}
-            />
+            {renderOrderSummary({
+              primaryLabel: "Xác nhận đặt lịch",
+              onPrimary: () => setStep(5),
+              onBack: () => setStep(3),
+              confirmMode: true
+            })}
           </div>
         </>
       )}
@@ -3542,6 +3526,7 @@ const BookingPage = () => {
                 setShift247(null);
                 setDuration247('7');
                 setStartDate247(null);
+                setCareOptionId(null);
                 setContactMode('saved');
                 setSelectedSavedContact(0);
                 setNewContact({ name: '', phone: '', email: '' });
