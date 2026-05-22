@@ -6,7 +6,7 @@ import CustomerLayout from '../layouts/CustomerLayout';
 import AccountLayout  from '../pages/customer/account/AccountLayout';
 
 // Import Pages — Customer
-import Home           from '../pages/customer/Home';
+import Home           from '../pages/customer/home/Home';
 // import MyBookingsPage from '../pages/customer/MyBookingsPage';
 import BookingPage    from '../pages/customer/BookingPage';
 
