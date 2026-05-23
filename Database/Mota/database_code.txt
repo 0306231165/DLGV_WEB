@@ -1,7 +1,7 @@
 -- =========================================================================
 -- BẢN THIẾT KẾ CƠ SỞ DỮ LIỆU TOÀN DIỆN (FINAL VERSION - 27 BẢNG)
 -- HỆ THỐNG ĐẶT LỊCH GIÚP VIỆC VÀ CHĂM SÓC GIA ĐÌNH CHUYÊN NGHIỆP
--- SCRIPT SQL DDL CHUẨN - IMPORT TRỰC TIẾP VÀO DRAWDB.VERCEL.APP
+-- SCRIPT SQL DDL CHUẨN - ĐÃ CẬP NHẬT LUỒNG THANH TOÁN
 -- =========================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -143,6 +143,8 @@ CREATE TABLE `DonHang` (
     `tong_tien_cuoi_cung` DECIMAL(12,2) NOT NULL,
     `tien_giam_giu` DECIMAL(12,2) DEFAULT 0.00,
     `phuong_thuc_tt` VARCHAR(50) NOT NULL,
+    `trang_thai_thanh_toan` VARCHAR(50) DEFAULT 'ChuaThanhToan', -- CỘT MỚI THÊM
+    `ma_giao_dich_online` VARCHAR(255) NULL,                     -- CỘT MỚI THÊM
     `trang_thai_don` VARCHAR(50) NOT NULL,
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
