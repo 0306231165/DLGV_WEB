@@ -1,7 +1,7 @@
 -- =========================================================================
 -- BẢN THIẾT KẾ CƠ SỞ DỮ LIỆU TOÀN DIỆN (FINAL VERSION - 27 BẢNG)
 -- HỆ THỐNG ĐẶT LỊCH GIÚP VIỆC VÀ CHĂM SÓC GIA ĐÌNH CHUYÊN NGHIỆP
--- SCRIPT SQL DDL CHUẨN - ĐÃ CẬP NHẬT LUỒNG THANH TOÁN
+-- SCRIPT SQL DDL CHUẨN - TÍCH HỢP FULL LOGIC UI & THANH TOÁN
 -- =========================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -127,28 +127,51 @@ CREATE TABLE `DonHang` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `khach_hang_id` INT NOT NULL,
     `dich_vu_id` INT NOT NULL,
+    `khuyen_mai_id` INT NULL,                         -- Liên kết Mã khuyến mãi
     `tan_suat_id` INT NOT NULL,
+    
+    -- CẤU HÌNH LỊCH TRÌNH / GÓI THÁNG / 24/7
+    `tong_so_buoi` INT NOT NULL DEFAULT 1,            -- Tổng số buổi của hợp đồng
     `is_lap_lai_hang_tuan` BOOLEAN NOT NULL,
+    `cac_ngay_trong_tuan` VARCHAR(50) NULL,           -- vd: '2,4,6'
+    `gio_lam_mac_dinh` TIME NULL,                     -- Giờ làm chuẩn của gói
     `so_thang_goi_thang` INT NULL,
+    `ca_lam_247` VARCHAR(50) NULL,                    -- vd: 'Ngay', 'Dem', 'CaNgay'
+    `so_ngay_goi_247` INT NULL,                       -- vd: 7, 14, 30
     `tld_giam_goi_thang` INT DEFAULT 0,
     `ngay_bat_dau` DATE NOT NULL,
     `ngay_ket_thuc` DATE NOT NULL,
+    
+    -- THÔNG TIN TRIỂN KHAI & GHI CHÚ
     `ho_ten_thuc_te` VARCHAR(150) NOT NULL,
     `sdt_thuc_te` VARCHAR(15) NOT NULL,
     `dia_chi_thuc_te` VARCHAR(255) NOT NULL,
+    `ghi_chu_cho_nhan_vien` TEXT NULL,                -- Ghi chú text
+    
+    -- CÁC LỰA CHỌN THÊM (CHECKBOX) & PHỤ PHÍ SNAPSHOT
     `is_cao_cap` BOOLEAN DEFAULT FALSE,
     `co_thu_cung` BOOLEAN DEFAULT FALSE,
+    `uu_tien_nv_yt` BOOLEAN DEFAULT FALSE,            -- Ưu tiên NV (Không tính phụ phí)
     `is_tu_chon_nv` BOOLEAN DEFAULT FALSE,
+    `phu_phi_tu_chon_nv` DECIMAL(12,2) DEFAULT 0.00,  -- Phụ phí tính thêm khi Tự chọn NV
+    
+    -- TÀI CHÍNH & THANH TOÁN
     `tong_tien_ban_dau` DECIMAL(12,2) NOT NULL,
+    `phu_phi_dat_gap` DECIMAL(12,2) DEFAULT 0.00,     -- Phụ phí đặt gấp (Urgent fee)
     `tong_tien_cuoi_cung` DECIMAL(12,2) NOT NULL,
     `tien_giam_giu` DECIMAL(12,2) DEFAULT 0.00,
     `phuong_thuc_tt` VARCHAR(50) NOT NULL,
-    `trang_thai_thanh_toan` VARCHAR(50) DEFAULT 'ChuaThanhToan', -- CỘT MỚI THÊM
-    `ma_giao_dich_online` VARCHAR(255) NULL,                     -- CỘT MỚI THÊM
+    `trang_thai_thanh_toan` VARCHAR(50) DEFAULT 'ChuaThanhToan',
+    `ma_giao_dich_online` VARCHAR(255) NULL,          
+    
+    -- QUẢN LÝ
     `trang_thai_don` VARCHAR(50) NOT NULL,
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    -- KHÓA NGOẠI
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
     FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`),
+    FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`),
     FOREIGN KEY (`tan_suat_id`) REFERENCES `TanSuat`(`id`)
 );
 
