@@ -3,13 +3,6 @@ import { Link } from 'react-router-dom';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-/**
- * frequencyMode:
- *  'none'     → Không chọn tần suất (chăm sóc nội thất, deep clean - làm 1 lần)
- *  'flexible' → Có 2 lựa chọn tần suất: ca lẻ + gói tháng
- *  'full'     → Có 3 lựa chọn tần suất: 24/7 + ca lẻ + gói tháng
- */
-
 const PACKAGE_GROUPS = [
   {
     groupId: 'popular',
@@ -265,36 +258,28 @@ const SHIFT_247_OPTIONS = [
   { id: 'shift-full', label: 'Cả ngày lẫn đêm', hours: '24 giờ', icon: 'bedtime', desc: '24 giờ liên tục' },
 ];
 
-// ── CARE_OPTIONS_MAP: giá card đầu = base_price của gói, các card sau tăng dần ──
-// Hàm tạo CARE_OPTIONS_MAP động theo base_price của từng gói
 const buildCareOptionsMap = () => ({
   aircon: [
-    // base_price của 'aircon' = 180000
     { id: 'ac-wall', label: 'Máy lạnh treo tường', price: 180000, baseHours: 1 },
     { id: 'ac-ceiling', label: 'Máy lạnh âm trần', price: 350000, baseHours: 2 },
   ],
   sofa: [
-    // base_price của 'sofa' = 250000
     { id: 'sofa-fabric', label: 'Sofa vải / nỉ', price: 250000, baseHours: 2 },
     { id: 'sofa-leather', label: 'Sofa da', price: 400000, baseHours: 2 },
   ],
   mattress: [
-    // base_price của 'mattress' = 300000
     { id: 'mat-kymdan', label: 'Nệm cao su', price: 300000, baseHours: 1.5 },
     { id: 'mat-spring', label: 'Nệm lò xo / bông ép', price: 420000, baseHours: 1 },
   ],
   kitchen: [
-    // base_price của 'kitchen' = 220000
     { id: 'kit-std', label: 'Vệ sinh bếp tiêu chuẩn', price: 220000, baseHours: 2 },
     { id: 'kit-deep', label: 'Vệ sinh bếp + Máy hút mùi', price: 420000, baseHours: 3 },
   ],
   carpet: [
-    // base_price của 'carpet' = 200000
     { id: 'carp-small', label: 'Thảm nhỏ (dưới 4m²)', price: 200000, baseHours: 1 },
     { id: 'carp-large', label: 'Thảm lớn (trên 4m²)', price: 360000, baseHours: 2 },
   ],
   office: [
-    // base_price của 'office' = 160000
     { id: 'office-small', label: 'Văn phòng nhỏ (dưới 50m²)', price: 160000, baseHours: 2 },
     { id: 'office-medium', label: 'Văn phòng vừa (50–100m²)', price: 280000, baseHours: 3 },
     { id: 'office-large', label: 'Văn phòng lớn (trên 100m²)', price: 450000, baseHours: 5 },
@@ -303,8 +288,6 @@ const buildCareOptionsMap = () => ({
 
 const CARE_OPTIONS_MAP = buildCareOptionsMap();
 
-// ── AREA_OPTIONS: card đầu dùng base_price của gói, các card sau tăng dần ──
-// Hàm tạo area options theo base_price truyền vào
 const buildAreaOptionsNormal = (base_price) => [
   { id: 'under-55', label: 'Dưới 55m²', sub: 'Khoảng 1–2 phòng', baseHours: 2, price: base_price },
   { id: '55-85', label: '55 – 85m²', sub: 'Khoảng 2–3 phòng', baseHours: 3, price: Math.round(base_price * 1.3) },
@@ -338,9 +321,8 @@ const PREMIUM_RATE = 0.25;
 const MAX_HOURS_NORMAL = 4;
 const MAX_HOURS_DEEP = 8;
 
-// ── Giờ hoạt động của dịch vụ ──
-const SERVICE_START_HOUR = 6;   // 6:00 sáng
-const SERVICE_END_HOUR = 23;    // 23:00 tối (không nhận đặt lịch bắt đầu từ 23h trở đi)
+const SERVICE_START_HOUR = 6;
+const SERVICE_END_HOUR = 23;
 
 const WEEK_DAY_OPTIONS = [
   { id: 'mon', label: 'T2', full: 'Thứ Hai' },
@@ -386,6 +368,12 @@ const PAYMENT_METHODS = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmt = n => n.toLocaleString('vi-VN') + 'đ';
+
+// ✅ FIX 1: Helper sắp xếp mảng weekDay IDs theo thứ tự T2 → CN
+const sortWeekDays = (ids) => {
+  const order = WEEK_DAY_OPTIONS.map(o => o.id);
+  return [...ids].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+};
 
 const getNext7Days = () => {
   const days = [];
@@ -467,6 +455,34 @@ const calcTotalHours = (baseHours, extraIds) =>
   baseHours + EXTRA_SERVICES.filter(s => extraIds.includes(s.id)).reduce((sum, s) => sum + s.addHours, 0);
 
 const calcMonthlySessions = (weekDayCount, months) => weekDayCount * 4 * months;
+
+const generateMonthlyDates = (months, weekDaysList) => {
+  if (!months || !weekDaysList || weekDaysList.length === 0) return [];
+  const start = new Date();
+  start.setDate(start.getDate() + 3);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + parseInt(months, 10));
+  end.setDate(end.getDate() - 1);
+  end.setHours(23, 59, 59, 999);
+
+  const dates = [];
+  const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  const targetDays = weekDaysList.map(d => dayMap[d]);
+
+  const curr = new Date(start);
+  while (curr <= end) {
+    if (targetDays.includes(curr.getDay())) {
+      const y = curr.getFullYear();
+      const m = String(curr.getMonth() + 1).padStart(2, '0');
+      const d = String(curr.getDate()).padStart(2, '0');
+      dates.push(`${y}-${m}-${d}`);
+    }
+    curr.setDate(curr.getDate() + 1);
+  }
+  return dates;
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -989,7 +1005,7 @@ const Schedule247 = ({
   return (
     <div className="space-y-6">
       <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-        <SectionTitle icon="schedule">Chọn ca làm việc</SectionTitle>
+        <SectionTitle icon="schedule" refProp={sectionRefs?.shift247}>Chọn ca làm việc</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {SHIFT_247_OPTIONS.map(opt => {
             const isSelected = shift247 === opt.id;
@@ -1106,6 +1122,132 @@ const Schedule247 = ({
   );
 };
 
+// ─── CalendarModal ────────────────────────────────────────────────────────────
+
+const CalendarModal = ({ isOpen, onClose, defaultDates, customDates, onSave, durationMonths }) => {
+  const [tempDates, setTempDates] = useState(new Set());
+  const [baseDate, setBaseDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const start = new Date();
+      start.setDate(start.getDate() + 3);
+      start.setHours(0, 0, 0, 0);
+      setBaseDate(start);
+
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + parseInt(durationMonths, 10));
+      end.setDate(end.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+      setEndDate(end);
+
+      if (customDates) {
+        setTempDates(new Set(customDates));
+      } else {
+        setTempDates(new Set(defaultDates));
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  if (!isOpen || !baseDate || !endDate) return null;
+
+  const toggleDate = (dateStr) => {
+    setTempDates(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(dateStr)) newSet.delete(dateStr);
+      else newSet.add(dateStr);
+      return newSet;
+    });
+  };
+
+  const handleSave = () => {
+    onSave(Array.from(tempDates));
+  };
+
+  // ✅ FIX 3: Render tất cả các tháng dương lịch có ngày nằm trong [baseDate, endDate]
+  // VD: baseDate=28/5, endDate=27/6 → render Tháng 5 VÀ Tháng 6 (không chỉ 1 tháng)
+  const monthsToRender = [];
+  {
+    let y = baseDate.getFullYear();
+    let m = baseDate.getMonth();
+    const endY = endDate.getFullYear();
+    const endM = endDate.getMonth();
+    while (y < endY || (y === endY && m <= endM)) {
+      monthsToRender.push({ year: y, month: m });
+      m++;
+      if (m > 11) { m = 0; y++; }
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-surface rounded-2xl p-6 max-w-2xl w-full h-[80vh] flex flex-col shadow-2xl border border-outline-variant/30" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-start mb-4 shrink-0">
+          <div>
+            <h3 className="font-h3 text-h3 text-on-surface">Tùy chỉnh lịch làm việc</h3>
+            <p className="text-sm text-on-surface-variant mt-1">Chạm vào ngày để thêm/bỏ ca làm việc</p>
+          </div>
+          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface p-1">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+          {monthsToRender.map(({ year, month }) => {
+            const firstDay = new Date(year, month, 1).getDay(); // 0(Sun) - 6(Sat)
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
+            // adjust offset for starting on Monday (1)
+            const emptyCells = firstDay === 0 ? 6 : firstDay - 1;
+            
+            return (
+              <div key={`${year}-${month}`} className="border border-outline-variant/30 rounded-xl p-4 bg-surface-container-lowest">
+                <h4 className="font-bold text-center text-primary mb-3">Tháng {month + 1}/{year}</h4>
+                <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-on-surface-variant mb-2">
+                  <div>T2</div><div>T3</div><div>T4</div><div>T5</div><div>T6</div><div>T7</div><div>CN</div>
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({length: emptyCells}).map((_, i) => <div key={`empty-${i}`}></div>)}
+                  {days.map(d => {
+                    const dateObj = new Date(year, month, d);
+                    dateObj.setHours(0, 0, 0, 0);
+                    const y = dateObj.getFullYear();
+                    const mStr = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const dStr = String(dateObj.getDate()).padStart(2, '0');
+                    const dateStr = `${y}-${mStr}-${dStr}`;
+                    const isSelected = tempDates.has(dateStr);
+                    const isOutside = dateObj < baseDate;
+
+                    return (
+                      <button
+                        key={d}
+                        disabled={isOutside}
+                        onClick={() => toggleDate(dateStr)}
+                        className={`aspect-square flex items-center justify-center rounded-full text-sm transition-all
+                          ${isOutside ? 'opacity-30 cursor-not-allowed' : ''}
+                          ${isSelected && !isOutside ? 'bg-primary text-on-primary font-bold shadow-md' : ''}
+                          ${!isSelected && !isOutside ? 'hover:bg-surface-container text-on-surface' : ''}
+                        `}
+                      >
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-4 pt-4 border-t border-outline-variant/30 flex justify-end gap-3 shrink-0">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl font-semibold text-on-surface-variant hover:bg-surface-container">Hủy</button>
+          <button onClick={handleSave} className="px-6 py-2.5 bg-primary text-on-primary rounded-xl font-semibold hover:bg-primary-container">Lưu lịch</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const BookingPage = () => {
@@ -1116,7 +1258,6 @@ const BookingPage = () => {
     headingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [step]);
 
-  // ── Step 1 state ──
   const [selectedPackage, setSelectedPackage] = useState('basic-single');
   const [showTasksId, setShowTasksId] = useState(null);
   const [selectedArea, setSelectedArea] = useState(null);
@@ -1126,8 +1267,6 @@ const BookingPage = () => {
   const [staffSelfPick, setStaffSelfPick] = useState(false);
   const [premiumStaff, setPremiumStaff] = useState(false);
 
-  // ── Step 2 state ──
-  // careOptionId = null → chưa chọn (không tự chọn nữa)
   const [careOptionId, setCareOptionId] = useState(null);
   const [frequencyChoice, setFrequencyChoice] = useState(null);
   const [isWeeklyRepeat, setIsWeeklyRepeat] = useState(false);
@@ -1137,15 +1276,15 @@ const BookingPage = () => {
   const [selectedTime, setSelectedTime] = useState(null);
   const [customTimeValue, setCustomTimeValue] = useState(null);
   const [showCustomTime, setShowCustomTime] = useState(false);
+  const [customDates, setCustomDates] = useState(null);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [recurringDay, setRecurringDay] = useState('');
 
-  // 24/7 state
   const [shift247, setShift247] = useState(null);
   const [duration247, setDuration247] = useState('7');
   const [startDate247, setStartDate247] = useState(null);
 
-  // ── Step 3 state ──
   const [contactMode, setContactMode] = useState('saved');
   const [selectedSavedContact, setSelectedSavedContact] = useState(0);
   const [newContact, setNewContact] = useState({ name: '', phone: '', email: '' });
@@ -1154,19 +1293,18 @@ const BookingPage = () => {
   const [newAddress, setNewAddress] = useState({ street: '', district: '', note: '' });
   const [staffNote, setStaffNote] = useState('');
 
-  // ── Step 4 state ──
   const [paymentMethod, setPaymentMethod] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoDiscount, setPromoDiscount] = useState(0);
 
-  // ── Step 5 task modal ──
   const [showStep5Tasks, setShowStep5Tasks] = useState(false);
 
-  // ── Errors & refs ──
+  const [summaryOpen, setSummaryOpen] = useState({ service: true, schedule: false, payment: false });
+  const toggleSummary = (key) => setSummaryOpen(p => ({ ...p, [key]: !p[key] }));
+
   const [errors, setErrors] = useState({});
 
-  // ── Tick mỗi 1s để re-validate giờ theo thời gian thực ──
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 1000);
@@ -1183,9 +1321,9 @@ const BookingPage = () => {
     name: useRef(null),
     street: useRef(null),
     paymentMethod: useRef(null),
+    shift247: useRef(null),
   };
 
-  // ── Derived ──
   const pkgData = PACKAGES.find(p => p.id === selectedPackage) || PACKAGES[0];
   const frequencyMode = pkgData.frequencyMode;
 
@@ -1209,7 +1347,6 @@ const BookingPage = () => {
   const currentCareOptions = CARE_OPTIONS_MAP[pkgData.id];
   const careData = isCare ? currentCareOptions?.find(o => o.id === careOptionId) : null;
 
-  // ── Tạo areaList động theo base_price của gói hiện tại ──
   const areaList = isDeep
     ? buildAreaOptionsDeep(pkgData.base_price)
     : buildAreaOptionsNormal(pkgData.base_price);
@@ -1230,7 +1367,6 @@ const BookingPage = () => {
   const selfPickFee = staffSelfPick ? SELF_PICK_FEE : 0;
   const travelFee = 15000;
   const extrasTotal = EXTRA_SERVICES.filter(s => extras.includes(s.id)).reduce((sum, s) => sum + s.price, 0);
-  // basePrice: dùng giá từ tùy chọn chi tiết (care/area) hoặc base_price của gói
   const basePrice = isCare
     ? (careData?.price || pkgData.base_price)
     : areaData
@@ -1246,23 +1382,56 @@ const BookingPage = () => {
   const monthlyDurationData = MONTHLY_DURATION_OPTIONS.find(d => d.id === monthlyDuration);
   const weeklySessionCount = isMonthly && selectedWeekDays.length > 0 ? selectedWeekDays.length : 1;
   const monthlySessionsPerMonth = weeklySessionCount * 4;
+
+  const defaultDates = isMonthly && selectedWeekDays.length > 0 && monthlyDurationData
+    ? generateMonthlyDates(monthlyDurationData.months, selectedWeekDays)
+    : [];
+
+  const isCustomSchedule = customDates !== null && customDates.length > 0;
+
+  const totalSessions =
+  isMonthly && selectedWeekDays.length > 0 && monthlyDurationData
+    ? (isCustomSchedule && customDates
+        ? customDates.length
+        : defaultDates.length > 0
+          ? defaultDates.length
+          : calcMonthlySessions(selectedWeekDays.length, monthlyDurationData.months))
+    : null;
+
   const monthlyRawTotal = isMonthly
-    ? basePrice * monthlySessionsPerMonth * (monthlyDurationData?.months || 1)
-    : 0;
+  ? basePrice * (totalSessions ?? monthlySessionsPerMonth * (monthlyDurationData?.months || 1))
+  : 0;
   const monthlyDiscount =
     isMonthly && monthlyDurationData
       ? Math.round(monthlyRawTotal * (monthlyDurationData.discount / 100))
       : 0;
-  const totalSessions =
-    isMonthly && selectedWeekDays.length > 0 && monthlyDurationData
-      ? calcMonthlySessions(selectedWeekDays.length, monthlyDurationData.months)
-      : null;
 
   const showPremium = selectedPackage === 'basic-single' || selectedPackage === 'basic-monthly';
   const premiumFeePerSession = premiumStaff && showPremium && areaData ? Math.round(basePrice * PREMIUM_RATE) : 0;
   const premiumFeeTotal = isMonthly
-    ? premiumFeePerSession * monthlySessionsPerMonth * (monthlyDurationData?.months || 1)
+    ? premiumFeePerSession * (totalSessions ?? monthlySessionsPerMonth * (monthlyDurationData?.months || 1))
     : premiumFeePerSession;
+
+  const handleSaveCalendar = (newDates) => {
+    const sortedNew = [...newDates].sort();
+    const sortedDefault = [...defaultDates].sort();
+    let isMatch = sortedNew.length === sortedDefault.length;
+    if (isMatch) {
+      for (let i = 0; i < sortedNew.length; i++) {
+        if (sortedNew[i] !== sortedDefault[i]) {
+          isMatch = false;
+          break;
+        }
+      }
+    }
+    
+    if (isMatch) {
+      setCustomDates(null);
+    } else {
+      setCustomDates(sortedNew);
+    }
+    setShowCalendarModal(false);
+  };
 
   const singleRepeatDiscount = 0;
 
@@ -1299,11 +1468,9 @@ const BookingPage = () => {
     return [];
   };
 
-  // ── handleSelectPackage: KHÔNG tự chọn careOptionId nữa ──
   const handleSelectPackage = id => {
     if (id === selectedPackage) return;
     setSelectedPackage(id);
-    // Reset về null, khách tự chọn
     setCareOptionId(null);
     setFrequencyChoice(null);
     setSelectedArea(null);
@@ -1319,6 +1486,8 @@ const BookingPage = () => {
     setSelectedTime(null);
     setCustomTimeValue(null);
     setShowCustomTime(false);
+    setCustomDates(null);
+    setShowCalendarModal(false);
     setRecurringDay('');
     setShift247(null);
     setDuration247('7');
@@ -1343,6 +1512,8 @@ const BookingPage = () => {
     setSelectedTime(null);
     setCustomTimeValue(null);
     setShowCustomTime(false);
+    setCustomDates(null);
+    setShowCalendarModal(false);
     setSelectedWeekDays([]);
     setMonthlyDuration('1');
     setShift247(null);
@@ -1363,6 +1534,7 @@ const BookingPage = () => {
 
   const toggleWeekDay = id => {
     setErrors(p => ({ ...p, date: null }));
+    setCustomDates(null);
     if (selectedWeekDays.includes(id)) {
       setSelectedWeekDays(prev => prev.filter(d => d !== id));
     } else {
@@ -1395,7 +1567,6 @@ const BookingPage = () => {
   const validateStep1 = () => {
     const e = {};
     if (isCare) {
-      // Phải tự chọn, không auto-select
       if (!careOptionId) e.careOption = 'Vui lòng chọn loại dịch vụ cụ thể.';
     } else if (!isFamilyPackage) {
       if (!selectedArea) e.area = 'Vui lòng chọn diện tích nhà.';
@@ -1527,7 +1698,6 @@ const BookingPage = () => {
     return true;
   };
 
-  // ── Step Indicator ──
   const renderStepIndicator = () => {
     const steps = [
       { num: 1, label: 'Dịch vụ' },
@@ -1573,7 +1743,6 @@ const BookingPage = () => {
     );
   };
 
-  // ── Cost Breakdown ──
   const renderCostBreakdown = () => {
     if (is247) {
       const shiftData = SHIFT_247_OPTIONS.find(s => s.id === shift247);
@@ -1759,185 +1928,200 @@ const BookingPage = () => {
     );
   };
 
-  // ── Order Summary Sidebar ──
-  const renderOrderSummary = ({ onPrimary, primaryLabel, onBack, showActions = true, confirmMode = false }) => (
-    <aside className="lg:col-span-4 sticky top-24">
-      <div className="bg-background-2 glass-card rounded-2xl shadow-xl border border-white/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-outline-variant/20">
-          <h3 className="font-h3 text-h3 text-primary">Tóm tắt dịch vụ</h3>
-        </div>
-        <div className="px-6 py-4 space-y-3 text-sm">
-          <div className="flex justify-between items-center gap-3 text-on-surface-variant">
-            <span className="shrink-0">Dịch vụ</span>
-            <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm text-right leading-snug">
-              {pkgData.title}
-            </span>
-          </div>
-          {frequencyMode !== 'none' && frequencyChoice && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Hình thức</span>
-              <span className="font-semibold text-on-surface">
-                {is247 ? '24/7 Thường trực' : isSingle ? 'Ca lẻ' : isMonthly ? 'Gói tháng' : '—'}
-              </span>
-            </div>
-          )}
-          {is247 && (
-            <>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Ca</span>
-                <span className="font-semibold text-on-surface">
-                  {SHIFT_247_OPTIONS.find(s => s.id === shift247)?.label || '—'}
-                </span>
-              </div>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Thời hạn</span>
-                <span className="font-semibold text-on-surface">{duration247Data?.label || '—'}</span>
-              </div>
-            </>
-          )}
-          {areaData && !is247 && (
-            <>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Diện tích</span>
-                <span className="font-semibold text-on-surface">{areaData.label}</span>
-              </div>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Thời lượng</span>
-                <span className="font-semibold text-on-surface">
-                  {baseHours}h{isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} NV` : ''}
-                </span>
-              </div>
-            </>
-          )}
-          {isMonthly && selectedWeekDays.length > 0 && (
-            <>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Ngày/tuần</span>
-                <span className="font-semibold text-on-surface">{selectedWeekDays.length} ngày</span>
-              </div>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Buổi/tháng</span>
-                <span className="font-semibold text-on-surface">{monthlySessionsPerMonth} buổi</span>
-              </div>
-            </>
-          )}
-          {isMonthly && monthlyDurationData && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Gói đăng ký</span>
-              <span className="font-semibold text-on-surface">{monthlyDurationData.label}</span>
-            </div>
-          )}
-          {isMonthly && totalSessions && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Tổng số buổi</span>
-              <span className="font-semibold text-on-surface">{totalSessions} buổi</span>
-            </div>
-          )}
-          {isMonthly && monthlyDurationData && monthlyDurationData.discount > 0 && (
-            <div className="flex justify-between text-primary font-medium">
-              <span>Ưu đãi gói {monthlyDurationData.label}</span>
-              <span>-{monthlyDurationData.discount}%</span>
-            </div>
-          )}
-          {!is247 &&
-            extras.length > 0 &&
-            extras.map(id => {
-              const e = EXTRA_SERVICES.find(s => s.id === id);
-              return (
-                <div key={id} className="flex justify-between text-on-surface-variant">
-                  <span>{e.title}</span>
-                  <span>+{fmt(e.price)}</span>
-                </div>
-              );
-            })}
-          <div className="flex justify-between text-on-surface-variant">
-            <span>Phí di chuyển</span>
-            <span>{fmt(travelFee)}</span>
-          </div>
-          {staffSelfPick && !is247 && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Phí tự chọn NV</span>
-              <span>+{fmt(selfPickFee)}</span>
-            </div>
-          )}
-          {premiumFeeTotal > 0 && !is247 && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span className="flex items-center gap-1">
-                <span
-                  className="material-symbols-outlined text-sm text-primary"
-                  style={{ fontVariationSettings: "'FILL' 1" }}>
-                  diamond
-                </span>
-                Dịch vụ Cao cấp
-              </span>
-              <span>+{fmt(premiumFeeTotal)}</span>
-            </div>
-          )}
-          {isUrgent && !is247 && (
-            <div className="flex justify-between text-error font-medium">
-              <span>Phí đặt gấp (hôm nay)</span>
-              <span>+{fmt(urgentFee)}</span>
-            </div>
-          )}
-          {is247 && discount247 > 0 && (
-            <div className="flex justify-between text-primary font-medium">
-              <span>Ưu đãi đăng ký dài</span>
-              <span>-{fmt(discount247)}</span>
-            </div>
-          )}
-          {promoDiscount > 0 && (
-            <div className="flex justify-between text-primary font-medium">
-              <span>Khuyến mãi</span>
-              <span>-{fmt(promoDiscount)}</span>
-            </div>
-          )}
-          {step >= 3 && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Thanh toán</span>
-              <span className="font-semibold text-on-surface">
-                {PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="px-6 pb-5 pt-4 border-t-2 border-dashed border-outline-variant/30">
-          <div className="flex justify-between items-end mb-4">
-            <span className="text-on-surface-variant font-medium text-sm">Tổng thanh toán</span>
-            <span className="text-2xl font-extrabold text-primary">{fmt(total)}</span>
-          </div>
-          {showActions && (
-            <>
-              {confirmMode && (
-                <p className="text-xs text-center text-on-surface-variant mb-4">
-                  Bằng việc bấm Xác nhận, bạn đồng ý với{' '}
-                  <Link to="/terms" className="text-primary underline">
-                    Điều khoản sử dụng
-                  </Link>{' '}
-                  của CleanTrust.
-                </p>
-              )}
-              <button
-                onClick={onPrimary}
-                className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                {primaryLabel}
-                <span className="material-symbols-outlined">{confirmMode ? 'check' : 'arrow_forward'}</span>
-              </button>
-              {onBack && (
-                <button
-                  onClick={onBack}
-                  className="w-full mt-3 border-2 border-outline-variant py-3.5 rounded-xl font-semibold hover:bg-surface-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined">arrow_back</span>
-                  Quay lại
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </aside>
-  );
+  const renderOrderSummary = ({ onPrimary, primaryLabel, onBack, showActions = true, confirmMode = false }) => {
 
-  // ── Task Modal ──
+    const AccordionSection = ({ sectionKey, icon, title, children }) => {
+      const isOpen = summaryOpen[sectionKey];
+      const hasContent = React.Children.toArray(children).some(Boolean);
+      if (!hasContent) return null;
+      return (
+        <div className="border border-outline-variant/20 rounded-xl overflow-hidden">
+          <button
+            onClick={() => toggleSummary(sectionKey)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-surface-container-lowest hover:bg-surface-container transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-base">{icon}</span>
+              <span className="text-sm font-bold text-on-surface">{title}</span>
+            </div>
+            <span className={`material-symbols-outlined text-on-surface-variant text-base transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+              expand_more
+            </span>
+          </button>
+          {isOpen && (
+            <div className="px-4 pb-4 pt-2 border-t border-outline-variant/10 bg-surface space-y-2">
+              {children}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // Row giữ nguyên style gốc
+    const Row = ({ label, value, highlight }) => (
+      <div className="flex justify-between text-on-surface-variant">
+        <span>{label}</span>
+        <span className={`font-semibold ${highlight ? 'text-primary font-medium' : 'text-on-surface'}`}>{value}</span>
+      </div>
+    );
+
+    return (
+      <aside className="lg:col-span-4 sticky top-24">
+        <div className="bg-background-2 glass-card rounded-2xl shadow-xl border border-white/50 overflow-hidden">
+          <div className="px-6 py-5 border-b border-outline-variant/20">
+            <h3 className="font-h3 text-h3 text-primary">Tóm tắt dịch vụ</h3>
+          </div>
+
+          {/* Scrollable accordion body */}
+          <div className="px-4 py-3 space-y-2 max-h-[420px] overflow-y-auto">
+
+            {/* ── NHÓM 1: Dịch vụ ── */}
+            <AccordionSection sectionKey="service" icon="cleaning_services" title="Dịch vụ & Chi phí">
+              <Row label="Dịch vụ" value={
+                <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm text-right leading-snug">
+                  {pkgData.title}
+                </span>
+              } />
+              {step >= 2 && (areaData || careData) && !is247 && (
+                <Row label="Giá / buổi" value={fmt(basePrice)} />
+              )}
+              {frequencyMode !== 'none' && frequencyChoice && (
+                <Row label="Hình thức"
+                  value={is247 ? '24/7 Thường trực' : isSingle ? 'Ca lẻ' : isMonthly ? 'Gói tháng' : '—'} />
+              )}
+              {is247 && <>
+                <Row label="Ca" value={SHIFT_247_OPTIONS.find(s => s.id === shift247)?.label || '—'} />
+                <Row label="Thời hạn" value={duration247Data?.label || '—'} />
+              </>}
+              {areaData && !is247 && <>
+                <Row label="Diện tích" value={areaData.label} />
+                <Row label="Thời lượng" value={`${baseHours}h${isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} NV` : ''}`} />
+              </>}
+              {isMonthly && selectedWeekDays.length > 0 && (
+                <Row label="Ngày/tuần" value={isCustomSchedule ? 'Tùy chỉnh' : `${selectedWeekDays.length} ngày`} />
+              )}
+              {isMonthly && monthlyDurationData && (
+                <Row label="Gói đăng ký" value={monthlyDurationData.label} />
+              )}
+              {isMonthly && totalSessions && (
+                <Row label="Tổng số buổi" value={`${totalSessions} buổi`} />
+              )}
+              {isMonthly && monthlyDurationData && monthlyDurationData.discount > 0 && (
+                <Row label={`Ưu đãi gói ${monthlyDurationData.label}`} value={`-${monthlyDurationData.discount}%`} highlight />
+              )}
+              {!is247 && extras.map(id => {
+                const e = EXTRA_SERVICES.find(s => s.id === id);
+                return <Row key={id} label={e.title} value={`+${fmt(e.price)}`} />;
+              })}
+              <Row label="Phí di chuyển" value={fmt(travelFee)} />
+              {staffSelfPick && !is247 && <Row label="Phí tự chọn NV" value={`+${fmt(selfPickFee)}`} />}
+              {premiumFeeTotal > 0 && !is247 && <>
+                {isMonthly && (
+                  <Row label={
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
+                      Cao cấp / buổi
+                    </span>
+                  } value={`+${fmt(premiumFeePerSession)}`} />
+                )}
+                <Row
+                  label={
+                    <span className="flex flex-col">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
+                        Dịch vụ Cao cấp
+                      </span>
+                      {isMonthly && totalSessions && (
+                        <span className="text-xs text-on-surface-variant pl-5">({totalSessions} buổi)</span>
+                      )}
+                    </span>
+                  }
+                  value={`+${fmt(premiumFeeTotal)}`}
+                />
+              </>}
+              {isUrgent && !is247 && (
+                <Row label="Phí đặt gấp (hôm nay)" value={`+${fmt(urgentFee)}`} highlight />
+              )}
+              {is247 && discount247 > 0 && (
+                <Row label="Ưu đãi đăng ký dài" value={`-${fmt(discount247)}`} highlight />
+              )}
+              {promoDiscount > 0 && (
+                <Row label="Khuyến mãi" value={`-${fmt(promoDiscount)}`} highlight />
+              )}
+            </AccordionSection>
+
+            {/* ── NHÓM 2: Lịch hẹn ── */}
+            {step >= 2 && (selectedDayObj || selectedWeekDays.length > 0 || startDate247 !== null) && (
+              <AccordionSection sectionKey="schedule" icon="calendar_month" title="Lịch hẹn">
+                {is247 && startDate247 !== null && <>
+                  <Row label="Ngày bắt đầu" value={`${next7Days[startDate247]?.dateNum}/${next7Days[startDate247]?.month + 1}/${next7Days[startDate247]?.year}`} />
+                  <Row label="Ca" value={SHIFT_247_OPTIONS.find(s => s.id === shift247)?.label || '—'} />
+                  <Row label="Thời hạn" value={duration247Data?.label || '—'} />
+                </>}
+                {isSingle && selectedDayObj && <>
+                  <Row label="Ngày" value={`${selectedDayObj.label} ${selectedDayObj.dateNum}/${selectedDayObj.month + 1}/${selectedDayObj.year}`} />
+                  {effectiveTime && <Row label="Giờ bắt đầu" value={effectiveTime} />}
+                  {isWeeklyRepeat && <Row label="Tần suất" value="Lặp lại hàng tuần" highlight />}
+                </>}
+                {isMonthly && selectedWeekDays.length > 0 && <>
+                  <Row label="Các ngày" value={
+                    isCustomSchedule ? 'Tùy chỉnh'
+                      : sortWeekDays(selectedWeekDays).map(id => WEEK_DAY_OPTIONS.find(o => o.id === id)?.label).join(', ')
+                  } />
+                  {effectiveTime && <Row label="Giờ bắt đầu" value={effectiveTime} />}
+                </>}
+                {pkgData.type === 'deep' && frequencyMode === 'none' && selectedDayObj && <>
+                  <Row label="Ngày" value={`${selectedDayObj.label} ${selectedDayObj.dateNum}/${selectedDayObj.month + 1}/${selectedDayObj.year}`} />
+                  {effectiveTime && <Row label="Giờ bắt đầu" value={effectiveTime} />}
+                </>}
+              </AccordionSection>
+            )}
+
+            {/* ── NHÓM 3: Thanh toán ── */}
+            {step >= 3 && (
+              <AccordionSection sectionKey="payment" icon="payments" title="Thanh toán">
+                <Row label="Phương thức" value={PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label || '—'} />
+              </AccordionSection>
+            )}
+
+          </div>
+
+          {/* Tổng + Buttons — luôn hiện, không scroll */}
+          <div className="px-6 pb-5 pt-4 border-t-2 border-dashed border-outline-variant/30">
+            <div className="flex justify-between items-end mb-4">
+              <span className="text-on-surface-variant font-medium text-sm">Tổng thanh toán</span>
+              <span className="text-2xl font-extrabold text-primary">{fmt(total)}</span>
+            </div>
+            {showActions && (
+              <>
+                {confirmMode && (
+                  <p className="text-xs text-center text-on-surface-variant mb-4">
+                    Bằng việc bấm Xác nhận, bạn đồng ý với{' '}
+                    <Link to="/terms" className="text-primary underline">Điều khoản sử dụng</Link>{' '}
+                    của CleanTrust.
+                  </p>
+                )}
+                <button
+                  onClick={onPrimary}
+                  className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  {primaryLabel}
+                  <span className="material-symbols-outlined">{confirmMode ? 'check' : 'arrow_forward'}</span>
+                </button>
+                {onBack && (
+                  <button
+                    onClick={onBack}
+                    className="w-full mt-3 border-2 border-outline-variant py-3.5 rounded-xl font-semibold hover:bg-surface-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">arrow_back</span>
+                    Quay lại
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </aside>
+    );
+  };
+
   const renderTaskModal = ({ pkgIdProp, onClose }) => {
     if (!pkgIdProp) return null;
     const pkg = PACKAGES.find(p => p.id === pkgIdProp);
@@ -2056,7 +2240,6 @@ const BookingPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
 
-              {/* 1A. Gói dịch vụ */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="cleaning_services">Chọn gói dịch vụ</SectionTitle>
                 <div className="space-y-8">
@@ -2120,7 +2303,6 @@ const BookingPage = () => {
                                         {pkg.desc}
                                       </p>
                                     </div>
-                                    {/* Hiển thị giá gốc (base_price) trên card gói */}
                                     <p className="text-sm font-bold text-primary">
                                       từ {fmt(pkg.base_price)}
                                     </p>
@@ -2148,7 +2330,6 @@ const BookingPage = () => {
                 </div>
               </section>
 
-              {/* 1A2. Tùy chọn chi tiết — isCare (care group + office) */}
               {isCare && currentCareOptions && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="build" refProp={sectionRefs.careOption}>Tùy chọn chi tiết</SectionTitle>
@@ -2192,7 +2373,6 @@ const BookingPage = () => {
                 </section>
               )}
 
-              {/* 1B. Tùy chọn chi tiết — Diện tích nhà (non-care, non-family) */}
               {!isCare && !isFamilyPackage && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="straighten" refProp={sectionRefs.area}>
@@ -2262,7 +2442,6 @@ const BookingPage = () => {
                 </section>
               )}
 
-              {/* 1B2. Dịch vụ Cao cấp */}
               {(selectedPackage === 'basic-single' || selectedPackage === 'basic-monthly') && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="workspace_premium">Dịch vụ Cao cấp</SectionTitle>
@@ -2309,8 +2488,7 @@ const BookingPage = () => {
                 </section>
               )}
 
-              {/* 1C. Dịch vụ thêm */}
-              {!isCare && !isFamilyPackage && (
+              {!isCare && !isFamilyPackage && !isMonthly && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="add_circle">Dịch vụ thêm (tùy chọn)</SectionTitle>
                   {areaData && (
@@ -2363,7 +2541,6 @@ const BookingPage = () => {
                   </div>
                 </section>
               )}
-
 
             </div>
             {renderOrderSummary({ primaryLabel: "Tiếp theo", onPrimary: () => { if (validateStep1()) setStep(2); } })}
@@ -2418,7 +2595,14 @@ const BookingPage = () => {
                                 <input
                                   type="radio"
                                   checked={isSelected}
-                                  onChange={() => setMonthlyDuration(opt.id)}
+                                  onChange={() => {
+                                    setMonthlyDuration(opt.id);
+                                    setSelectedWeekDays([]);
+                                    setCustomDates(null);
+                                    setSelectedTime(null);
+                                    setCustomTimeValue(null);
+                                    setShowCustomTime(false);
+                                  }}
                                   className="sr-only"
                                 />
                                 <div
@@ -2457,7 +2641,7 @@ const BookingPage = () => {
                         </p>
                         <div className="flex gap-3 flex-wrap">
                           {WEEK_DAY_OPTIONS.map(d => {
-                            const isSelected = selectedWeekDays.includes(d.id);
+                            const isSelected = selectedWeekDays.includes(d.id) && !isCustomSchedule;
                             const isDisabled = !isSelected && selectedWeekDays.length >= 7;
                             return (
                               <button
@@ -2477,6 +2661,11 @@ const BookingPage = () => {
                               </button>
                             );
                           })}
+                          {isCustomSchedule && (
+                            <div className="relative w-24 h-14 rounded-xl border-2 font-bold text-sm transition-all flex flex-col items-center justify-center gap-0.5 border-primary bg-primary text-on-primary">
+                              Tùy chỉnh
+                            </div>
+                          )}
                         </div>
                         <ErrorMsg message={errors.date} />
                         <div className="mt-6 space-y-5 scroll-mt-28" ref={sectionRefs.time}>
@@ -2494,6 +2683,33 @@ const BookingPage = () => {
                           />
                         </div>
                       </section>
+
+                      {selectedWeekDays.length > 0 && effectiveTime && (
+                        <section className="glass-card bg-surface-container-item rounded-2xl p-6 border-l-4 border-l-primary flex flex-col sm:flex-row items-center justify-between gap-4">
+                          <div>
+                            {/* ✅ FIX 2: Luôn hiển thị tên các ngày đã sort, kể cả khi isCustomSchedule */}
+                            <p className="font-semibold text-on-surface">
+                              Các ngày trong tuần:{' '}
+                              {sortWeekDays(selectedWeekDays)
+                                .map(id => WEEK_DAY_OPTIONS.find(o => o.id === id)?.label)
+                                .join(', ')}
+                              {isCustomSchedule && (
+                                <span className="ml-2 text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+                                  Đã tùy chỉnh
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-sm text-on-surface-variant mt-1">Lịch được tạo tự động dựa trên số tháng và các ngày bạn đã chọn.</p>
+                          </div>
+                          <button
+                            onClick={() => setShowCalendarModal(true)}
+                            className="shrink-0 px-6 py-2.5 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary/20 transition-all flex items-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-xl">calendar_month</span>
+                            Xem / Chỉnh sửa lịch
+                          </button>
+                        </section>
+                      )}
                     </>
                   )}
 
@@ -2668,7 +2884,6 @@ const BookingPage = () => {
                     </section>
                   )}
 
-                  {/* Thú cưng */}
                   <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                     <SectionTitle icon="pets" refProp={sectionRefs.pet}>
                       Nhà bạn có nuôi thú cưng không?
@@ -2713,7 +2928,6 @@ const BookingPage = () => {
                     <ErrorMsg message={errors.pet} />
                   </section>
 
-                  {/* Nhân viên phụ trách */}
                   {selectedPackage === 'basic-single' && (
                     <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                       <SectionTitle icon="badge">Nhân viên phụ trách</SectionTitle>
@@ -2748,9 +2962,7 @@ const BookingPage = () => {
                         />
                         {staffSelfPick && (
                           <p className="flex items-start gap-1.5 text-sm text-on-surface-variant px-1">
-                            <span className="material-symbols-outlined text-base text-primary">
-                              info
-                            </span>
+                            <span className="material-symbols-outlined text-base text-primary">info</span>
                             <span className="flex flex-col">
                               <span>
                                 Phụ phí <strong className="text-on-surface">+{fmt(SELF_PICK_FEE)}</strong> sẽ được tính vào tổng chi phí.
@@ -2800,7 +3012,6 @@ const BookingPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
 
-              {/* Liên hệ */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="person" refProp={sectionRefs.name}>
                   Thông tin liên hệ
@@ -2902,7 +3113,6 @@ const BookingPage = () => {
                 )}
               </section>
 
-              {/* Địa chỉ */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="location_on" refProp={sectionRefs.street}>
                   Địa chỉ vệ sinh
@@ -3017,7 +3227,6 @@ const BookingPage = () => {
                 )}
               </section>
 
-              {/* Ghi chú */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="edit_note">Ghi chú cho nhân viên</SectionTitle>
                 <div className="relative">
@@ -3033,7 +3242,6 @@ const BookingPage = () => {
                 </div>
               </section>
 
-              {/* Phương thức thanh toán */}
               <section
                 className={`glass-card bg-surface-container-item rounded-2xl p-8 transition-colors ${errors.paymentMethod ? 'border border-error/50 bg-error/5' : ''}`}>
                 <SectionTitle icon="payments" refProp={sectionRefs.paymentMethod}>
@@ -3089,7 +3297,6 @@ const BookingPage = () => {
                 )}
               </section>
 
-              {/* Mã khuyến mãi */}
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="redeem">Mã khuyến mãi</SectionTitle>
                 <div className="flex gap-2">
@@ -3149,7 +3356,6 @@ const BookingPage = () => {
                 <SectionTitle icon="receipt_long">Xác nhận thông tin đặt lịch</SectionTitle>
                 <div className="space-y-4">
 
-                  {/* Dịch vụ */}
                   <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
                     <span className="material-symbols-outlined text-primary text-2xl mt-0.5">cleaning_services</span>
                     <div className="flex-1 space-y-2">
@@ -3226,7 +3432,6 @@ const BookingPage = () => {
                     </div>
                   </div>
 
-                  {/* Lịch hẹn */}
                   <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
                     <span className="material-symbols-outlined text-primary text-2xl mt-0.5">calendar_month</span>
                     <div className="flex-1 space-y-2">
@@ -3279,13 +3484,41 @@ const BookingPage = () => {
                             <span className="font-bold text-on-surface">{monthlyDurationData?.label}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-sm text-on-surface-variant">Số ngày / tuần</span>
-                            <span className="font-semibold text-on-surface">{selectedWeekDays.length} ngày</span>
+                            <span className="text-sm text-on-surface-variant">Thời gian thực hiện</span>
+                            <span className="font-semibold text-on-surface">
+                              {(() => {
+                                const start = new Date();
+                                start.setDate(start.getDate() + 3);
+                                let endStr;
+                                if (isCustomSchedule && customDates && customDates.length > 0) {
+                                  const sorted = [...customDates].sort();
+                                  const lastDate = new Date(sorted[sorted.length - 1]);
+                                  endStr = lastDate.toLocaleDateString('vi-VN');
+                                } else {
+                                  const end = new Date(start);
+                                  end.setMonth(end.getMonth() + monthlyDurationData.months);
+                                  end.setDate(end.getDate() - 1);
+                                  endStr = end.toLocaleDateString('vi-VN');
+                                }
+                                return `${start.toLocaleDateString('vi-VN')} - ${endStr}`;
+                              })()}
+                            </span>
                           </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-on-surface-variant">Số ngày / tuần</span>
+                            <span className="font-semibold text-on-surface">
+                              {isCustomSchedule ? 'Tùy chỉnh' : `${selectedWeekDays.length} ngày`}
+                            </span>
+                          </div>
+                          {/* ✅ FIX 1 & 2 applied to Step 4: sorted days */}
                           <div className="flex justify-between items-start">
                             <span className="text-sm text-on-surface-variant">Các ngày</span>
                             <span className="font-semibold text-on-surface text-right ml-4">
-                              {selectedWeekDays.map(id => WEEK_DAY_OPTIONS.find(d => d.id === id)?.full).join(', ')}
+                              {isCustomSchedule
+                                ? `Lịch tùy chỉnh (${customDates.length} buổi)`
+                                : sortWeekDays(selectedWeekDays)
+                                    .map(id => WEEK_DAY_OPTIONS.find(d => d.id === id)?.full)
+                                    .join(', ')}
                             </span>
                           </div>
                           <div className="flex justify-between">
@@ -3340,7 +3573,6 @@ const BookingPage = () => {
                     </div>
                   </div>
 
-                  {/* Thông tin liên hệ */}
                   <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
                     <span className="material-symbols-outlined text-primary text-2xl mt-0.5">person</span>
                     <div className="flex-1 space-y-2">
@@ -3383,7 +3615,6 @@ const BookingPage = () => {
                     </div>
                   </div>
 
-                  {/* Địa chỉ */}
                   <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
                     <span className="material-symbols-outlined text-primary text-2xl mt-0.5">location_on</span>
                     <div className="flex-1 space-y-2">
@@ -3432,7 +3663,6 @@ const BookingPage = () => {
                     </div>
                   )}
 
-                  {/* Chi phí */}
                   <div className="flex gap-4 items-start p-4 bg-surface rounded-xl border border-outline-variant/20">
                     <span className="material-symbols-outlined text-primary text-2xl mt-0.5">receipt_long</span>
                     <div className="flex-1 w-full min-w-0">
@@ -3566,6 +3796,14 @@ const BookingPage = () => {
           </div>
         </div>
       )}
+      <CalendarModal
+        isOpen={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        defaultDates={defaultDates}
+        customDates={customDates}
+        onSave={handleSaveCalendar}
+        durationMonths={monthlyDurationData?.months || 1}
+      />
     </main>
   );
 };
