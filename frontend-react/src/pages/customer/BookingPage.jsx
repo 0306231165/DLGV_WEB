@@ -1300,6 +1300,9 @@ const BookingPage = () => {
 
   const [showStep5Tasks, setShowStep5Tasks] = useState(false);
 
+  const [summaryOpen, setSummaryOpen] = useState({ service: true, schedule: false, payment: false });
+  const toggleSummary = (key) => setSummaryOpen(p => ({ ...p, [key]: !p[key] }));
+
   const [errors, setErrors] = useState({});
 
   const [tick, setTick] = useState(0);
@@ -1925,199 +1928,199 @@ const BookingPage = () => {
     );
   };
 
-  const renderOrderSummary = ({ onPrimary, primaryLabel, onBack, showActions = true, confirmMode = false }) => (
-    <aside className="lg:col-span-4 sticky top-24">
-      <div className="bg-background-2 glass-card rounded-2xl shadow-xl border border-white/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-outline-variant/20">
-          <h3 className="font-h3 text-h3 text-primary">Tóm tắt dịch vụ</h3>
-        </div>
-        <div className="px-6 py-4 space-y-3 text-sm">
-          <div className="flex justify-between items-center gap-3 text-on-surface-variant">
-            <span className="shrink-0">Dịch vụ</span>
-            <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm text-right leading-snug">
-              {pkgData.title}
+  const renderOrderSummary = ({ onPrimary, primaryLabel, onBack, showActions = true, confirmMode = false }) => {
+
+    const AccordionSection = ({ sectionKey, icon, title, children }) => {
+      const isOpen = summaryOpen[sectionKey];
+      const hasContent = React.Children.toArray(children).some(Boolean);
+      if (!hasContent) return null;
+      return (
+        <div className="border border-outline-variant/20 rounded-xl overflow-hidden">
+          <button
+            onClick={() => toggleSummary(sectionKey)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-surface-container-lowest hover:bg-surface-container transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-base">{icon}</span>
+              <span className="text-sm font-bold text-on-surface">{title}</span>
+            </div>
+            <span className={`material-symbols-outlined text-on-surface-variant text-base transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+              expand_more
             </span>
-          </div>
-          {step >= 2 && (areaData || careData) && !is247 && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Giá / buổi</span>
-              <span className="font-semibold text-on-surface">{fmt(basePrice)}</span>
-            </div>
-          )}
-          {frequencyMode !== 'none' && frequencyChoice && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Hình thức</span>
-              <span className="font-semibold text-on-surface">
-                {is247 ? '24/7 Thường trực' : isSingle ? 'Ca lẻ' : isMonthly ? 'Gói tháng' : '—'}
-              </span>
-            </div>
-          )}
-          {is247 && (
-            <>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Ca</span>
-                <span className="font-semibold text-on-surface">
-                  {SHIFT_247_OPTIONS.find(s => s.id === shift247)?.label || '—'}
-                </span>
-              </div>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Thời hạn</span>
-                <span className="font-semibold text-on-surface">{duration247Data?.label || '—'}</span>
-              </div>
-            </>
-          )}
-          {areaData && !is247 && (
-            <>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Diện tích</span>
-                <span className="font-semibold text-on-surface">{areaData.label}</span>
-              </div>
-              <div className="flex justify-between text-on-surface-variant">
-                <span>Thời lượng</span>
-                <span className="font-semibold text-on-surface">
-                  {baseHours}h{isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} NV` : ''}
-                </span>
-              </div>
-            </>
-          )}
-          {isMonthly && selectedWeekDays.length > 0 && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Ngày/tuần</span>
-              <span className="font-semibold text-on-surface">
-                {isCustomSchedule ? 'Tùy chỉnh' : `${selectedWeekDays.length} ngày`}
-              </span>
-            </div>
-          )}
-          {isMonthly && monthlyDurationData && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Gói đăng ký</span>
-              <span className="font-semibold text-on-surface">{monthlyDurationData.label}</span>
-            </div>
-          )}
-          {isMonthly && totalSessions && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Tổng số buổi</span>
-              <span className="font-semibold text-on-surface">{totalSessions} buổi</span>
-            </div>
-          )}
-          {isMonthly && monthlyDurationData && monthlyDurationData.discount > 0 && (
-            <div className="flex justify-between text-primary font-medium">
-              <span>Ưu đãi gói {monthlyDurationData.label}</span>
-              <span>-{monthlyDurationData.discount}%</span>
-            </div>
-          )}
-          {!is247 &&
-            extras.length > 0 &&
-            extras.map(id => {
-              const e = EXTRA_SERVICES.find(s => s.id === id);
-              return (
-                <div key={id} className="flex justify-between text-on-surface-variant">
-                  <span>{e.title}</span>
-                  <span>+{fmt(e.price)}</span>
-                </div>
-              );
-            })}
-          <div className="flex justify-between text-on-surface-variant">
-            <span>Phí di chuyển</span>
-            <span>{fmt(travelFee)}</span>
-          </div>
-          {staffSelfPick && !is247 && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Phí tự chọn NV</span>
-              <span>+{fmt(selfPickFee)}</span>
-            </div>
-          )}
-          {premiumFeeTotal > 0 && !is247 && (
-            <>
-              {isMonthly && (
-                <div className="flex justify-between text-on-surface-variant">
-                  <span className="flex items-center gap-1">
-                    <span
-                      className="material-symbols-outlined text-sm text-primary"
-                      style={{ fontVariationSettings: "'FILL' 1" }}>
-                      diamond
-                    </span>
-                    Cao cấp / buổi
-                  </span>
-                  <span>+{fmt(premiumFeePerSession)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-on-surface-variant">
-                <span className="flex items-center gap-1">
-                  <span
-                    className="material-symbols-outlined text-sm text-primary"
-                    style={{ fontVariationSettings: "'FILL' 1" }}>
-                    diamond
-                  </span>
-                  Dịch vụ Cao cấp{isMonthly && totalSessions ? ` (${totalSessions} buổi)` : ''}
-                </span>
-                <span>+{fmt(premiumFeeTotal)}</span>
-              </div>
-            </>
-          )}
-          {isUrgent && !is247 && (
-            <div className="flex justify-between text-error font-medium">
-              <span>Phí đặt gấp (hôm nay)</span>
-              <span>+{fmt(urgentFee)}</span>
-            </div>
-          )}
-          {is247 && discount247 > 0 && (
-            <div className="flex justify-between text-primary font-medium">
-              <span>Ưu đãi đăng ký dài</span>
-              <span>-{fmt(discount247)}</span>
-            </div>
-          )}
-          {promoDiscount > 0 && (
-            <div className="flex justify-between text-primary font-medium">
-              <span>Khuyến mãi</span>
-              <span>-{fmt(promoDiscount)}</span>
-            </div>
-          )}
-          {step >= 3 && (
-            <div className="flex justify-between text-on-surface-variant">
-              <span>Thanh toán</span>
-              <span className="font-semibold text-on-surface">
-                {PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label}
-              </span>
+          </button>
+          {isOpen && (
+            <div className="px-4 pb-4 pt-2 border-t border-outline-variant/10 bg-surface space-y-2">
+              {children}
             </div>
           )}
         </div>
-        <div className="px-6 pb-5 pt-4 border-t-2 border-dashed border-outline-variant/30">
-          <div className="flex justify-between items-end mb-4">
-            <span className="text-on-surface-variant font-medium text-sm">Tổng thanh toán</span>
-            <span className="text-2xl font-extrabold text-primary">{fmt(total)}</span>
-          </div>
-          {showActions && (
-            <>
-              {confirmMode && (
-                <p className="text-xs text-center text-on-surface-variant mb-4">
-                  Bằng việc bấm Xác nhận, bạn đồng ý với{' '}
-                  <Link to="/terms" className="text-primary underline">
-                    Điều khoản sử dụng
-                  </Link>{' '}
-                  của CleanTrust.
-                </p>
-              )}
-              <button
-                onClick={onPrimary}
-                className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                {primaryLabel}
-                <span className="material-symbols-outlined">{confirmMode ? 'check' : 'arrow_forward'}</span>
-              </button>
-              {onBack && (
-                <button
-                  onClick={onBack}
-                  className="w-full mt-3 border-2 border-outline-variant py-3.5 rounded-xl font-semibold hover:bg-surface-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined">arrow_back</span>
-                  Quay lại
-                </button>
-              )}
-            </>
-          )}
-        </div>
+      );
+    };
+
+    // Row giữ nguyên style gốc
+    const Row = ({ label, value, highlight }) => (
+      <div className="flex justify-between text-on-surface-variant">
+        <span>{label}</span>
+        <span className={`font-semibold ${highlight ? 'text-primary font-medium' : 'text-on-surface'}`}>{value}</span>
       </div>
-    </aside>
-  );
+    );
+
+    return (
+      <aside className="lg:col-span-4 sticky top-24">
+        <div className="bg-background-2 glass-card rounded-2xl shadow-xl border border-white/50 overflow-hidden">
+          <div className="px-6 py-5 border-b border-outline-variant/20">
+            <h3 className="font-h3 text-h3 text-primary">Tóm tắt dịch vụ</h3>
+          </div>
+
+          {/* Scrollable accordion body */}
+          <div className="px-4 py-3 space-y-2 max-h-[420px] overflow-y-auto">
+
+            {/* ── NHÓM 1: Dịch vụ ── */}
+            <AccordionSection sectionKey="service" icon="cleaning_services" title="Dịch vụ & Chi phí">
+              <Row label="Dịch vụ" value={
+                <span className="font-semibold px-3 py-1 bg-secondary-container text-primary rounded-full text-sm text-right leading-snug">
+                  {pkgData.title}
+                </span>
+              } />
+              {step >= 2 && (areaData || careData) && !is247 && (
+                <Row label="Giá / buổi" value={fmt(basePrice)} />
+              )}
+              {frequencyMode !== 'none' && frequencyChoice && (
+                <Row label="Hình thức"
+                  value={is247 ? '24/7 Thường trực' : isSingle ? 'Ca lẻ' : isMonthly ? 'Gói tháng' : '—'} />
+              )}
+              {is247 && <>
+                <Row label="Ca" value={SHIFT_247_OPTIONS.find(s => s.id === shift247)?.label || '—'} />
+                <Row label="Thời hạn" value={duration247Data?.label || '—'} />
+              </>}
+              {areaData && !is247 && <>
+                <Row label="Diện tích" value={areaData.label} />
+                <Row label="Thời lượng" value={`${baseHours}h${isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} NV` : ''}`} />
+              </>}
+              {isMonthly && selectedWeekDays.length > 0 && (
+                <Row label="Ngày/tuần" value={isCustomSchedule ? 'Tùy chỉnh' : `${selectedWeekDays.length} ngày`} />
+              )}
+              {isMonthly && monthlyDurationData && (
+                <Row label="Gói đăng ký" value={monthlyDurationData.label} />
+              )}
+              {isMonthly && totalSessions && (
+                <Row label="Tổng số buổi" value={`${totalSessions} buổi`} />
+              )}
+              {isMonthly && monthlyDurationData && monthlyDurationData.discount > 0 && (
+                <Row label={`Ưu đãi gói ${monthlyDurationData.label}`} value={`-${monthlyDurationData.discount}%`} highlight />
+              )}
+              {!is247 && extras.map(id => {
+                const e = EXTRA_SERVICES.find(s => s.id === id);
+                return <Row key={id} label={e.title} value={`+${fmt(e.price)}`} />;
+              })}
+              <Row label="Phí di chuyển" value={fmt(travelFee)} />
+              {staffSelfPick && !is247 && <Row label="Phí tự chọn NV" value={`+${fmt(selfPickFee)}`} />}
+              {premiumFeeTotal > 0 && !is247 && <>
+                {isMonthly && (
+                  <Row label={
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
+                      Cao cấp / buổi
+                    </span>
+                  } value={`+${fmt(premiumFeePerSession)}`} />
+                )}
+                <Row
+                  label={
+                    <span className="flex flex-col">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
+                        Dịch vụ Cao cấp
+                      </span>
+                      {isMonthly && totalSessions && (
+                        <span className="text-xs text-on-surface-variant pl-5">({totalSessions} buổi)</span>
+                      )}
+                    </span>
+                  }
+                  value={`+${fmt(premiumFeeTotal)}`}
+                />
+              </>}
+              {isUrgent && !is247 && (
+                <Row label="Phí đặt gấp (hôm nay)" value={`+${fmt(urgentFee)}`} highlight />
+              )}
+              {is247 && discount247 > 0 && (
+                <Row label="Ưu đãi đăng ký dài" value={`-${fmt(discount247)}`} highlight />
+              )}
+              {promoDiscount > 0 && (
+                <Row label="Khuyến mãi" value={`-${fmt(promoDiscount)}`} highlight />
+              )}
+            </AccordionSection>
+
+            {/* ── NHÓM 2: Lịch hẹn ── */}
+            {step >= 2 && (selectedDayObj || selectedWeekDays.length > 0 || startDate247 !== null) && (
+              <AccordionSection sectionKey="schedule" icon="calendar_month" title="Lịch hẹn">
+                {is247 && startDate247 !== null && <>
+                  <Row label="Ngày bắt đầu" value={`${next7Days[startDate247]?.dateNum}/${next7Days[startDate247]?.month + 1}/${next7Days[startDate247]?.year}`} />
+                  <Row label="Ca" value={SHIFT_247_OPTIONS.find(s => s.id === shift247)?.label || '—'} />
+                  <Row label="Thời hạn" value={duration247Data?.label || '—'} />
+                </>}
+                {isSingle && selectedDayObj && <>
+                  <Row label="Ngày" value={`${selectedDayObj.label} ${selectedDayObj.dateNum}/${selectedDayObj.month + 1}/${selectedDayObj.year}`} />
+                  {effectiveTime && <Row label="Giờ bắt đầu" value={effectiveTime} />}
+                  {isWeeklyRepeat && <Row label="Tần suất" value="Lặp lại hàng tuần" highlight />}
+                </>}
+                {isMonthly && selectedWeekDays.length > 0 && <>
+                  <Row label="Các ngày" value={
+                    isCustomSchedule ? 'Tùy chỉnh'
+                      : sortWeekDays(selectedWeekDays).map(id => WEEK_DAY_OPTIONS.find(o => o.id === id)?.label).join(', ')
+                  } />
+                  {effectiveTime && <Row label="Giờ bắt đầu" value={effectiveTime} />}
+                </>}
+                {pkgData.type === 'deep' && frequencyMode === 'none' && selectedDayObj && <>
+                  <Row label="Ngày" value={`${selectedDayObj.label} ${selectedDayObj.dateNum}/${selectedDayObj.month + 1}/${selectedDayObj.year}`} />
+                  {effectiveTime && <Row label="Giờ bắt đầu" value={effectiveTime} />}
+                </>}
+              </AccordionSection>
+            )}
+
+            {/* ── NHÓM 3: Thanh toán ── */}
+            {step >= 3 && (
+              <AccordionSection sectionKey="payment" icon="payments" title="Thanh toán">
+                <Row label="Phương thức" value={PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label || '—'} />
+              </AccordionSection>
+            )}
+
+          </div>
+
+          {/* Tổng + Buttons — luôn hiện, không scroll */}
+          <div className="px-6 pb-5 pt-4 border-t-2 border-dashed border-outline-variant/30">
+            <div className="flex justify-between items-end mb-4">
+              <span className="text-on-surface-variant font-medium text-sm">Tổng thanh toán</span>
+              <span className="text-2xl font-extrabold text-primary">{fmt(total)}</span>
+            </div>
+            {showActions && (
+              <>
+                {confirmMode && (
+                  <p className="text-xs text-center text-on-surface-variant mb-4">
+                    Bằng việc bấm Xác nhận, bạn đồng ý với{' '}
+                    <Link to="/terms" className="text-primary underline">Điều khoản sử dụng</Link>{' '}
+                    của CleanTrust.
+                  </p>
+                )}
+                <button
+                  onClick={onPrimary}
+                  className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  {primaryLabel}
+                  <span className="material-symbols-outlined">{confirmMode ? 'check' : 'arrow_forward'}</span>
+                </button>
+                {onBack && (
+                  <button
+                    onClick={onBack}
+                    className="w-full mt-3 border-2 border-outline-variant py-3.5 rounded-xl font-semibold hover:bg-surface-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">arrow_back</span>
+                    Quay lại
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </aside>
+    );
+  };
 
   const renderTaskModal = ({ pkgIdProp, onClose }) => {
     if (!pkgIdProp) return null;
@@ -2485,7 +2488,7 @@ const BookingPage = () => {
                 </section>
               )}
 
-              {!isCare && !isFamilyPackage && (
+              {!isCare && !isFamilyPackage && !isMonthly && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="add_circle">Dịch vụ thêm (tùy chọn)</SectionTitle>
                   {areaData && (
