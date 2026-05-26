@@ -15,7 +15,10 @@ CREATE TABLE `DichVu` (
     `ten_dich_vu` VARCHAR(255) NOT NULL,
     `loai_ca_le` VARCHAR(50) NOT NULL, -- BinhThuong, ChuyenSau
     `co_tieu_chi_chi_tiet` BOOLEAN NOT NULL,
-    `mo_ta` TEXT NULL,
+
+    -- PHẦN HIỂN THỊ NỘI DUNG (ĐÃ TÁCH BIỆT)
+    `mo_ta` VARCHAR(500) NULL, -- MÔ TẢ NGẮN: Chỉ lưu chữ thường (Plain text), hiển thị ở trang danh sách bên ngoài
+    `noi_dung_chi_tiet` LONGTEXT NULL,
     `trang_thai` BOOLEAN DEFAULT TRUE
 );
 
