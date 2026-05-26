@@ -326,14 +326,28 @@ CREATE TABLE `ThongBao` (
     `is_da_doc` BOOLEAN DEFAULT FALSE
 );
 
+CREATE TABLE `PhongChat` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `khach_hang_id` INT NOT NULL,
+    `nhan_vien_id` INT NOT NULL,
+    `don_hang_id` INT NULL,                         -- NULL: Chat tự do/Pre-booking; NOT NULL: Chat theo đơn hàng cụ thể
+    `thoi_gian_nhan_tin_cuoi` DATETIME DEFAULT CURRENT_TIMESTAMP, -- Dùng để sắp xếp danh sách chat (phòng nào có tin mới lên đầu)
+    `trang_thai_phong` VARCHAR(50) DEFAULT 'DangHoatDong',        -- DangHoatDong, DaDong (Khóa chat khi đơn hàng kết thúc)
+    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
+);
+
 CREATE TABLE `TinNhan` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `don_hang_id` INT NOT NULL,
-    `nguoi_gui_loai` VARCHAR(50) NOT NULL,
-    `nguoi_gui_id` INT NOT NULL,
-    `noi_dung` TEXT NOT NULL,
+    `phong_chat_id` INT NOT NULL,                   -- Liên kết thẳng tới phòng chat ở trên
+    `nguoi_gui_loai` VARCHAR(50) NOT NULL,          -- 'KhachHang', 'NhanVien', hoặc 'HeThong' (Tin nhắn tự động của App)
+    `nguoi_gui_id` INT NOT NULL,                    -- Lưu ID của người gửi (KhachHang ID hoặc NhanVien ID)
+    `noi_dung` TEXT NOT NULL,                       -- Nội dung tin nhắn text
+    `is_bi_chan` BOOLEAN DEFAULT FALSE,             -- Cờ đánh dấu nếu tin nhắn chứa SĐT/Link ngoài và bị hệ thống chặn/che đi
+    `trang_thai_doc` BOOLEAN DEFAULT FALSE,         -- FALSE: Chưa xem, TRUE: Đã xem (Seen)
     `thoi_gian_gui` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
+    FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`)
 );
 
 SET FOREIGN_KEY_CHECKS = 1;
