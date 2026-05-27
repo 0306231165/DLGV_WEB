@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const PACKAGE_GROUPS = [
+export const PACKAGE_GROUPS = [
   {
     groupId: 'popular',
     groupLabel: 'Phổ biến',
@@ -197,7 +197,7 @@ const PACKAGE_GROUPS = [
   },
 ];
 
-const PACKAGES = PACKAGE_GROUPS.flatMap(g => g.packages.map(p => ({ ...p, groupId: g.groupId })));
+export const PACKAGES = PACKAGE_GROUPS.flatMap(g => g.packages.map(p => ({ ...p, groupId: g.groupId })));
 
 const FAMILY_PACKAGE_IDS = ['elderly-care', 'babysitting', 'patient-care'];
 
@@ -1251,6 +1251,7 @@ const CalendarModal = ({ isOpen, onClose, defaultDates, customDates, onSave, dur
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const BookingPage = () => {
+  const location = useLocation();
   const [step, setStep] = useState(1);
   const headingRef = useRef(null);
 
@@ -1258,7 +1259,7 @@ const BookingPage = () => {
     headingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [step]);
 
-  const [selectedPackage, setSelectedPackage] = useState('basic-single');
+  const [selectedPackage, setSelectedPackage] = useState(location.state?.selectedPackage || 'basic-single');
   const [showTasksId, setShowTasksId] = useState(null);
   const [selectedArea, setSelectedArea] = useState(null);
   const [extras, setExtras] = useState([]);

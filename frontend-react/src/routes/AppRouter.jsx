@@ -7,7 +7,8 @@ import AccountLayout  from '../pages/customer/account/AccountLayout';
 
 // Import Pages — Customer
 import Home           from '../pages/customer/home/Home';
-// import MyBookingsPage from '../pages/customer/MyBookingsPage';
+import ServicesPage   from '../pages/customer/services/ServicesPage';
+import ServiceDetailPage from '../pages/customer/services/ServiceDetailPage';
 import BookingPage    from '../pages/customer/BookingPage';
 
 // Import Pages — Account
@@ -29,7 +30,8 @@ const AppRouter = () => {
         {/* Phân vùng Khách hàng */}
         <Route path="/" element={<CustomerLayout />}>
           <Route index element={<Home />} />
-
+          <Route path="services"   element={<ServicesPage />} />
+          <Route path="services/:id" element={<ServiceDetailPage />} />
           <Route path="booking"    element={<BookingPage />} />
 
           {/* Trang tài khoản — nested layout với sidebar riêng */}
