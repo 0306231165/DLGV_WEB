@@ -1,5 +1,5 @@
 -- =========================================================================
--- BẢN THIẾT KẾ CƠ SỞ DỮ LIỆU TOÀN DIỆN (FINAL VERSION - 27 BẢNG)
+-- BẢN THIẾT KẾ CƠ SỞ DỮ LIỆU TOÀN DIỆN (FINAL VERSION - 31 BẢNG)
 -- HỆ THỐNG ĐẶT LỊCH GIÚP VIỆC VÀ CHĂM SÓC GIA ĐÌNH CHUYÊN NGHIỆP
 -- SCRIPT SQL DDL CHUẨN - TÍCH HỢP FULL LOGIC UI & THANH TOÁN
 -- =========================================================================
