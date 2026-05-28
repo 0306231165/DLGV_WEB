@@ -21,7 +21,8 @@ const Header = () => {
       <nav className="hidden md:flex space-x-8">
         <Link className={getLinkClass("/")} to="/">Trang chủ</Link>
         <Link className={getLinkClass("/services")} to="/services">Dịch vụ</Link>
-        <Link className={getLinkClass("/reviews")} to="/reviews">Đánh giá</Link>
+        <Link className={getLinkClass("/promotions")} to="/promotions">Khuyến mãi</Link>
+        <Link className={getLinkClass("/contact")} to="/contact">Liên hệ</Link>
         <Link className={getLinkClass("/my-bookings")} to="/my-bookings">Lịch của tôi</Link>
       </nav>
 

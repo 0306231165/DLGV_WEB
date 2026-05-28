@@ -9,13 +9,33 @@ SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE `DichVu` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `ten_dich_vu` VARCHAR(255) NOT NULL,
-    `loai_ca_le` VARCHAR(50) NOT NULL, -- BinhThuong, ChuyenSau
-    `co_tieu_chi_chi_tiet` BOOLEAN NOT NULL,
+    `loai_ca_le` VARCHAR(50) NOT NULL,       -- BinhThuong, ChuyenSau
+    `co_tieu_chi_chi_tiet` BOOLEAN NOT NULL, -- TRUE: Có option diện tích/số phòng..., FALSE: Giá cố định
+    
+    -- CỘT CỨU NGUY ĐƯỢC THÊM VÀO ĐÂY:
+    `don_gia_co_ban` DECIMAL(12,2) NULL,     -- Điền giá vào đây KHI co_tieu_chi_chi_tiet = FALSE
 
-    -- PHẦN HIỂN THỊ NỘI DUNG (ĐÃ TÁCH BIỆT)
-    `mo_ta` VARCHAR(500) NULL, -- MÔ TẢ NGẮN: Chỉ lưu chữ thường (Plain text), hiển thị ở trang danh sách bên ngoài
+    -- PHẦN HIỂN THỊ NỘI DUNG
+    `mo_ta` VARCHAR(500) NULL,               -- MÔ TẢ NGẮN: hiển thị ở trang danh sách bên ngoài
     `noi_dung_chi_tiet` LONGTEXT NULL,
     `trang_thai` BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE `NhomDichVu` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ma_nhom` VARCHAR(50) NOT NULL UNIQUE, -- Vd: 'family', 'care', 'popular'
+    `ten_nhom` VARCHAR(150) NOT NULL,      -- Vd: 'Chăm sóc gia đình', 'Phổ biến'
+    `icon` VARCHAR(500) NULL,               -- Vd: 'volunteer_activism' (Tên icon Material)
+    `thu_tu_hien_thi` INT DEFAULT 0,       -- Dùng để sắp xếp tab nào đứng trước, tab nào đứng sau
+    `trang_thai` BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE `DichVu_NhomDichVu` (
+    `dich_vu_id` INT NOT NULL,
+    `nhom_dich_vu_id` INT NOT NULL,
+    PRIMARY KEY (`dich_vu_id`, `nhom_dich_vu_id`),
+    FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`),
+    FOREIGN KEY (`nhom_dich_vu_id`) REFERENCES `NhomDichVu`(`id`)
 );
 
 CREATE TABLE `TanSuat` (
