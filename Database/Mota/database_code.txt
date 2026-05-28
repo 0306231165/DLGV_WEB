@@ -1,5 +1,5 @@
 -- =========================================================================
--- BẢN THIẾT KẾ CƠ SỞ DỮ LIỆU TOÀN DIỆN (FINAL VERSION - 27 BẢNG)
+-- BẢN THIẾT KẾ CƠ SỞ DỮ LIỆU TOÀN DIỆN (FINAL VERSION - 31 BẢNG)
 -- HỆ THỐNG ĐẶT LỊCH GIÚP VIỆC VÀ CHĂM SÓC GIA ĐÌNH CHUYÊN NGHIỆP
 -- SCRIPT SQL DDL CHUẨN - TÍCH HỢP FULL LOGIC UI & THANH TOÁN
 -- =========================================================================
@@ -120,6 +120,18 @@ CREATE TABLE `NhanVienYeuThich` (
     PRIMARY KEY (`khach_hang_id`, `nhan_vien_id`),
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
+);
+
+CREATE TABLE `NhanVien_DichVu` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `nhan_vien_id` INT NOT NULL,
+    `dich_vu_id` INT NOT NULL,
+    `trang_thai_duyet` VARCHAR(50) DEFAULT 'ChoDuyet', -- ChoDuyet, DaDuyet, TuChoi
+    `ngay_dang_ky` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `ngay_duyet` DATETIME NULL,
+    UNIQUE KEY `unique_nhanvien_dichvu` (`nhan_vien_id`, `dich_vu_id`),
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
+    FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`)
 );
 
 -- -------------------------------------------------------------------------
@@ -304,16 +316,43 @@ CREATE TABLE `DanhGiaNhanVien` (
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
 );
 
+CREATE TABLE `KhieuNai` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `don_hang_id` INT NOT NULL,
+    `nguoi_khieu_nai_loai` VARCHAR(50) NOT NULL,       -- 'KhachHang' hoặc 'NhanVien'
+    `nguoi_khieu_nai_id` INT NOT NULL,
+    `ly_do_khieu_nai` VARCHAR(255) NOT NULL,
+    `mo_ta_chi_tiet` TEXT NULL,
+    `hinh_anh_bang_chung` VARCHAR(255) NULL,           
+    `trang_thai_xu_ly` VARCHAR(50) DEFAULT 'DangXuLy', -- DangXuLy, DaDenBu, TuChoi
+    `ket_qua_xu_ly` TEXT NULL,                         
+    `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `ngay_dong` DATETIME NULL,
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
+);
+
 CREATE TABLE `KhuyenMai` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `ma_code` VARCHAR(50) NOT NULL UNIQUE,
     `phan_tram_giam` INT NOT NULL,
     `giam_toi_da` DECIMAL(12,2) NOT NULL,
-    `gia_tri_don_toan_thieu` DECIMAL(12,2) NOT NULL,
+    `gia_tri_don_toi_thieu` DECIMAL(12,2) NOT NULL,
     `ngay_bat_dau` DATETIME NOT NULL,
     `ngay_ket_thuc` DATETIME NOT NULL,
     `so_luong_dung` INT NOT NULL,
     `trang_thai` BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE `LichSuDungKhuyenMai` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `khach_hang_id` INT NOT NULL,
+    `khuyen_mai_id` INT NOT NULL,
+    `don_hang_id` INT NOT NULL,
+    `so_tien_duoc_giam` DECIMAL(12,2) NOT NULL,
+    `ngay_su_dung` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
+    FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`),
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
 );
 
 CREATE TABLE `ThongBao` (
