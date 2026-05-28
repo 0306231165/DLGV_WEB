@@ -1,8 +1,4 @@
 -- =========================================================================
--- BẢN THIẾT KẾ CƠ SỞ DỮ LIỆU TOÀN DIỆN (FINAL VERSION - 31 BẢNG)
--- HỆ THỐNG ĐẶT LỊCH GIÚP VIỆC VÀ CHĂM SÓC GIA ĐÌNH CHUYÊN NGHIỆP
--- SCRIPT SQL DDL CHUẨN - TÍCH HỢP FULL LOGIC UI & THANH TOÁN
--- =========================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -333,14 +329,49 @@ CREATE TABLE `KhieuNai` (
 
 CREATE TABLE `KhuyenMai` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ma_code` VARCHAR(50) NOT NULL UNIQUE,
-    `phan_tram_giam` INT NOT NULL,
-    `giam_toi_da` DECIMAL(12,2) NOT NULL,
-    `gia_tri_don_toi_thieu` DECIMAL(12,2) NOT NULL,
+    `ma_code` VARCHAR(50) NOT NULL UNIQUE, -- Vd: 'TET100'
+    
+    -- 1. NỘI DUNG HIỂN THỊ TRÊN UI (Giao diện)
+    `tag_hien_thi` VARCHAR(100) NULL,           -- Vd: 'Người dùng mới', 'Tổng vệ sinh'
+    `tieu_de` VARCHAR(255) NOT NULL,            -- Vd: 'Tối đa 50k cho đơn từ 200k'
+    `mo_ta` TEXT NULL,                          -- Vd: 'Áp dụng cho dịch vụ Vệ sinh...'
+    
+    -- 2. ĐIỀU KIỆN ÁP DỤNG
+    `dich_vu_id_ap_dung` INT NULL,              -- Nếu NULL: Áp dụng toàn sàn. Nếu có ID: Chỉ dùng cho dịch vụ đó
+    `gia_tri_don_toi_thieu` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    
+    -- 3. CƠ CHẾ GIẢM GIÁ
+    `loai_giam_gia` VARCHAR(50) NOT NULL,       -- 'PhanTram' (Vd: 20%), 'TruTien' (Vd: 100k), 'MienPhiPhuPhi' (Vd: Free dụng cụ)
+    `gia_tri_giam` DECIMAL(12,2) NOT NULL,      -- Điền 20 (nếu là %), điền 100000 (nếu trừ tiền), điền 0 (nếu Free)
+    `giam_toi_da` DECIMAL(12,2) NULL,           -- Vd: Giảm 20% nhưng TỐI ĐA chỉ được 50k
+    
+    -- 4. THỜI GIAN & SỐ LƯỢNG
     `ngay_bat_dau` DATETIME NOT NULL,
     `ngay_ket_thuc` DATETIME NOT NULL,
-    `so_luong_dung` INT NOT NULL,
-    `trang_thai` BOOLEAN DEFAULT TRUE
+    `so_luong_phat_hanh` INT NOT NULL,          -- Tổng kho
+    `so_luong_da_luu` INT DEFAULT 0,            -- Đã bị khách nhặt vào ví
+    `so_luong_da_dung` INT DEFAULT 0,           -- Đã thực sự thanh toán
+    
+    `trang_thai` BOOLEAN DEFAULT TRUE,
+    
+    -- KHÓA NGOẠI BỔ SUNG (Ràng buộc chặt chẽ với bảng Dịch vụ gốc)
+    FOREIGN KEY (`dich_vu_id_ap_dung`) REFERENCES `DichVu`(`id`)
+);
+
+CREATE TABLE `KhachHang_KhuyenMai` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `khach_hang_id` INT NOT NULL,
+    `khuyen_mai_id` INT NOT NULL,
+    `ngay_luu` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `ngay_su_dung` DATETIME NULL,               -- Cập nhật khi khách dùng mã thanh toán
+    
+    `trang_thai_luu` VARCHAR(50) DEFAULT 'DaLuu', -- 'DaLuu' (Nằm trong ví), 'DaSuDung' (Đã xài xong), 'HetHan' (Quá hạn)
+    
+    -- Ràng buộc: Mỗi khách hàng chỉ được lưu 1 mã khuyến mãi 1 lần duy nhất
+    UNIQUE KEY `unique_khachhang_khuyenmai` (`khach_hang_id`, `khuyen_mai_id`),
+    
+    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
+    FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`)
 );
 
 CREATE TABLE `LichSuDungKhuyenMai` (
