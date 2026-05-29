@@ -80,8 +80,12 @@ CREATE TABLE `OptionTieuChi` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `tieu_chi_id` INT NOT NULL,
     `ten_option` VARCHAR(150) NOT NULL,
-    `thoi_gian_chuan` INT NOT NULL,
-    `don_gia` DECIMAL(12,2) NOT NULL,
+    
+    -- Khai báo đơn vị tính để App biết hiển thị
+    `don_vi_tinh` VARCHAR(50) NOT NULL DEFAULT 'Cai', -- Vd: 'Cai', 'Bo', 'm2', 'Goi/Ca(Phút)'
+    
+    `thoi_gian_chuan` INT NOT NULL,                   -- Số phút làm cho 1 đơn vị
+    `don_gia` DECIMAL(12,2) NOT NULL,                 -- Giá tiền cho 1 đơn vị
     FOREIGN KEY (`tieu_chi_id`) REFERENCES `TieuChiChiTiet`(`id`)
 );
 
@@ -162,41 +166,42 @@ CREATE TABLE `DonHang` (
     `tan_suat_id` INT NOT NULL,
     
     -- CẤU HÌNH LỊCH TRÌNH / GÓI THÁNG / 24/7
-    `tong_so_buoi` INT NOT NULL DEFAULT 1,            -- Tổng số buổi của hợp đồng
+    `tong_so_buoi` INT NOT NULL DEFAULT 1,            -- Tổng số buổi thực tế của hợp đồng (Vd: 30 buổi)
     `is_lap_lai_hang_tuan` BOOLEAN NOT NULL,
-    `cac_ngay_trong_tuan` VARCHAR(50) NULL,           -- vd: '2,4,6'
+    `cac_ngay_trong_tuan` VARCHAR(50) NULL,           -- Vd: '2,4,6'
     `gio_lam_mac_dinh` TIME NULL,                     -- Giờ làm chuẩn của gói
     `so_thang_goi_thang` INT NULL,
-    `ca_lam_247` VARCHAR(50) NULL,                    -- vd: 'Ngay', 'Dem', 'CaNgay'
-    `so_ngay_goi_247` INT NULL,                       -- vd: 7, 14, 30
+    `ca_lam_247` VARCHAR(50) NULL,                    -- Vd: 'Ngay', 'Dem', 'CaNgay'
+    `so_ngay_goi_247` INT NULL,                       
     `tld_giam_goi_thang` INT DEFAULT 0,
     `ngay_bat_dau` DATE NOT NULL,
     `ngay_ket_thuc` DATE NOT NULL,
     
-    -- THÔNG TIN TRIỂN KHAI & GHI CHÚ
+    -- THÔNG TIN TRIỂN KHAI & GHI CHÚ KHÁCH HÀNG
     `ho_ten_thuc_te` VARCHAR(150) NOT NULL,
     `sdt_thuc_te` VARCHAR(15) NOT NULL,
     `dia_chi_thuc_te` VARCHAR(255) NOT NULL,
-    `ghi_chu_cho_nhan_vien` TEXT NULL,                -- Ghi chú text
+    `ghi_chu_cho_nhan_vien` TEXT NULL,                
     
     -- CÁC LỰA CHỌN THÊM (CHECKBOX) & PHỤ PHÍ SNAPSHOT
-    `is_cao_cap` BOOLEAN DEFAULT FALSE,
+    `is_cao_cap` BOOLEAN DEFAULT FALSE,               -- TRUE: Nếu khách chọn gói dịch vụ cao cấp
+    `phu_phi_cao_cap` DECIMAL(12,2) DEFAULT 0.00,     -- Lưu tổng số tiền 'dịch vụ cao cấp +25%' của toàn bộ gói lớn(+ tiền hết các buổi ca lẻ của gói tháng, không tính giảm giá ưu đãi gói tháng)
     `co_thu_cung` BOOLEAN DEFAULT FALSE,
-    `uu_tien_nv_yt` BOOLEAN DEFAULT FALSE,            -- Ưu tiên NV (Không tính phụ phí)
+    `uu_tien_nv_yt` BOOLEAN DEFAULT FALSE,            -- Ưu tiên NV yêu thích
     `is_tu_chon_nv` BOOLEAN DEFAULT FALSE,
     `phu_phi_tu_chon_nv` DECIMAL(12,2) DEFAULT 0.00,  -- Phụ phí tính thêm khi Tự chọn NV
     
-    -- TÀI CHÍNH & THANH TOÁN
-    `tong_tien_ban_dau` DECIMAL(12,2) NOT NULL,
-    `phu_phi_dat_gap` DECIMAL(12,2) DEFAULT 0.00,     -- Phụ phí đặt gấp (Urgent fee)
-    `tong_tien_cuoi_cung` DECIMAL(12,2) NOT NULL,
+    -- TÀI CHÍNH & THANH TOÁN TOÀN DIỆN
+    `tong_tien_ban_dau` DECIMAL(12,2) NOT NULL,       -- Tiền gốc khi chưa tính phụ phí cao cấp / giảm giá
+    `phu_phi_dat_gap` DECIMAL(12,2) DEFAULT 0.00,     
+    `tong_tien_cuoi_cung` DECIMAL(12,2) NOT NULL,     -- Tiền cuối cùng phải trả (Đã gồm +25% cao cấp và -Voucher)
     `tien_giam_giu` DECIMAL(12,2) DEFAULT 0.00,
-    `phuong_thuc_tt` VARCHAR(50) NOT NULL,
+    `phuong_thuc_tt` VARCHAR(50) NOT NULL,            -- TienMat, MoMo, ViWeb
     `trang_thai_thanh_toan` VARCHAR(50) DEFAULT 'ChuaThanhToan',
     `ma_giao_dich_online` VARCHAR(255) NULL,          
     
-    -- QUẢN LÝ
-    `trang_thai_don` VARCHAR(50) NOT NULL,
+    -- TRẠNG THÁI HỢP ĐỒNG
+    `trang_thai_don` VARCHAR(50) NOT NULL,            -- ChoXacNhan, DangThucHien, HoanThanh...
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
     
     -- KHÓA NGOẠI
@@ -219,7 +224,11 @@ CREATE TABLE `DonHang_DichVuThem` (
 CREATE TABLE `DonHang_ChiTietTieuChi` (
     `don_hang_id` INT NOT NULL,
     `option_tieu_chi_id` INT NOT NULL,
-    `gia_luc_dat` DECIMAL(12,2) NOT NULL,
+    
+    -- Lưu số lượng khách chọn (Vd: bấm chọn 3 cái)
+    `so_luong` INT NOT NULL DEFAULT 1,     
+    
+    `gia_luc_dat` DECIMAL(12,2) NOT NULL,             -- Snapshot giá của 1 đơn vị lúc đặt
     PRIMARY KEY (`don_hang_id`, `option_tieu_chi_id`),
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
     FOREIGN KEY (`option_tieu_chi_id`) REFERENCES `OptionTieuChi`(`id`)
@@ -227,16 +236,23 @@ CREATE TABLE `DonHang_ChiTietTieuChi` (
 
 CREATE TABLE `CaLamViec` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `don_hang_id` INT NOT NULL,
-    `nhan_vien_id` INT NULL,
-    `ngay_lam` DATE NOT NULL,
-    `gio_bat_dau` TIME NOT NULL,
-    `thoi_gian_lam_phut` INT NOT NULL,
-    `loai_ca` VARCHAR(50) NOT NULL,
-    `gia_ca_nay` DECIMAL(12,2) NOT NULL,
-    `hoa_hong_app` DECIMAL(12,2) NOT NULL,
-    `thuc_nhan_nv` DECIMAL(12,2) NOT NULL,
-    `trang_thai_ca` VARCHAR(50) NOT NULL,
+    `don_hang_id` INT NOT NULL,                        -- Thuộc Đơn Hàng tổng nào ở trên
+    `nhan_vien_id` INT NULL,                           -- ID nhân viên nhận ca (NULL nếu chưa có ai nhận)
+    `ngay_lam` DATE NOT NULL,                          -- Ngày triển khai ca làm việc thực tế
+    `gio_bat_dau` TIME NOT NULL,                       -- Giờ bắt đầu vào làm của ca đó
+    `thoi_gian_lam_phut` INT NOT NULL,                 -- Số phút làm việc dự kiến
+    `loai_ca` VARCHAR(50) NOT NULL,                    -- CaLe, CaGoiThang, CaGoi247
+    
+    -- TRẠNG THÁI CAO CẤP TỪNG BUỔI
+    `is_cao_cap` BOOLEAN DEFAULT FALSE,               -- Bật TRUE nếu DonHang lớn có is_cao_cap = TRUE
+    
+    -- DOANH THU & ĂN CHIA CỦA RIÊNG BUỔI NÀY
+    `gia_ca_nay` DECIMAL(12,2) NOT NULL,               -- Doanh thu riêng ca này (Đã chia đều 25% phụ phí cao cấp từ đơn hàng)
+    `hoa_hong_app` DECIMAL(12,2) NOT NULL,             -- Tiền công ty giữ lại từ ca này
+    `thuc_nhan_nv` DECIMAL(12,2) NOT NULL,             -- Tiền lương thợ đút túi sau khi hoàn thành ca này
+    `trang_thai_ca` VARCHAR(50) NOT NULL,              -- ChoNhan, ChoDuyet, DaNhan, HoanThanh, KhachHuy, NhanVienHuy
+    
+    -- KHÓA NGOẠI
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
 );
