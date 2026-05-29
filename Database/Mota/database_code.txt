@@ -456,4 +456,22 @@ CREATE TABLE `TinNhan` (
     FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`)
 );
 
+-- -------------------------------------------------------------------------
+-- MODULE 6: LIÊN HỆ TƯ VẤN (KHÁCH VÃNG LAI)
+-- -------------------------------------------------------------------------
+
+CREATE TABLE `LienHe` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ho_ten` VARCHAR(150) NOT NULL,
+    `so_dien_thoai` VARCHAR(15) NOT NULL,
+    `email` VARCHAR(100) NULL,
+    `tieu_de` VARCHAR(255) NULL,
+    `noi_dung` TEXT NOT NULL,
+    
+    -- Cột trạng thái để trên Admin bạn làm nút tick "Đã tư vấn"
+    `trang_thai` VARCHAR(50) DEFAULT 'ChuaXuLy', -- Các giá trị: ChuaXuLy, DaXuLy
+    
+    `ngay_gui` DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 SET FOREIGN_KEY_CHECKS = 1;
