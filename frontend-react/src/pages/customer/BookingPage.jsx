@@ -365,6 +365,18 @@ const PAYMENT_METHODS = [
   { id: 'ewallet', icon: 'smartphone', label: 'MoMo / ZaloPay' },
 ];
 
+const VOUCHERS = [
+  { id: 'CLEANTRUST10', code: 'CLEANTRUST10', title: 'Giảm 10% cho khách hàng mới', desc: 'Áp dụng cho mọi dịch vụ', groupIds: ['all'], discountPercent: 10, discountAmount: null },
+  { id: 'FAMILY50K', code: 'FAMILY50K', title: 'Giảm 50K dịch vụ Gia đình', desc: 'Áp dụng cho Chăm sóc người lớn tuổi, Trông trẻ, Chăm sóc người bệnh', groupIds: ['family'], discountPercent: null, discountAmount: 50000 },
+  { id: 'DEEP200K', code: 'DEEP200K', title: 'Giảm 200K dịch vụ Chuyên sâu', desc: 'Áp dụng cho Dọn sau xây dựng, Tổng vệ sinh', groupIds: ['deep'], discountPercent: null, discountAmount: 200000 },
+  { id: 'CARE15', code: 'CARE15', title: 'Giảm 15% làm sạch nội thất', desc: 'Áp dụng giặt nệm, sofa, máy lạnh', groupIds: ['care'], discountPercent: 15, discountAmount: null },
+  { id: 'CARE100K', code: 'CARE100K', title: 'Giảm 100K giặt rèm', desc: 'Áp dụng khi vệ sinh từ 3 bộ rèm', groupIds: ['care'], discountPercent: null, discountAmount: 100000 },
+  { id: 'CARE_SOFA', code: 'CARESOFA50', title: 'Giảm 50K giặt Sofa', desc: 'Áp dụng riêng cho dịch vụ làm sạch Sofa', groupIds: ['care'], discountPercent: null, discountAmount: 50000 },
+  { id: 'CARE_AC', code: 'COOL2026', title: 'Ưu đãi vệ sinh Máy lạnh', desc: 'Giảm 10% cho dịch vụ vệ sinh máy lạnh', groupIds: ['care'], discountPercent: 10, discountAmount: null },
+  { id: 'CARE_NEW', code: 'CARENEW20', title: 'Khách hàng mới Nội thất', desc: 'Giảm 20% cho lần đầu đặt dịch vụ làm sạch nội thất', groupIds: ['care'], discountPercent: 20, discountAmount: null },
+  { id: 'BUSINESS10', code: 'BUSINESS10', title: 'Giảm 10% Dọn văn phòng', desc: 'Áp dụng cho Doanh nghiệp', groupIds: ['business'], discountPercent: 10, discountAmount: null },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmt = n => n.toLocaleString('vi-VN') + 'đ';
@@ -1267,6 +1279,14 @@ const BookingPage = () => {
   const [staffFavorite, setStaffFavorite] = useState(false);
   const [staffSelfPick, setStaffSelfPick] = useState(false);
   const [premiumStaff, setPremiumStaff] = useState(false);
+  const [preselectedStaff, setPreselectedStaff] = useState(location.state?.preselectedStaff || null);
+
+  // Nếu có nhân viên được chọn trước từ trang chi tiết nhân viên, tự bật staffSelfPick
+  useEffect(() => {
+    if (preselectedStaff) {
+      setStaffSelfPick(true);
+    }
+  }, [preselectedStaff]);
 
   const [careOptionId, setCareOptionId] = useState(null);
   const [frequencyChoice, setFrequencyChoice] = useState(null);
@@ -1300,6 +1320,7 @@ const BookingPage = () => {
   const [promoDiscount, setPromoDiscount] = useState(0);
 
   const [showStep5Tasks, setShowStep5Tasks] = useState(false);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
 
   const [summaryOpen, setSummaryOpen] = useState({ service: true, schedule: false, payment: false });
   const toggleSummary = (key) => setSummaryOpen(p => ({ ...p, [key]: !p[key] }));
@@ -1326,6 +1347,7 @@ const BookingPage = () => {
   };
 
   const pkgData = PACKAGES.find(p => p.id === selectedPackage) || PACKAGES[0];
+  
   const frequencyMode = pkgData.frequencyMode;
 
   const isFamilyPackage = FAMILY_PACKAGE_IDS.includes(pkgData.id);
@@ -1444,7 +1466,17 @@ const BookingPage = () => {
       ? monthlyRawTotal + extrasTotal + travelFee + urgentFee + selfPickFee + premiumFeeTotal
       : basePrice + extrasTotal + travelFee + urgentFee + selfPickFee + premiumFeeTotal;
   }
-  const total = Math.max(0, subtotal - promoDiscount - (is247 ? 0 : monthlyDiscount) - singleRepeatDiscount);
+
+  let actualPromoDiscount = promoDiscount;
+  if (promoApplied) {
+    const activeVoucher = VOUCHERS.find(v => v.code === promoCode);
+    if (activeVoucher?.discountPercent) {
+      const rawServiceCost = is247 ? raw247Total : isMonthly ? monthlyRawTotal : basePrice;
+      actualPromoDiscount = Math.round(rawServiceCost * (activeVoucher.discountPercent / 100));
+    }
+  }
+
+  const total = Math.max(0, subtotal - actualPromoDiscount - (is247 ? 0 : monthlyDiscount) - singleRepeatDiscount);
   const walletBalance = 320000;
 
   const timeSlotPickerProps = {
@@ -1541,18 +1573,6 @@ const BookingPage = () => {
     } else {
       if (selectedWeekDays.length >= 7) return;
       setSelectedWeekDays(prev => [...prev, id]);
-    }
-  };
-
-  const applyPromo = () => {
-    if (promoCode.trim().toUpperCase() === 'CLEANTRUST10') {
-      setPromoDiscount(Math.round(subtotal * 0.1));
-      setPromoApplied(true);
-      setErrors(p => ({ ...p, promo: null }));
-    } else {
-      setPromoApplied(false);
-      setPromoDiscount(0);
-      setErrors(p => ({ ...p, promo: 'Mã không hợp lệ hoặc đã hết hạn.' }));
     }
   };
 
@@ -1797,7 +1817,7 @@ const BookingPage = () => {
     const rawServiceTotal = isMonthly ? monthlyRawTotal : basePrice;
     const hasExtras = extras.length > 0;
     const hasFees = selfPickFee > 0 || urgentFee > 0 || travelFee > 0 || hasExtras || premiumFeeTotal > 0;
-    const hasDiscounts = monthlyDiscount > 0 || promoDiscount > 0 || singleRepeatDiscount > 0;
+    const hasDiscounts = monthlyDiscount > 0 || actualPromoDiscount > 0 || singleRepeatDiscount > 0;
 
     return (
       <div className="space-y-4 text-sm">
@@ -1897,15 +1917,15 @@ const BookingPage = () => {
                   <span>-{fmt(monthlyDiscount)}</span>
                 </div>
               )}
-              {promoDiscount > 0 && (
+              {actualPromoDiscount > 0 && (
                 <div className="flex justify-between text-primary">
                   <span>Mã khuyến mãi</span>
-                  <span>-{fmt(promoDiscount)}</span>
+                  <span>-{fmt(actualPromoDiscount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-primary font-semibold pt-2 border-t border-primary/20 mt-2">
                 <span>Tổng giảm giá</span>
-                <span>-{fmt(monthlyDiscount + promoDiscount + singleRepeatDiscount)}</span>
+                <span>-{fmt(monthlyDiscount + actualPromoDiscount + singleRepeatDiscount)}</span>
               </div>
             </div>
           </div>
@@ -2015,6 +2035,14 @@ const BookingPage = () => {
               })}
               <Row label="Phí di chuyển" value={fmt(travelFee)} />
               {staffSelfPick && !is247 && <Row label="Phí tự chọn NV" value={`+${fmt(selfPickFee)}`} />}
+              {preselectedStaff && (
+                <Row label="Nhân viên" value={
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                    {preselectedStaff.name}
+                  </span>
+                } />
+              )}
               {premiumFeeTotal > 0 && !is247 && <>
                 {isMonthly && (
                   <Row label={
@@ -2045,8 +2073,8 @@ const BookingPage = () => {
               {is247 && discount247 > 0 && (
                 <Row label="Ưu đãi đăng ký dài" value={`-${fmt(discount247)}`} highlight />
               )}
-              {promoDiscount > 0 && (
-                <Row label="Khuyến mãi" value={`-${fmt(promoDiscount)}`} highlight />
+              {actualPromoDiscount > 0 && (
+                <Row label="Khuyến mãi" value={`-${fmt(actualPromoDiscount)}`} highlight />
               )}
             </AccordionSection>
 
@@ -2222,6 +2250,79 @@ const BookingPage = () => {
     );
   };
 
+  const renderVoucherModal = () => {
+    if (!showVoucherModal) return null;
+    
+    const applicableVouchers = VOUCHERS.filter(v => 
+      v.groupIds.includes('all') || v.groupIds.includes(pkgData.groupId)
+    );
+
+    const handleApplyVoucher = (voucher) => {
+      setPromoCode(voucher.code);
+      let discount = 0;
+      if (voucher.discountPercent) {
+        const rawServiceCost = is247 ? raw247Total : isMonthly ? monthlyRawTotal : basePrice;
+        discount = Math.round(rawServiceCost * (voucher.discountPercent / 100));
+      } else if (voucher.discountAmount) {
+        discount = voucher.discountAmount;
+      }
+      setPromoDiscount(discount);
+      setPromoApplied(true);
+      setErrors(p => ({ ...p, promo: null }));
+      setShowVoucherModal(false);
+    };
+
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        onClick={() => setShowVoucherModal(false)}>
+        <div
+          className="bg-surface rounded-2xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-outline-variant/30 flex flex-col max-h-[80vh]"
+          onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-start mb-6 shrink-0">
+            <div>
+              <h3 className="font-h3 text-h3 text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">redeem</span>
+                Chọn mã khuyến mãi
+              </h3>
+              <p className="text-sm text-on-surface-variant mt-1">Các ưu đãi dành riêng cho dịch vụ bạn chọn</p>
+            </div>
+            <button onClick={() => setShowVoucherModal(false)} className="text-on-surface-variant hover:text-on-surface p-1">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto pr-3 space-y-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-outline-variant/30 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-outline-variant/50 transition-colors">
+            {applicableVouchers.length > 0 ? applicableVouchers.map(v => (
+              <div key={v.id} className="p-4 rounded-xl border-2 border-outline-variant/40 hover:border-primary/50 transition-all flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-on-surface text-base">{v.code}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+                      {v.discountPercent ? `Giảm ${v.discountPercent}%` : `Giảm ${fmt(v.discountAmount)}`}
+                    </span>
+                  </div>
+                  <p className="font-medium text-sm text-on-surface">{v.title}</p>
+                  <p className="text-xs text-on-surface-variant mt-0.5">{v.desc}</p>
+                </div>
+                <button
+                  onClick={() => handleApplyVoucher(v)}
+                  className="shrink-0 px-4 py-2 bg-primary text-on-primary text-sm font-semibold rounded-lg hover:bg-primary-container transition-colors">
+                  Áp dụng
+                </button>
+              </div>
+            )) : (
+              <div className="text-center py-8 text-on-surface-variant">
+                <span className="material-symbols-outlined text-4xl mb-2 opacity-50">loyalty</span>
+                <p>Không có mã khuyến mãi nào cho dịch vụ này.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
     <main className="pt-32 pb-section-padding px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-screen">
@@ -2230,6 +2331,7 @@ const BookingPage = () => {
         pkgIdProp: showStep5Tasks ? selectedPackage : null,
         onClose: () => setShowStep5Tasks(false)
       })}
+      {renderVoucherModal()}
 
       {/* ══════════ STEP 1 ══════════ */}
       {step === 1 && (
@@ -2243,8 +2345,35 @@ const BookingPage = () => {
 
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="cleaning_services">Chọn gói dịch vụ</SectionTitle>
+
+                {/* Banner nhân viên đã chọn — chỉ hiện khi có preselectedStaff */}
+                {preselectedStaff && (
+                  <div className="mb-6 p-4 rounded-xl border-2 border-primary bg-primary/5 flex items-center gap-4">
+                    <img src={preselectedStaff.avatar} alt={preselectedStaff.name}
+                      className="w-12 h-12 rounded-xl object-cover border-2 border-surface-container shadow" />
+                    <div className="flex-1">
+                      <p className="font-bold text-on-surface flex items-center gap-2">
+                        {preselectedStaff.name}
+                        <span className="material-symbols-outlined text-primary text-sm"
+                          style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                      </p>
+                      <p className="text-sm text-on-surface-variant mt-0.5">Nhân viên đã được chọn · Dịch vụ dọn dẹp nhà</p>
+                    </div>
+                    <button onClick={() => { setPreselectedStaff(null); setStaffSelfPick(false); }}
+                      className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all">
+                      <span className="material-symbols-outlined text-xl">close</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="space-y-8">
-                  {PACKAGE_GROUPS.map(group => (
+                  {(preselectedStaff
+                    ? PACKAGE_GROUPS.filter(g => g.groupId === 'popular').map(g => ({
+                      ...g,
+                      packages: g.packages.filter(p => p.id === 'basic-single' || p.id === 'basic-monthly')
+                    }))
+                    : PACKAGE_GROUPS
+                  ).map(group => (
                     <div key={group.groupId}>
                       <div className="flex items-center gap-2 mb-4">
                         <span className="material-symbols-outlined text-primary text-base">{group.groupIcon}</span>
@@ -2443,7 +2572,7 @@ const BookingPage = () => {
                 </section>
               )}
 
-              {(selectedPackage === 'basic-single' || selectedPackage === 'basic-monthly') && (
+              {!preselectedStaff && (selectedPackage === 'basic-single' || selectedPackage === 'basic-monthly') && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="workspace_premium">Dịch vụ Cao cấp</SectionTitle>
                   <p className="text-sm text-on-surface-variant -mt-4 mb-5 flex items-start gap-2 p-3 bg-surface-container/50 rounded-xl border border-outline-variant/20">
@@ -2489,7 +2618,7 @@ const BookingPage = () => {
                 </section>
               )}
 
-              {!isCare && !isFamilyPackage && !isMonthly && (
+              {!preselectedStaff && !isCare && !isFamilyPackage && !isMonthly && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="add_circle">Dịch vụ thêm (tùy chọn)</SectionTitle>
                   {areaData && (
@@ -2929,50 +3058,110 @@ const BookingPage = () => {
                     <ErrorMsg message={errors.pet} />
                   </section>
 
-                  {selectedPackage === 'basic-single' && (
+                  {(selectedPackage === 'basic-single' || preselectedStaff) && (
                     <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                       <SectionTitle icon="badge">Nhân viên phụ trách</SectionTitle>
-                      <p className="text-sm text-on-surface-variant -mt-4 mb-5 flex items-start gap-2 p-3 bg-surface-container/50 rounded-xl border border-outline-variant/20">
-                        <span className="material-symbols-outlined text-base text-primary shrink-0 mt-0.5">info</span>
-                        <span>
-                          Mặc định: Lịch sẽ được gửi đến tất cả nhân viên phù hợp —
-                          <strong className="text-on-surface"> ai nhận trước, làm trước</strong>.
-                        </span>
-                      </p>
+
+                      {/* Banner nhân viên đã chọn trước */}
+                      {preselectedStaff && (
+                        <div className="mb-5 p-4 rounded-xl border-2 border-primary bg-primary/5 flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={preselectedStaff.avatar}
+                              alt={preselectedStaff.name}
+                              className="w-14 h-14 rounded-xl object-cover border-2 border-surface-container shadow"
+                            />
+                            <div>
+                              <p className="font-bold text-on-surface flex items-center gap-2">
+                                {preselectedStaff.name}
+                                <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                              </p>
+                              <div className="flex items-center gap-1 text-sm text-on-surface-variant mt-0.5">
+                                <span className="material-symbols-outlined text-tertiary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                <span className="font-semibold text-tertiary">{preselectedStaff.rating}</span>
+                                <span>· Nhân viên Cao cấp</span>
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setPreselectedStaff(null);
+                              setStaffSelfPick(false);
+                            }}
+                            className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all"
+                            title="Bỏ chọn nhân viên"
+                          >
+                            <span className="material-symbols-outlined text-xl">close</span>
+                          </button>
+                        </div>
+                      )}
+                      {!preselectedStaff && (
+                        <p className="text-sm text-on-surface-variant -mt-4 mb-5 flex items-start gap-2 p-3 bg-surface-container/50 rounded-xl border border-outline-variant/20">
+                          <span className="material-symbols-outlined text-base text-primary shrink-0 mt-0.5">info</span>
+                          <span>
+                            Mặc định: Lịch sẽ được gửi đến tất cả nhân viên phù hợp —
+                            <strong className="text-on-surface"> ai nhận trước, làm trước</strong>.
+                          </span>
+                        </p>
+                      )}
                       <div className="space-y-3">
-                        <ToggleRow
-                          icon="favorite"
-                          title="Ưu tiên nhân viên yêu thích"
-                          description="Ưu tiên gửi lịch đến những nhân viên bạn đã đánh dấu yêu thích."
-                          checked={staffFavorite}
-                          onChange={() => setStaffFavorite(prev => !prev)}
-                        />
-                        {staffFavorite && (
-                          <p className="flex items-center gap-1.5 text-sm text-on-surface-variant px-1">
-                            <span className="material-symbols-outlined text-base text-primary">info</span>
-                            Nếu không có nhân viên yêu thích nào rảnh, hệ thống sẽ tự động chọn người phù hợp nhất.
-                          </p>
-                        )}
-                        <ToggleRow
-                          icon="manage_accounts"
-                          title="Bạn tự chọn nhân viên làm việc"
-                          description="Xem danh sách và chọn nhân viên cụ thể bạn muốn đặt lịch."
-                          checked={staffSelfPick}
-                          onChange={() => setStaffSelfPick(prev => !prev)}
-                          extraBadge={`+${fmt(SELF_PICK_FEE)}`}
-                        />
-                        {staffSelfPick && (
-                          <p className="flex items-start gap-1.5 text-sm text-on-surface-variant px-1">
-                            <span className="material-symbols-outlined text-base text-primary">info</span>
-                            <span className="flex flex-col">
-                              <span>
-                                Phụ phí <strong className="text-on-surface">+{fmt(SELF_PICK_FEE)}</strong> sẽ được tính vào tổng chi phí.
-                              </span>
-                              <span className="mt-1">
-                                Sau khi đăng lịch, nhân viên phù hợp sẽ nhận việc và bạn có thể chọn người phù hợp nhất.
-                              </span>
-                            </span>
-                          </p>
+                        {preselectedStaff ? (
+                          // Chỉ hiện nút "Phương án thay thế" khi đã chọn NV
+                          <div
+                            className="flex items-center justify-between gap-4 p-4 rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40 cursor-pointer transition-all"
+                            onClick={() => {/* TODO */}}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-surface-container">
+                                <span className="material-symbols-outlined text-on-surface-variant">swap_horiz</span>
+                              </div>
+                              <div>
+                                <p className="font-semibold text-on-surface text-base">Phương án thay thế</p>
+                                <p className="text-sm text-on-surface-variant mt-0.5">
+                                  Chọn nhân viên dự phòng nếu {preselectedStaff.name} bận lịch
+                                </p>
+                              </div>
+                            </div>
+                            <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+                          </div>
+                        ) : (
+                          // Giữ nguyên 2 toggle cũ
+                          <>
+                            <ToggleRow
+                              icon="favorite"
+                              title="Ưu tiên nhân viên yêu thích"
+                              description="Ưu tiên gửi lịch đến những nhân viên bạn đã đánh dấu yêu thích."
+                              checked={staffFavorite}
+                              onChange={() => setStaffFavorite(prev => !prev)}
+                            />
+                            {staffFavorite && (
+                              <p className="flex items-center gap-1.5 text-sm text-on-surface-variant px-1">
+                                <span className="material-symbols-outlined text-base text-primary">info</span>
+                                Nếu không có nhân viên yêu thích nào rảnh, hệ thống sẽ tự động chọn người phù hợp nhất.
+                              </p>
+                            )}
+                            <ToggleRow
+                              icon="manage_accounts"
+                              title="Bạn tự chọn nhân viên làm việc"
+                              description="Xem danh sách và chọn nhân viên cụ thể bạn muốn đặt lịch."
+                              checked={staffSelfPick}
+                              onChange={() => setStaffSelfPick(prev => !prev)}
+                              extraBadge={`+${fmt(SELF_PICK_FEE)}`}
+                            />
+                            {staffSelfPick && (
+                              <p className="flex items-start gap-1.5 text-sm text-on-surface-variant px-1">
+                                <span className="material-symbols-outlined text-base text-primary">info</span>
+                                <span className="flex flex-col">
+                                  <span>
+                                    Phụ phí <strong className="text-on-surface">+{fmt(SELF_PICK_FEE)}</strong> sẽ được tính vào tổng chi phí.
+                                  </span>
+                                  <span className="mt-1">
+                                    Sau khi đăng lịch, nhân viên phù hợp sẽ nhận việc và bạn có thể chọn người phù hợp nhất.
+                                  </span>
+                                </span>
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
                     </section>
@@ -3256,7 +3445,10 @@ const BookingPage = () => {
                         <input
                           type="radio"
                           checked={isSelected}
-                          onChange={() => setPaymentMethod(method.id)}
+                          onChange={() => {
+                            setPaymentMethod(method.id);
+                            if (errors.paymentMethod) setErrors(p => ({ ...p, paymentMethod: null }));
+                          }}
                           className="peer sr-only"
                         />
                         <div
@@ -3300,38 +3492,52 @@ const BookingPage = () => {
 
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                 <SectionTitle icon="redeem">Mã khuyến mãi</SectionTitle>
-                <div className="flex gap-2">
-                  <div className="relative flex-grow">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl pointer-events-none">
-                      confirmation_number
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Nhập mã ưu đãi (VD: CLEANTRUST10)"
-                      value={promoCode}
-                      onChange={e => {
-                        setPromoCode(e.target.value);
-                        setErrors(p => ({ ...p, promo: null }));
+                <div 
+                  onClick={() => setShowVoucherModal(true)}
+                  className={`w-full p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between gap-4 ${
+                    promoApplied ? 'border-primary bg-primary/5' : 'border-outline-variant hover:border-primary/50 bg-surface'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${promoApplied ? 'bg-primary/10' : 'bg-surface-container'}`}>
+                      <span className={`material-symbols-outlined text-xl ${promoApplied ? 'text-primary' : 'text-on-surface-variant'}`}>
+                        loyalty
+                      </span>
+                    </div>
+                    <div>
+                      {promoApplied ? (
+                        <>
+                          <p className="font-bold text-on-surface flex items-center gap-2">
+                            {promoCode}
+                            <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
+                          </p>
+                          <p className="text-sm text-primary font-medium mt-0.5">Giảm {fmt(actualPromoDiscount)}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-semibold text-on-surface">Chọn mã khuyến mãi</p>
+                          <p className="text-sm text-on-surface-variant mt-0.5">Nhấn để xem các ưu đãi có sẵn</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {promoApplied ? (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPromoCode('');
                         setPromoApplied(false);
                         setPromoDiscount(0);
                       }}
-                      className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 bg-surface focus:outline-none transition-colors text-on-surface placeholder:text-on-surface-variant/50 ${
-                        errors.promo ? 'border-error' : promoApplied ? 'border-primary' : 'border-outline-variant focus:border-primary'
-                      }`}
-                    />
-                  </div>
-                  <button
-                    onClick={applyPromo}
-                    className="px-6 py-3 bg-primary text-on-primary font-semibold rounded-xl hover:bg-primary-container transition-colors whitespace-nowrap">
-                    Áp dụng
-                  </button>
+                      className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all flex items-center justify-center"
+                      title="Bỏ chọn"
+                    >
+                      <span className="material-symbols-outlined text-xl">close</span>
+                    </button>
+                  ) : (
+                    <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+                  )}
                 </div>
-                {promoApplied && (
-                  <p className="text-sm text-primary mt-2 font-medium flex items-center gap-1">
-                    <span className="material-symbols-outlined text-base">check_circle</span>
-                    Áp dụng thành công! Giảm {fmt(promoDiscount)}
-                  </p>
-                )}
                 <ErrorMsg message={errors.promo} />
               </section>
             </div>
@@ -3424,6 +3630,20 @@ const BookingPage = () => {
                           </div>
                         </>
                       )}
+                      {preselectedStaff && (
+                      <div className="flex items-center gap-3 pt-1 border-t border-outline-variant/10 mt-1">
+                        <img src={preselectedStaff.avatar} alt={preselectedStaff.name}
+                          className="w-9 h-9 rounded-lg object-cover border border-surface-container" />
+                        <div>
+                          <p className="text-sm font-bold text-on-surface flex items-center gap-1">
+                            {preselectedStaff.name}
+                            <span className="material-symbols-outlined text-primary text-sm"
+                              style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                          </p>
+                          <p className="text-xs text-on-surface-variant">Nhân viên phụ trách · ★ {preselectedStaff.rating}</p>
+                        </div>
+                      </div>
+                    )}
                       <button
                         onClick={() => setShowStep5Tasks(true)}
                         className="mt-1 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">
@@ -3810,3 +4030,4 @@ const BookingPage = () => {
 };
 
 export default BookingPage;
+//R_code

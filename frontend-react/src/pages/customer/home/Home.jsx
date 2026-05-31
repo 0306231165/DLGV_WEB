@@ -1,6 +1,7 @@
 import React from 'react';
 import Hero from './Hero';
 import ServicesSection from './ServicesSection';
+import FeaturedStaff from './FeaturedStaff';
 import WhyChooseUs from './WhyChooseUs';
 
 const Home = () => {
@@ -8,6 +9,7 @@ const Home = () => {
     <>
       <Hero />
       <ServicesSection />
+      <FeaturedStaff />
       <WhyChooseUs />
     </>
   );

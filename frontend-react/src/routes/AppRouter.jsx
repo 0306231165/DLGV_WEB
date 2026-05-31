@@ -12,6 +12,10 @@ import ServiceDetailPage from '../pages/customer/services/ServiceDetailPage';
 import BookingPage    from '../pages/customer/BookingPage';
 import VoucherPage    from '../pages/customer/voucher/VoucherPage';
 
+// Import Pages — Staff
+import StaffListPage   from '../pages/customer/staff/StaffListPage';
+import StaffDetailPage from '../pages/customer/staff/StaffDetailPage';
+
 // Import Pages — Account
 import ProfilePage    from '../pages/customer/account/ProfilePage';
 import AddressesPage  from '../pages/customer/account/AddressesPage';
@@ -36,6 +40,8 @@ const AppRouter = () => {
           <Route path="services/:id" element={<ServiceDetailPage />} />
           <Route path="booking"    element={<BookingPage />} />
           <Route path="promotions" element={<VoucherPage />} />
+          <Route path="staff"      element={<StaffListPage />} />
+          <Route path="staff/:id"  element={<StaffDetailPage />} />
 
           {/* Trang tài khoản — nested layout với sidebar riêng */}
           <Route path="account" element={<AccountLayout />}>

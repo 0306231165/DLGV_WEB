@@ -41,7 +41,8 @@ CREATE TABLE `DichVu_NhomDichVu` (
 CREATE TABLE `TanSuat` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `ten_tan_suat` VARCHAR(100) NOT NULL,
-    `mo_ta` VARCHAR(255) NULL
+    `mo_ta` VARCHAR(255) NULL,
+    `trang_thai` BOOLEAN DEFAULT TRUE -- [GHI CHÚ SOFT DELETE]: Đã thêm để an toàn dữ liệu
 );
 
 CREATE TABLE `DichVu_TanSuat` (
@@ -73,6 +74,7 @@ CREATE TABLE `TieuChiChiTiet` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `dich_vu_id` INT NOT NULL,
     `ten_tieu_chi` VARCHAR(150) NOT NULL,
+    `trang_thai` BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`)
 );
 
@@ -86,6 +88,7 @@ CREATE TABLE `OptionTieuChi` (
     
     `thoi_gian_chuan` INT NOT NULL,                   -- Số phút làm cho 1 đơn vị
     `don_gia` DECIMAL(12,2) NOT NULL,                 -- Giá tiền cho 1 đơn vị
+    `trang_thai` BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (`tieu_chi_id`) REFERENCES `TieuChiChiTiet`(`id`)
 );
 
@@ -130,8 +133,31 @@ CREATE TABLE `NhanVien` (
     `cccd` VARCHAR(20) NOT NULL UNIQUE,
     `ngay_sinh` DATE NOT NULL,
     `gioi_tinh` VARCHAR(10) NOT NULL,
+
+    -- [GHI CHÚ GPS]: Định vị tâm điểm hoạt động của nhân viên để lọc khoảng cách (VD: chỉ gợi ý đơn < 5km)
+    `kinh_do_hoat_dong` DECIMAL(10,7) NULL,
+    `vi_do_hoat_dong` DECIMAL(10,7) NULL,
+
     `danh_gia_sao` DECIMAL(3,2) DEFAULT 5.00,
     `trang_thai` VARCHAR(50) NOT NULL
+);
+
+-- [GHI CHÚ ĐỘT PHÁ]: Bảng lưu lịch đăng ký rảnh/bận 7 ngày trong tuần.
+CREATE TABLE `LichCamKet` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `nhan_vien_id` INT NOT NULL,
+    `ngay_bat_dau_cam_ket` DATE NOT NULL,
+    `ngay_ket_thuc_cam_ket` DATE NOT NULL,
+    `thu_trong_tuan` INT NOT NULL,                     -- Từ 2 đến 8
+    `ca_dang_ky` VARCHAR(50) NOT NULL,                 -- 'Sang', 'Chieu', 'Toi', 'CaNgay'
+    
+    -- [GHI CHÚ TRẠNG THÁI]:
+    -- 'DangHoatDong' : Chu kỳ đang trong hiệu lực, dùng để ghép lịch
+    -- 'HetHan'       : Hệ thống tự set khi ngay_ket_thuc_cam_ket < NOW()
+    -- 'DaHuy'        : NV chủ động hủy giữa chừng (nghỉ việc, bỏ app...)
+    `trang_thai` VARCHAR(50) DEFAULT 'DangHoatDong',
+    
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
 );
 
 CREATE TABLE `NhanVienYeuThich` (
@@ -164,6 +190,14 @@ CREATE TABLE `DonHang` (
     `dich_vu_id` INT NOT NULL,
     `khuyen_mai_id` INT NULL,                         -- Liên kết Mã khuyến mãi
     `tan_suat_id` INT NOT NULL,
+
+    -- [GHI CHÚ ĐẶT ĐÍCH DANH]: Lưu ID nếu khách chọn đích danh từ mục Yêu thích.
+    `nhan_vien_duoc_yeu_cau_id` INT NULL,              
+    `phuong_an_thay_the` VARCHAR(100) NULL,           -- 'TimPremiumKhac', 'TimTieuChuan', 'HuyDon'
+    `is_giu_nhan_vien` BOOLEAN DEFAULT FALSE,         -- Bật TRUE để giữ cố định 1 người suốt gói tháng
+    
+    -- [GHI CHÚ PHẠT HỦY]: Dành cho việc HỦY TOÀN BỘ HỢP ĐỒNG (VD: Bỏ ngang gói 6 tháng)
+    `phi_phat_huy_don` DECIMAL(12,2) DEFAULT 0.00,
     
     -- CẤU HÌNH LỊCH TRÌNH / GÓI THÁNG / 24/7
     `tong_so_buoi` INT NOT NULL DEFAULT 1,            -- Tổng số buổi thực tế của hợp đồng (Vd: 30 buổi)
@@ -181,6 +215,11 @@ CREATE TABLE `DonHang` (
     `ho_ten_thuc_te` VARCHAR(150) NOT NULL,
     `sdt_thuc_te` VARCHAR(15) NOT NULL,
     `dia_chi_thuc_te` VARCHAR(255) NOT NULL,
+
+    -- [GHI CHÚ GPS]: Chốt tọa độ thực tế của nhà khách để map tính khoảng cách tự động
+    `kinh_do` DECIMAL(10,7) NULL,
+    `vi_do` DECIMAL(10,7) NULL,
+
     `ghi_chu_cho_nhan_vien` TEXT NULL,                
     
     -- CÁC LỰA CHỌN THÊM (CHECKBOX) & PHỤ PHÍ SNAPSHOT
@@ -188,14 +227,14 @@ CREATE TABLE `DonHang` (
     `phu_phi_cao_cap` DECIMAL(12,2) DEFAULT 0.00,     -- Lưu tổng số tiền 'dịch vụ cao cấp +25%' của toàn bộ gói lớn(+ tiền hết các buổi ca lẻ của gói tháng, không tính giảm giá ưu đãi gói tháng)
     `co_thu_cung` BOOLEAN DEFAULT FALSE,
     `uu_tien_nv_yt` BOOLEAN DEFAULT FALSE,            -- Ưu tiên NV yêu thích
-    `is_tu_chon_nv` BOOLEAN DEFAULT FALSE,
-    `phu_phi_tu_chon_nv` DECIMAL(12,2) DEFAULT 0.00,  -- Phụ phí tính thêm khi Tự chọn NV
     
     -- TÀI CHÍNH & THANH TOÁN TOÀN DIỆN
     `tong_tien_ban_dau` DECIMAL(12,2) NOT NULL,       -- Tiền gốc khi chưa tính phụ phí cao cấp / giảm giá
-    `phu_phi_dat_gap` DECIMAL(12,2) DEFAULT 0.00,     
+    `phu_phi_dat_gap` DECIMAL(12,2) DEFAULT 0.00,
+    `tien_giam_khuyen_mai` DECIMAL(12,2) DEFAULT 0.00, -- Lưu cứng tiền được giảm từ Voucher     
     `tong_tien_cuoi_cung` DECIMAL(12,2) NOT NULL,     -- Tiền cuối cùng phải trả (Đã gồm +25% cao cấp và -Voucher)
     `tien_giam_giu` DECIMAL(12,2) DEFAULT 0.00,
+
     `phuong_thuc_tt` VARCHAR(50) NOT NULL,            -- TienMat, MoMo, ViWeb
     `trang_thai_thanh_toan` VARCHAR(50) DEFAULT 'ChuaThanhToan',
     `ma_giao_dich_online` VARCHAR(255) NULL,          
@@ -208,7 +247,33 @@ CREATE TABLE `DonHang` (
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
     FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`),
     FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`),
-    FOREIGN KEY (`tan_suat_id`) REFERENCES `TanSuat`(`id`)
+    FOREIGN KEY (`tan_suat_id`) REFERENCES `TanSuat`(`id`),
+    FOREIGN KEY (`nhan_vien_duoc_yeu_cau_id`) REFERENCES `NhanVien`(`id`)
+);
+
+CREATE TABLE `LogThanhToanOnline` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `don_hang_id` INT NOT NULL,               -- Đang thanh toán cho đơn hàng nào?
+    `nha_cung_cap_tt` VARCHAR(50) NOT NULL,   -- Cổng thanh toán: 'MoMo', 'VNPAY', 'ZaloPay'...
+    
+    -- CÁC THÔNG SỐ ĐỐI SOÁT
+    `ma_giao_dich_noi_bo` VARCHAR(100) NOT NULL UNIQUE, -- Mã App tự sinh ra gửi sang MoMo (Vd: APP-DH123-L1)
+    `ma_giao_dich_doi_tac` VARCHAR(255) NULL,           -- Mã MoMo trả về (Vd: 23489234)
+    `so_tien_giao_dich` DECIMAL(12,2) NOT NULL,         -- Số tiền thực tế gửi sang cổng thanh toán
+    
+    -- KIỂM SOÁT TRẠNG THÁI & LỖI
+    `trang_thai_giao_dich` VARCHAR(50) DEFAULT 'DangXuLy', -- Các trạng thái: 'DangXuLy', 'ThanhCong', 'ThatBai'
+    `ma_loi_api` VARCHAR(50) NULL,                         -- Mã lỗi đối tác trả về (Vd: '0' là OK, '24' là khách hủy)
+    `tin_nhan_loi` VARCHAR(255) NULL,                      -- Dịch mã lỗi ra tiếng người (Vd: 'Khách hàng hủy giao dịch')
+    
+    -- HỘP ĐEN LƯU TRỮ (BẰNG CHỨNG)
+    `du_lieu_gui_di_json` TEXT NULL,          -- Cục dữ liệu App gửi đi
+    `du_lieu_tra_ve_json` TEXT NULL,          -- Cục dữ liệu MoMo gửi về (Lưu nguyên bản để check chữ ký)
+    
+    `ngay_tao_giao_dich` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `ngay_cap_nhat` DATETIME NULL,            -- Cập nhật khi MoMo báo kết quả về
+    
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
 );
 
 CREATE TABLE `DonHang_DichVuThem` (
@@ -251,18 +316,32 @@ CREATE TABLE `CaLamViec` (
     `hoa_hong_app` DECIMAL(12,2) NOT NULL,             -- Tiền công ty giữ lại từ ca này
     `thuc_nhan_nv` DECIMAL(12,2) NOT NULL,             -- Tiền lương thợ đút túi sau khi hoàn thành ca này
     `trang_thai_ca` VARCHAR(50) NOT NULL,              -- ChoNhan, ChoDuyet, DaNhan, HoanThanh, KhachHuy, NhanVienHuy
+    `loai_ghep` VARCHAR(50) NOT NULL DEFAULT 'TuDong',
+    -- 'TuDong'   : Nằm trong lịch cam kết → NV KHÔNG được từ chối
+    -- `DeXuat`   : Ngoài phạm vi cam kết (quá km, gói tháng dài hơn...) → NV có thể Accept/Reject
+
+    -- BẰNG CHỨNG LÀM VIỆC THỰC TẾ (Được ghi nhận khi NV bấm nút trên App)
+    `thoi_gian_checkin` DATETIME NULL,                 -- Ghi nhận lúc bấm nút "Bắt đầu làm"
+    `thoi_gian_checkout` DATETIME NULL,                -- Ghi nhận lúc bấm nút "Hoàn thành"
+    `hinh_anh_nghiem_thu` TEXT NULL,                   -- Lưu URL ảnh chụp kết quả dọn dẹp
+
+    -- [GHI CHÚ XỬ LÝ HỦY CA LẺ]: Tách biệt việc hủy 1 buổi với việc hủy cả đơn. (Idea xuất sắc của bạn)
+    `nguoi_huy_ca` VARCHAR(50) NULL,                   -- Ai hủy ca sát giờ? ('KhachHang', 'NhanVien', 'HeThong')
+    `ly_do_huy` VARCHAR(255) NULL,                     -- Lý do xin nghỉ/hủy
+    `phi_phat_huy_ca` DECIMAL(12,2) DEFAULT 0.00,      -- Tiền phạt áp dụng riêng cho ca lẻ này (Móc thẳng vào Ví NV/KH)
     
     -- KHÓA NGOẠI
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
 );
 
-CREATE TABLE `UngVien_DonHang` (
+CREATE TABLE `LichSuPhanHoiDeXuat` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `don_hang_id` INT NOT NULL,
+    `don_hang_id` INT NOT NULL,       -- ← đổi từ ca → đơn hàng
     `nhan_vien_id` INT NOT NULL,
-    `thoi_gian_ung_tuyen` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `trang_thai_duyet` VARCHAR(50) NOT NULL,
+    `hanh_dong` VARCHAR(50) NOT NULL, -- 'ChapNhan', 'TuChoi'
+    `ly_do_tu_choi` VARCHAR(255) NULL,
+    `thoi_gian` DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
 );
