@@ -3,17 +3,18 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- -------------------------------------------------------------------------
--- MODULE 1: CẤU HÌNH DỊCH VỤ & GIÁ (MASTER DATA)
+-- MODULE 1: DANH MỤC DỊCH VỤ, TÙY CHỌN & CHÍNH SÁCH (MASTER DATA)
 -- -------------------------------------------------------------------------
 
 CREATE TABLE `DichVu` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `ten_dich_vu` VARCHAR(255) NOT NULL,
-    `loai_ca_le` VARCHAR(50) NOT NULL,       -- BinhThuong, ChuyenSau
+    `cap_do_dich_vu` VARCHAR(50) NOT NULL,       -- CoBan, ChuyenSau
     `co_bien_the` BOOLEAN NOT NULL, -- TRUE: Có option diện tích/số phòng..., FALSE: Giá cố định
     
     -- CỘT CỨU NGUY ĐƯỢC THÊM VÀO ĐÂY:
     `don_gia_co_ban` DECIMAL(12,2) NULL,     -- Điền giá vào đây KHI co_bien_the = FALSE
+    `thoi_gian_chuan_co_ban` INT NULL, -- Điền số phút KHI co_bien_the = FALSE
 
     -- PHẦN HIỂN THỊ NỘI DUNG
     `mo_ta` VARCHAR(500) NULL,               -- MÔ TẢ NGẮN: hiển thị ở trang danh sách bên ngoài
@@ -60,6 +61,37 @@ CREATE TABLE `CauHinhGoiThang` (
     `trang_thai` BOOLEAN DEFAULT TRUE
 );
 
+CREATE TABLE `KhuyenMai` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ma_code` VARCHAR(50) NOT NULL UNIQUE, -- Vd: 'TET100'
+    
+    -- 1. NỘI DUNG HIỂN THỊ TRÊN UI (Giao diện)
+    `tag_hien_thi` VARCHAR(100) NULL,           -- Vd: 'Người dùng mới', 'Tổng vệ sinh'
+    `tieu_de` VARCHAR(255) NOT NULL,            -- Vd: 'Tối đa 50k cho đơn từ 200k'
+    `mo_ta` TEXT NULL,                          -- Vd: 'Áp dụng cho dịch vụ Vệ sinh...'
+    
+    -- 2. ĐIỀU KIỆN ÁP DỤNG
+    `dich_vu_id_ap_dung` INT NULL,              -- Nếu NULL: Áp dụng toàn sàn. Nếu có ID: Chỉ dùng cho dịch vụ đó
+    `gia_tri_don_toi_thieu` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    
+    -- 3. CƠ CHẾ GIẢM GIÁ
+    `loai_giam_gia` VARCHAR(50) NOT NULL,       -- 'PhanTram' (Vd: 20%), 'TruTien' (Vd: 100k), 'MienPhiPhuPhi' (Vd: Free dụng cụ)
+    `gia_tri_giam` DECIMAL(12,2) NOT NULL,      -- Điền 20 (nếu là %), điền 100000 (nếu trừ tiền), điền 0 (nếu Free)
+    `giam_toi_da` DECIMAL(12,2) NULL,           -- Vd: Giảm 20% nhưng TỐI ĐA chỉ được 50k
+    
+    -- 4. THỜI GIAN & SỐ LƯỢNG
+    `ngay_bat_dau` DATETIME NOT NULL,
+    `ngay_ket_thuc` DATETIME NOT NULL,
+    `so_luong_phat_hanh` INT NOT NULL,          -- Tổng kho
+    `so_luong_da_luu` INT DEFAULT 0,            -- Đã bị khách nhặt vào ví
+    `so_luong_da_dung` INT DEFAULT 0,           -- Đã thực sự thanh toán
+    
+    `trang_thai` BOOLEAN DEFAULT TRUE,
+    
+    -- KHÓA NGOẠI BỔ SUNG (Ràng buộc chặt chẽ với bảng Dịch vụ gốc)
+    FOREIGN KEY (`dich_vu_id_ap_dung`) REFERENCES `DichVu`(`id`)
+);
+
 CREATE TABLE `DichVuThem` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `dich_vu_id` INT NOT NULL,
@@ -93,7 +125,7 @@ CREATE TABLE `GiaTriBienThe` (
 );
 
 -- -------------------------------------------------------------------------
--- MODULE 2: NGƯỜI DÙNG, NHÂN VIÊN & TÀI KHOẢN
+-- MODULE 2: TÀI KHOẢN NGƯỜI DÙNG & HỒ SƠ NHÂN VIÊN
 -- -------------------------------------------------------------------------
 
 CREATE TABLE `KhachHang` (
@@ -181,7 +213,7 @@ CREATE TABLE `NhanVien_DichVu` (
 );
 
 -- -------------------------------------------------------------------------
--- MODULE 3: ĐƠN HÀNG & QUẢN LÝ LỊCH BIỂU (TRANSACTIONS)
+-- MODULE 3: VẬN HÀNH ĐƠN HÀNG, ĐIỀU PHỐI CA LÀM & PHẠT HỦY
 -- -------------------------------------------------------------------------
 
 CREATE TABLE `DonHang` (
@@ -221,11 +253,16 @@ CREATE TABLE `DonHang` (
     
     -- CÁC LỰA CHỌN THÊM (CHECKBOX) & PHỤ PHÍ SNAPSHOT
     `is_cao_cap` BOOLEAN DEFAULT FALSE,               -- TRUE: Nếu khách chọn gói dịch vụ cao cấp
+    `ty_le_phu_phi_cao_cap_snapshot` INT DEFAULT 0, -- [VÁ LỖ HỔNG]: Lưu % phụ phí lúc đặt (Vd: 25 cho 25%)
     `phu_phi_cao_cap` DECIMAL(12,2) DEFAULT 0.00,     -- Lưu tổng số tiền 'dịch vụ cao cấp +25%' của toàn bộ gói lớn(+ tiền hết các buổi ca lẻ của gói tháng, không tính giảm giá ưu đãi gói tháng)
     `co_thu_cung` BOOLEAN DEFAULT FALSE,
     `uu_tien_nv_yt` BOOLEAN DEFAULT FALSE,            -- Ưu tiên NV yêu thích
+    `phi_chon_nhan_vien_snapshot` DECIMAL(12,2) DEFAULT 0.00, -- Lưu giá chọn thợ TRÊN MỖI BUỔI lúc đặt (Vd: 50000đ)
+    `phu_phi_chon_nhan_vien` DECIMAL(12,2) DEFAULT 0.00,      -- Bằng: phi_chon_nhan_vien_snapshot * tong_so_buoi
     
     -- TÀI CHÍNH & THANH TOÁN TOÀN DIỆN
+    -- [GHI CHÚ VÁ LỖ HỔNG]: Lưu cứng đơn giá cơ bản tại thời điểm đặt đơn (khi co_bien_the = FALSE) để tránh lệch báo cáo tài chính khi Admin thay đổi giá ở bảng DichVu gốc.
+    `don_gia_co_ban_snapshot` DECIMAL(12,2) NULL,
     `tong_tien_ban_dau` DECIMAL(12,2) NOT NULL,       -- Tiền gốc khi chưa tính phụ phí cao cấp / giảm giá
     `phu_phi_dat_gap` DECIMAL(12,2) DEFAULT 0.00,
     `tien_giam_khuyen_mai` DECIMAL(12,2) DEFAULT 0.00, -- Lưu cứng tiền được giảm từ Voucher     
@@ -246,6 +283,13 @@ CREATE TABLE `DonHang` (
     FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`),
     FOREIGN KEY (`tan_suat_id`) REFERENCES `TanSuat`(`id`),
     FOREIGN KEY (`nhan_vien_duoc_yeu_cau_id`) REFERENCES `NhanVien`(`id`)
+);
+
+CREATE TABLE `QuyDinhPhuPhi` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ma_phu_phi` VARCHAR(50) NOT NULL UNIQUE,  -- Vd: 'CAO_CAP_PERCENT', 'CHON_THO_VND'
+    `gia_tri` VARCHAR(255) NOT NULL,           -- Vd: '25', '50000'
+    `mo_ta` VARCHAR(255) NULL                  -- Vd: 'Phí cộng thêm khi chọn đích danh thợ'
 );
 
 CREATE TABLE `LogThanhToanOnline` (
@@ -307,6 +351,7 @@ CREATE TABLE `CaLamViec` (
     
     -- TRẠNG THÁI CAO CẤP TỪNG BUỔI
     `is_cao_cap` BOOLEAN DEFAULT FALSE,               -- Bật TRUE nếu DonHang lớn có is_cao_cap = TRUE
+    `phi_chon_nv_snapshot` DECIMAL(12,2) DEFAULT 0.00, -- Copy tiền chọn thợ từ Đơn Hàng sang đây để dễ tính lương
     
     -- DOANH THU & ĂN CHIA CỦA RIÊNG BUỔI NÀY
     `gia_ca_nay` DECIMAL(12,2) NOT NULL,               -- Doanh thu riêng ca này (Đã chia đều 25% phụ phí cao cấp từ đơn hàng)
@@ -319,8 +364,19 @@ CREATE TABLE `CaLamViec` (
 
     -- BẰNG CHỨNG LÀM VIỆC THỰC TẾ (Được ghi nhận khi NV bấm nút trên App)
     `thoi_gian_checkin` DATETIME NULL,                 -- Ghi nhận lúc bấm nút "Bắt đầu làm"
+    -- [GHI CHÚ VÁ LỖ HỔNG]: Lưu tọa độ định vị GPS thực tế lúc thợ bấm nút Check-in để đối chiếu khoảng cách với nhà khách hàng (Chống check-in ảo)
+    `checkin_kinh_do` DECIMAL(10,7) NULL,
+    `checkin_vi_do` DECIMAL(10,7) NULL,
+    
     `thoi_gian_checkout` DATETIME NULL,                -- Ghi nhận lúc bấm nút "Hoàn thành"
+    -- [GHI CHÚ VÁ LỖ HỔNG]: Lưu tọa độ định vị GPS thực tế lúc thợ bấm nút Checkout kết thúc ca làm
+    `checkout_kinh_do` DECIMAL(10,7) NULL,
+    `checkout_vi_do` DECIMAL(10,7) NULL,
+    
     `hinh_anh_nghiem_thu` TEXT NULL,                   -- Lưu URL ảnh chụp kết quả dọn dẹp
+    
+    -- Đánh INDEX
+    INDEX `idx_ngay_trang_thai` (`ngay_lam`, `trang_thai_ca`),
     
     -- KHÓA NGOẠI
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
@@ -373,7 +429,7 @@ CREATE TABLE `LichSuPhatHuy` (
 );
 
 -- -------------------------------------------------------------------------
--- MODULE 4: VÍ NỘI BỘ, TÀI CHÍNH & DÒNG TIỀN
+-- MODULE 4: TÀI KHOẢN ADMIN, VÍ ĐIỆN TỬ & ĐỐI SOÁT TÀI CHÍNH
 -- -------------------------------------------------------------------------
 
 CREATE TABLE `ViKhachHang` (
@@ -386,6 +442,8 @@ CREATE TABLE `ViKhachHang` (
 
 CREATE TABLE `LichSuViKhachHang` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
+    -- [GHI CHÚ VÁ LỖ HỔNG]: Thêm mã chuỗi tường minh phục vụ đối soát, kiểm toán nội bộ và hiển thị ra UI cho người dùng (Vd: WAL-KH-100234)
+    `ma_giao_dich` VARCHAR(100) NOT NULL UNIQUE,
     `vi_khach_hang_id` INT NOT NULL,
     `loai_giao_dich` VARCHAR(50) NOT NULL,
     `so_tien` DECIMAL(12,2) NOT NULL,
@@ -405,6 +463,8 @@ CREATE TABLE `ViNhanVien` (
 
 CREATE TABLE `LichSuViNhanVien` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
+    -- [GHI CHÚ VÁ LỖ HỔNG]: Thêm mã chuỗi tường minh phục vụ đối soát tài chính, kế toán và xử lý khiếu nại của thợ (Vd: WAL-NV-293847)
+    `ma_giao_dich` VARCHAR(100) NOT NULL UNIQUE,
     `vi_nhan_vien_id` INT NOT NULL,
     `loai_giao_dich` VARCHAR(50) NOT NULL,
     `so_tien` DECIMAL(12,2) NOT NULL,
@@ -412,6 +472,15 @@ CREATE TABLE `LichSuViNhanVien` (
     `noi_dung` VARCHAR(255) NOT NULL,
     `ma_tham_chieu_ca` INT NULL,
     FOREIGN KEY (`vi_nhan_vien_id`) REFERENCES `ViNhanVien`(`id`)
+);
+
+CREATE TABLE `TaiKhoanAdmin` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ten_dang_nhap` VARCHAR(50) NOT NULL UNIQUE,
+    `mat_khau` VARCHAR(255) NOT NULL,
+    `ho_ten` VARCHAR(150) NOT NULL,
+    `quyen_han` VARCHAR(50) NOT NULL,
+    `trang_thai` BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE `YeuCauRutTien` (
@@ -424,21 +493,15 @@ CREATE TABLE `YeuCauRutTien` (
     `trang_thai` VARCHAR(50) NOT NULL,
     `ngay_yeu_cau` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `ngay_xu_ly` DATETIME NULL,
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
+    -- [GHI CHÚ VÁ LỖ HỔNG]: Liên kết tài khoản Admin thực hiện phê duyệt/từ chối lệnh rút để lưu vết trách nhiệm, chống gian lận dòng tiền nội bộ.
+    `admin_xu_ly_id` INT NULL,
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
+    FOREIGN KEY (`admin_xu_ly_id`) REFERENCES `TaiKhoanAdmin`(`id`)
 );
 
 -- -------------------------------------------------------------------------
--- MODULE 5: HỆ THỐNG PHỤ (VOUCHER, ĐÁNH GIÁ, CHAT, TIN NHẮN, ADMIN)
+-- MODULE 5: CSKH, TƯƠNG TÁC & CÁC TÍNH NĂNG MỞ RỘNG
 -- -------------------------------------------------------------------------
-
-CREATE TABLE `TaiKhoanAdmin` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ten_dang_nhap` VARCHAR(50) NOT NULL UNIQUE,
-    `mat_khau` VARCHAR(255) NOT NULL,
-    `ho_ten` VARCHAR(150) NOT NULL,
-    `quyen_han` VARCHAR(50) NOT NULL,
-    `trang_thai` BOOLEAN DEFAULT TRUE
-);
 
 CREATE TABLE `DanhGiaNhanVien` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -460,43 +523,15 @@ CREATE TABLE `KhieuNai` (
     `nguoi_khieu_nai_id` INT NOT NULL,
     `ly_do_khieu_nai` VARCHAR(255) NOT NULL,
     `mo_ta_chi_tiet` TEXT NULL,
-    `hinh_anh_bang_chung` VARCHAR(255) NULL,           
+    `hinh_anh_bang_chung` TEXT NULL, -- Đổi từ VARCHAR(255) thành TEXT để lưu được nhiều link ảnh/JSON array           
     `trang_thai_xu_ly` VARCHAR(50) DEFAULT 'DangXuLy', -- DangXuLy, DaDenBu, TuChoi
     `ket_qua_xu_ly` TEXT NULL,                         
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `ngay_dong` DATETIME NULL,
-    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
-);
-
-CREATE TABLE `KhuyenMai` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ma_code` VARCHAR(50) NOT NULL UNIQUE, -- Vd: 'TET100'
-    
-    -- 1. NỘI DUNG HIỂN THỊ TRÊN UI (Giao diện)
-    `tag_hien_thi` VARCHAR(100) NULL,           -- Vd: 'Người dùng mới', 'Tổng vệ sinh'
-    `tieu_de` VARCHAR(255) NOT NULL,            -- Vd: 'Tối đa 50k cho đơn từ 200k'
-    `mo_ta` TEXT NULL,                          -- Vd: 'Áp dụng cho dịch vụ Vệ sinh...'
-    
-    -- 2. ĐIỀU KIỆN ÁP DỤNG
-    `dich_vu_id_ap_dung` INT NULL,              -- Nếu NULL: Áp dụng toàn sàn. Nếu có ID: Chỉ dùng cho dịch vụ đó
-    `gia_tri_don_toi_thieu` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    
-    -- 3. CƠ CHẾ GIẢM GIÁ
-    `loai_giam_gia` VARCHAR(50) NOT NULL,       -- 'PhanTram' (Vd: 20%), 'TruTien' (Vd: 100k), 'MienPhiPhuPhi' (Vd: Free dụng cụ)
-    `gia_tri_giam` DECIMAL(12,2) NOT NULL,      -- Điền 20 (nếu là %), điền 100000 (nếu trừ tiền), điền 0 (nếu Free)
-    `giam_toi_da` DECIMAL(12,2) NULL,           -- Vd: Giảm 20% nhưng TỐI ĐA chỉ được 50k
-    
-    -- 4. THỜI GIAN & SỐ LƯỢNG
-    `ngay_bat_dau` DATETIME NOT NULL,
-    `ngay_ket_thuc` DATETIME NOT NULL,
-    `so_luong_phat_hanh` INT NOT NULL,          -- Tổng kho
-    `so_luong_da_luu` INT DEFAULT 0,            -- Đã bị khách nhặt vào ví
-    `so_luong_da_dung` INT DEFAULT 0,           -- Đã thực sự thanh toán
-    
-    `trang_thai` BOOLEAN DEFAULT TRUE,
-    
-    -- KHÓA NGOẠI BỔ SUNG (Ràng buộc chặt chẽ với bảng Dịch vụ gốc)
-    FOREIGN KEY (`dich_vu_id_ap_dung`) REFERENCES `DichVu`(`id`)
+    -- [GHI CHÚ VÁ LỖ HỔNG]: Lưu vết ID Admin chịu trách nhiệm xử lý, đền bù ca khiếu nại này để kiểm soát chất lượng vận hành CSKH.
+    `admin_xu_ly_id` INT NULL,
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
+    FOREIGN KEY (`admin_xu_ly_id`) REFERENCES `TaiKhoanAdmin`(`id`)
 );
 
 CREATE TABLE `KhachHang_KhuyenMai` (
@@ -534,7 +569,10 @@ CREATE TABLE `ThongBao` (
     `tieu_de` VARCHAR(255) NOT NULL,
     `noi_dung` TEXT NOT NULL,
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `is_da_doc` BOOLEAN DEFAULT FALSE
+    `is_da_doc` BOOLEAN DEFAULT FALSE,
+    -- [GHI CHÚ VÁ LỖ HỔNG]: Cặp bài trùng dùng để cấu hình Deep Link điều hướng trên App (Vd: loai_doi_tuong = 'DonHang', doi_tuong_id = 125 -> Người dùng click thông báo sẽ nhảy thẳng vào trang chi tiết đơn hàng số 125)
+    `loai_doi_tuong` VARCHAR(50) NULL,
+    `doi_tuong_id` INT NULL
 );
 
 CREATE TABLE `PhongChat` (
@@ -562,7 +600,7 @@ CREATE TABLE `TinNhan` (
 );
 
 -- -------------------------------------------------------------------------
--- MODULE 6: LIÊN HỆ TƯ VẤN (KHÁCH VÃNG LAI)
+-- MODULE 6: LIÊN HỆ & TƯ VẤN KHÁCH VÃNG LAI
 -- -------------------------------------------------------------------------
 
 CREATE TABLE `LienHe` (
@@ -575,8 +613,10 @@ CREATE TABLE `LienHe` (
     
     -- Cột trạng thái để trên Admin bạn làm nút tick "Đã tư vấn"
     `trang_thai` VARCHAR(50) DEFAULT 'ChuaXuLy', -- Các giá trị: ChuaXuLy, DaXuLy
-    
-    `ngay_gui` DATETIME DEFAULT CURRENT_TIMESTAMP
+    `ngay_gui` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    -- [GHI CHÚ VÁ LỖ HỔNG]: Lưu vết Admin phụ trách gọi điện tư vấn cho khách hàng vãng lai này.
+    `admin_xu_ly_id` INT NULL,
+    FOREIGN KEY (`admin_xu_ly_id`) REFERENCES `TaiKhoanAdmin`(`id`)
 );
 
 SET FOREIGN_KEY_CHECKS = 1;
