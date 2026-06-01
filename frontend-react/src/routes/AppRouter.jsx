@@ -11,6 +11,7 @@ import ServicesPage   from '../pages/customer/services/ServicesPage';
 import ServiceDetailPage from '../pages/customer/services/ServiceDetailPage';
 import BookingPage    from '../pages/customer/BookingPage';
 import VoucherPage    from '../pages/customer/voucher/VoucherPage';
+import ContactPage    from '../pages/customer/contact/ContactPage';
 
 // Import Pages — Staff
 import StaffListPage   from '../pages/customer/staff/StaffListPage';
@@ -29,6 +30,10 @@ import UpcomingBookingsPage from '../pages/customer/mybooking/UpcomingBookingsPa
 import ActiveBookingsPage  from '../pages/customer/mybooking/ActiveBookingsPage';
 import CompletedBookingsPage from '../pages/customer/mybooking/CompletedBookingsPage';
 
+// Import Pages - Auth
+import LoginPage    from '../pages/customer/auth/LoginPage';
+import RegisterPage from '../pages/customer/auth/RegisterPage';
+
 const AppRouter = () => {
   return (
     <BrowserRouter>
@@ -40,6 +45,8 @@ const AppRouter = () => {
           <Route path="services/:id" element={<ServiceDetailPage />} />
           <Route path="booking"    element={<BookingPage />} />
           <Route path="promotions" element={<VoucherPage />} />
+          <Route path="contact"    element={<ContactPage />} />
+
           <Route path="staff"      element={<StaffListPage />} />
           <Route path="staff/:id"  element={<StaffDetailPage />} />
 
@@ -61,6 +68,15 @@ const AppRouter = () => {
           </Route>
 
         </Route>
+
+        {/* PHÂN VÙNG XÁC THỰC CỦA KHÁCH HÀNG(Không có Header & Footer) */}
+        {/* Đứng độc lập hoàn toàn, không bị bọc bởi CustomerLayout */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Tự động chuyển hướng nếu gõ sai đường dẫn */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+
       </Routes>
     </BrowserRouter>
   );

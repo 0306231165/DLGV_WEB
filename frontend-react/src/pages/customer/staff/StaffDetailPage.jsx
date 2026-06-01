@@ -73,8 +73,8 @@ const StaffDetailPage = () => {
         {/* ── MAIN CONTENT ── */}
         <div className="lg:col-span-8 space-y-8">
 
-          {/* Hero Card */}
-          <section className="glass-card bg-surface rounded-3xl p-8 border border-outline-variant/30 shadow-lg">
+          {/* Hero Card - GIỮ NGUYÊN HOÀN TOÀN THEO YÊU CẦU */}
+          <section className="glass-card bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-lg">
             <div className="flex flex-col sm:flex-row items-start gap-6">
               <img
                 src={staff.avatar}
@@ -112,19 +112,19 @@ const StaffDetailPage = () => {
             </div>
           </section>
 
-          {/* Kỹ năng & Chuyên môn */}
-          <section className="glass-card bg-surface rounded-2xl p-8 border border-outline-variant/30">
+          {/* Kỹ năng & Chuyên môn - ĐÃ ĐẢO MÀU GỐC */}
+          <section className="glass-card bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/30">
             <h2 className="font-h3 text-h3 text-on-surface mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">insights</span>
               Thành tích & Hoạt động
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { icon: 'task_alt', label: 'Công việc hoàn thành', value: staff.completedJobs.toLocaleString('vi-VN'), unit: 'ca', color: 'text-primary' },
-                { icon: 'reviews', label: 'Đánh giá từ khách', value: staff.reviews, unit: 'đánh giá', color: 'text-tertiary' },
-                { icon: 'work_history', label: 'Kinh nghiệm', value: staff.experience, unit: '', color: 'text-secondary' },
+                { icon: 'task_alt', label: 'Công việc hoàn thành', value: staff.completedJobs.toLocaleString('vi-VN'), color: 'text-primary' },
+                { icon: 'reviews', label: 'Đánh giá từ khách', value: staff.reviews, color: 'text-tertiary' },
+                { icon: 'work_history', label: 'Kinh nghiệm', value: staff.experience, color: 'text-secondary' },
               ].map((item, idx) => (
-                <div key={idx} className="flex flex-col items-center justify-center p-5 bg-surface-container-lowest rounded-xl border border-outline-variant/20 text-center gap-2">
+                <div key={idx} className="flex flex-col items-center justify-center p-5 bg-surface rounded-xl border border-outline-variant/20 text-center gap-2">
                   <span className={`material-symbols-outlined text-3xl ${item.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>
                     {item.icon}
                   </span>
@@ -135,15 +135,15 @@ const StaffDetailPage = () => {
             </div>
           </section>
 
-          {/* Đánh giá */}
-          <section className="glass-card bg-surface rounded-2xl p-8 border border-outline-variant/30">
+          {/* Đánh giá - ĐÃ ĐẢO MÀU GỐC */}
+          <section className="glass-card bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/30">
             <h2 className="font-h3 text-h3 text-on-surface mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">rate_review</span>
               Đánh giá từ khách hàng
             </h2>
 
             {/* Summary */}
-            <div className="flex items-center gap-6 p-5 bg-surface-container-lowest rounded-xl border border-outline-variant/20 mb-6">
+            <div className="flex items-center gap-6 p-5 bg-surface rounded-xl border border-outline-variant/20 mb-6">
               <div className="text-center">
                 <p className="text-4xl font-black text-primary">{staff.rating}</p>
                 <div className="flex justify-center mt-1">{renderStars(staff.rating)}</div>
@@ -169,7 +169,7 @@ const StaffDetailPage = () => {
             {/* Review List */}
             <div className="space-y-4">
               {MOCK_REVIEWS.map(review => (
-                <div key={review.id} className="p-5 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
+                <div key={review.id} className="p-5 bg-surface rounded-xl border border-outline-variant/10">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
@@ -189,9 +189,9 @@ const StaffDetailPage = () => {
           </section>
         </div>
 
-        {/* ── SIDEBAR ── */}
+        {/* ── SIDEBAR - ĐÃ ĐẢO MÀU GỐC ── */}
         <aside className="lg:col-span-4 sticky top-28">
-          <div className="glass-card bg-surface rounded-2xl shadow-xl border border-outline-variant/30 overflow-hidden">
+          <div className="glass-card bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant/30 overflow-hidden">
             {/* Header */}
             <div className="px-6 py-5 border-b border-outline-variant/20 bg-gradient-to-r from-primary/5 to-transparent">
               <h3 className="font-h3 text-h3 text-primary flex items-center gap-2">
@@ -203,7 +203,7 @@ const StaffDetailPage = () => {
             {/* Body */}
             <div className="p-6 space-y-5">
               {/* Staff mini card */}
-              <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/20">
+              <div className="flex items-center gap-4 p-4 bg-surface rounded-xl border border-outline-variant/20">
                 <img src={staff.avatar} alt={staff.name} className="w-14 h-14 rounded-xl object-cover border-2 border-surface-container shadow" />
                 <div className="flex-1">
                   <p className="font-bold text-on-surface text-sm">{staff.name}</p>

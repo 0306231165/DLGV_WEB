@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const Header = () => {
   const location = useLocation();
-  const navigate = useNavigate();   // ← Thêm dòng này
+  const navigate = useNavigate();
 
   const getLinkClass = (path) => {
     if (location.pathname === path) {
@@ -27,11 +27,15 @@ const Header = () => {
       </nav>
 
       <div className="flex items-center space-x-4">
-        <button className="hidden md:block font-body-md text-body-md text-primary font-semibold hover:opacity-80 transition-all">
+        {/* NÚT ĐĂNG NHẬP - ĐÃ ĐƯỢC KÍCH HOẠT SỰ KIỆN CLICK CHUYỂN TRANG */}
+        <button 
+          onClick={() => navigate('/login')}
+          className="hidden md:block font-body-md text-body-md text-primary font-semibold hover:opacity-80 transition-all active:scale-95"
+        >
           Đăng nhập
         </button>
         
-        {/* Nút Đặt lịch ngay - ĐÃ CÓ SỰ KIỆN CLICK */}
+        {/* Nút Đặt lịch ngay */}
         <button 
           onClick={() => navigate('/booking')}
           className="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-sm text-label-sm hover:bg-primary-container transition-all shadow-sm active:scale-95"
