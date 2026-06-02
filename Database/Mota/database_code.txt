@@ -506,6 +506,21 @@ CREATE TABLE `TinNhan` (
     FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`)
 );
 
+CREATE TABLE `LichSuCuocGoi` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `phong_chat_id` INT NOT NULL, -- Lấy ID này làm RoomID cho ZegoCloud
+    `nguoi_goi_loai` VARCHAR(50) NOT NULL, -- 'KhachHang' hoặc 'NhanVien'
+    `nguoi_goi_id` INT NOT NULL,
+    `nguoi_nhan_loai` VARCHAR(50) NOT NULL,
+    `nguoi_nhan_id` INT NOT NULL,
+    `thoi_gian_bat_dau` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `thoi_gian_ket_thuc` DATETIME NULL,
+    `thoi_luong_giay` INT DEFAULT 0,
+    `trang_thai_cuoc_goi` VARCHAR(50) NOT NULL, -- 'ThanhCong', 'GoiNho', 'TuChoi'
+    
+    FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`)
+);
+
 -- -------------------------------------------------------------------------
 -- MODULE 6: LIÊN HỆ & TƯ VẤN KHÁCH VÃNG LAI
 -- -------------------------------------------------------------------------
