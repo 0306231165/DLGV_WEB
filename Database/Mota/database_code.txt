@@ -1,3 +1,9 @@
+-- =========================================================================
+-- DATABASE TỐI ƯU CHO VẬN HÀNH THỰC TẾ (BẢN CHUẨN HOÀN CHỈNH CHO ĐỒ ÁN)
+-- Phát triển & Tối ưu: Mô hình dịch vụ On-demand (Ví dụ: bTaskee, JupViec)
+-- Đã chuẩn hóa: Mối quan hệ N-N giữa DichVu và LoaiGoiDichVu qua bảng trung gian
+-- =========================================================================
+
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- -------------------------------------------------------------------------
@@ -6,48 +12,56 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 CREATE TABLE `NhomDichVu` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ma_nhom` VARCHAR(50) NOT NULL UNIQUE, 
-    `ten_nhom` VARCHAR(150) NOT NULL,      
-    `icon` VARCHAR(500) NULL,               
-    `thu_tu_hien_thi` INT DEFAULT 0,       
+    `ma_nhom` VARCHAR(50) NOT NULL UNIQUE,
+    `ten_nhom` VARCHAR(150) NOT NULL,
+    `icon` VARCHAR(500) NULL,
+    `thu_tu_hien_thi` INT DEFAULT 0,
     `trang_thai` BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE `DichVu` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `nhom_dich_vu_id` INT NOT NULL,              
+    `nhom_dich_vu_id` INT NOT NULL,
     `ten_dich_vu` VARCHAR(255) NOT NULL,
-    `cap_do_dich_vu` VARCHAR(50) NOT NULL,       
-    `co_bien_the` BOOLEAN NOT NULL,              
-    
-    `is_noi_bat` BOOLEAN DEFAULT FALSE,          
-    `thu_tu_hien_thi` INT DEFAULT 0,             
-
-    `cac_tan_suat_ho_tro` VARCHAR(255) NULL,     
-
-    `mo_ta` VARCHAR(500) NULL,                   
+    `cap_do_dich_vu` VARCHAR(50) NOT NULL, -- 'CoBan', 'CaoCap'
+    `is_noi_bat` BOOLEAN DEFAULT FALSE,
+    `co_bien_the` BOOLEAN NOT NULL,
+    `don_gia_co_ban` DECIMAL(12,2) NULL,
+    `thoi_gian_chuan_co_ban` INT NULL, -- Tính bằng phút
+    `mo_ta` VARCHAR(500) NULL,
     `noi_dung_chi_tiet` LONGTEXT NULL,
     `trang_thai` BOOLEAN DEFAULT TRUE,
-    
     FOREIGN KEY (`nhom_dich_vu_id`) REFERENCES `NhomDichVu`(`id`)
 );
 
 CREATE TABLE `TuyChonBienTheDichVu` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `dich_vu_id` INT NOT NULL,
-    `ten_tuy_chon` VARCHAR(150) NOT NULL,        
-    `don_vi_tinh` VARCHAR(50) NOT NULL DEFAULT 'Cai', 
-    `thoi_gian_chuan` INT NOT NULL,              
-    `don_gia` DECIMAL(12,2) NOT NULL,            
+    `ten_tuy_chon` VARCHAR(150) NOT NULL, 
+    `don_vi_tinh` VARCHAR(50) NOT NULL DEFAULT 'Cai',
+    `thoi_gian_chuan` INT NOT NULL,
+    `don_gia` DECIMAL(12,2) NOT NULL,
     `trang_thai` BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`)
 );
 
-CREATE TABLE `TanSuat` (
+CREATE TABLE `LoaiGoiDichVu` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ten_tan_suat` VARCHAR(100) NOT NULL,
+    `ten_loai_goi` VARCHAR(100) NOT NULL, -- 'Ca lẻ', 'Gói tháng', 'Gói 24/7'
     `mo_ta` VARCHAR(255) NULL,
-    `trang_thai` BOOLEAN DEFAULT TRUE 
+    `trang_thai` BOOLEAN DEFAULT TRUE
+);
+
+-- BẢNG TRUNG GIAN QUYẾT ĐỊNH MỐI QUAN HỆ N-N GIỮA DỊCH VỤ VÀ LOẠI GÓI
+CREATE TABLE `DichVu_LoaiGoi` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `dich_vu_id` INT NOT NULL,
+    `loai_goi_id` INT NOT NULL,
+    `trang_thai` BOOLEAN DEFAULT TRUE,
+    -- Chống trùng lặp dữ liệu cấu hình (Ví dụ: Dọn nhà - Gói tháng chỉ xuất hiện 1 dòng)
+    UNIQUE KEY `unique_dichvu_loaigoi` (`dich_vu_id`, `loai_goi_id`),
+    FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`loai_goi_id`) REFERENCES `LoaiGoiDichVu`(`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `CauHinhGoiThang` (
@@ -59,20 +73,22 @@ CREATE TABLE `CauHinhGoiThang` (
 
 CREATE TABLE `KhuyenMai` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ma_code` VARCHAR(50) NOT NULL UNIQUE, 
-    `tag_hien_thi` VARCHAR(100) NULL,           
-    `tieu_de` VARCHAR(255) NOT NULL,            
-    `mo_ta` TEXT NULL,                          
-    `dich_vu_id_ap_dung` INT NULL,              
+    `ma_code` VARCHAR(50) NOT NULL UNIQUE,
+    `tag_hien_thi` VARCHAR(100) NULL,
+    `tieu_de` VARCHAR(255) NOT NULL,
+    `mo_ta` TEXT NULL,
+    `dich_vu_id_ap_dung` INT NULL, 
     `gia_tri_don_toi_thieu` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    `loai_giam_gia` VARCHAR(50) NOT NULL,       
-    `gia_tri_giam` DECIMAL(12,2) NOT NULL,      
-    `giam_toi_da` DECIMAL(12,2) NULL,           
+    `loai_giam_gia` VARCHAR(50) NOT NULL, 
+    `gia_tri_giam` DECIMAL(12,2) NOT NULL,
+    `giam_toi_da` DECIMAL(12,2) NULL,
     `ngay_bat_dau` DATETIME NOT NULL,
     `ngay_ket_thuc` DATETIME NOT NULL,
-    `so_luong_phat_hanh` INT NOT NULL,          
-    `so_luong_da_luu` INT DEFAULT 0,            
-    `so_luong_da_dung` INT DEFAULT 0,            
+    `luot_dung_moi_khach` INT DEFAULT 1, 
+    `tong_luot_luu_toi_da` INT NOT NULL, 
+    `so_luong_da_luu` INT DEFAULT 0,     
+    `tong_luot_dung_toi_da_toan_san` INT NOT NULL, 
+    `so_luong_da_dung` INT DEFAULT 0,       
     `trang_thai` BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (`dich_vu_id_ap_dung`) REFERENCES `DichVu`(`id`)
 );
@@ -82,11 +98,10 @@ CREATE TABLE `DichVuThem` (
     `dich_vu_id` INT NOT NULL,
     `ten_dv_them` VARCHAR(150) NOT NULL,
     `gia_cong_them` DECIMAL(12,2) NOT NULL,
-    `thoi_gian_cong` INT NOT NULL,
+    `thoi_gian_cong` INT NOT NULL, 
     `trang_thai` BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`)
 );
-
 
 -- -------------------------------------------------------------------------
 -- MODULE 2: TÀI KHOẢN NGƯỜI DÙNG & HỒ SƠ NHÂN VIÊN
@@ -99,13 +114,13 @@ CREATE TABLE `KhachHang` (
     `mat_khau` VARCHAR(255) NOT NULL,
     `email` VARCHAR(100) NULL,
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `trang_thai` VARCHAR(50) NOT NULL
+    `trang_thai` VARCHAR(50) NOT NULL 
 );
 
 CREATE TABLE `DiaChiDaLuu` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `khach_hang_id` INT NOT NULL,
-    `ten_goi_nho` VARCHAR(100) NOT NULL,
+    `ten_goi_nho` VARCHAR(100) NOT NULL, 
     `dia_chi_chi_tiet` VARCHAR(255) NOT NULL,
     `kinh_do` DECIMAL(10,7) NULL,
     `vi_do` DECIMAL(10,7) NULL,
@@ -132,7 +147,7 @@ CREATE TABLE `NhanVien` (
     `kinh_do_hoat_dong` DECIMAL(10,7) NULL,
     `vi_do_hoat_dong` DECIMAL(10,7) NULL,
     `danh_gia_sao` DECIMAL(3,2) DEFAULT 5.00,
-    `trang_thai` VARCHAR(50) NOT NULL
+    `trang_thai` VARCHAR(50) NOT NULL 
 );
 
 CREATE TABLE `LichCamKet` (
@@ -140,8 +155,15 @@ CREATE TABLE `LichCamKet` (
     `nhan_vien_id` INT NOT NULL,
     `ngay_bat_dau_cam_ket` DATE NOT NULL,
     `ngay_ket_thuc_cam_ket` DATE NOT NULL,
-    `thu_trong_tuan` INT NOT NULL,                
-    `ca_dang_ky` VARCHAR(50) NOT NULL,           
+    `thu_trong_tuan` INT NOT NULL, 
+    
+    -- THÊM 2 CỘT NÀY ĐỂ XỬ LÝ GIỜ LINH HOẠT
+    `gio_bat_dau` TIME NOT NULL,
+    `gio_ket_thuc` TIME NOT NULL,
+    
+    -- (Tùy chọn) Giữ lại cột này chỉ để hiển thị nhãn cho đẹp (VD: 'CaSang', 'CaChieu/Toi', 'CaTuChon')
+    `ca_dang_ky` VARCHAR(50) NULL, 
+    
     `trang_thai` VARCHAR(50) DEFAULT 'DangHoatDong',
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
 );
@@ -161,123 +183,93 @@ CREATE TABLE `NhanVien_DichVu` (
     `trang_thai_duyet` VARCHAR(50) DEFAULT 'ChoDuyet', 
     `ngay_dang_ky` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `ngay_duyet` DATETIME NULL,
-    
-    -- [ĐÃ FIX LỖI TẠI ĐÂY]
     UNIQUE KEY `unique_nhanvien_dichvu` (`nhan_vien_id`, `dich_vu_id`),
-    
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
     FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`)
 );
 
-
 -- -------------------------------------------------------------------------
--- MODULE 3: VẬN HÀNH ĐƠN HÀNG, ĐIỀU PHỐI CA LÀM & LOG HỦY
+-- MODULE 3: VẬN HÀNH ĐƠN HÀNG, ĐIỀU PHỐI CA LÀM & PHẠT HỦY
 -- -------------------------------------------------------------------------
 
 CREATE TABLE `DonHang` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `khach_hang_id` INT NOT NULL,
-    `dich_vu_id` INT NOT NULL,
-    `tuy_chon_bien_the_dich_vu_id` INT NOT NULL, 
-
-    `khuyen_mai_id` INT NULL,                                          
-    `tan_suat_id` INT NOT NULL,
-    `nhan_vien_duoc_yeu_cau_id` INT NULL,              
-    `phuong_an_thay_the` VARCHAR(100) NULL,           
-    `is_giu_nhan_vien` BOOLEAN DEFAULT FALSE,         
     
-    `tong_so_buoi` INT NOT NULL DEFAULT 1,            
+    -- THAY THẾ cặp (dich_vu_id, loai_goi_dich_vu_id) bằng 1 khóa ngoại trỏ thẳng tới bảng trung gian
+    `dich_vu_loai_goi_id` INT NOT NULL,
+    
+    `tuy_chon_bien_the_id` INT NULL, 
+    `so_luong_tuy_chon` INT DEFAULT 1, 
+    `khuyen_mai_id` INT NULL,
+    `nhan_vien_duoc_yeu_cau_id` INT NULL,
+    `phuong_an_thay_the` VARCHAR(100) NULL, 
+    `is_giu_nhan_vien` BOOLEAN DEFAULT FALSE,
+    `tong_so_buoi` INT NOT NULL DEFAULT 1,
     `is_lap_lai_hang_tuan` BOOLEAN NOT NULL,
-    `cac_ngay_trong_tuan` VARCHAR(50) NULL,           
-    `gio_lam_mac_dinh` TIME NULL,                     
+    `cac_ngay_trong_tuan` VARCHAR(50) NULL, 
+    `gio_lam_mac_dinh` TIME NULL,
     `so_thang_goi_thang` INT NULL,
-    `ca_lam_247` VARCHAR(50) NULL,                    
-    `so_ngay_goi_247` INT NULL,                       
+    `ca_lam_247` VARCHAR(50) NULL,
+    `so_ngay_goi_247` INT NULL,
     `tld_giam_goi_thang` INT DEFAULT 0,
     `ngay_bat_dau` DATE NOT NULL,
     `ngay_ket_thuc` DATE NOT NULL,
-    
     `ho_ten_thuc_te` VARCHAR(150) NOT NULL,
     `sdt_thuc_te` VARCHAR(15) NOT NULL,
     `dia_chi_thuc_te` VARCHAR(255) NOT NULL,
     `kinh_do` DECIMAL(10,7) NULL,
     `vi_do` DECIMAL(10,7) NULL,
-    `ghi_chu_cho_nhan_vien` TEXT NULL,                
-    
-    `chi_tiet_dich_vu_them_json` JSON NULL, 
-
-    `is_cao_cap` BOOLEAN DEFAULT FALSE,                
-    `ty_le_phu_phi_cao_cap_snapshot` INT DEFAULT 0, 
-    `phu_phi_cao_cap` DECIMAL(12,2) DEFAULT 0.00,     
+    `ghi_chu_cho_nhan_vien` TEXT NULL,
+    `is_cao_cap` BOOLEAN DEFAULT FALSE,
+    `ty_le_phu_phi_cao_cap_snapshot` INT DEFAULT 0,
+    `phu_phi_cao_cap` DECIMAL(12,2) DEFAULT 0.00,
     `co_thu_cung` BOOLEAN DEFAULT FALSE,
-    `uu_tien_nv_yt` BOOLEAN DEFAULT FALSE,            
-    `phi_chon_nhan_vien_snapshot` DECIMAL(12,2) DEFAULT 0.00, 
-    `phu_phi_chon_nhan_vien` DECIMAL(12,2) DEFAULT 0.00,     
-    
-    `tong_tien_ban_dau` DECIMAL(12,2) NOT NULL,       
+    `uu_tien_nv_yt` BOOLEAN DEFAULT FALSE,
+    `phi_chon_nhan_vien_snapshot` DECIMAL(12,2) DEFAULT 0.00,
+    `phu_phi_chon_nhan_vien` DECIMAL(12,2) DEFAULT 0.00,
+    `don_gia_co_ban_snapshot` DECIMAL(12,2) NULL,
+    `tong_tien_ban_dau` DECIMAL(12,2) NOT NULL,
     `phu_phi_dat_gap` DECIMAL(12,2) DEFAULT 0.00,
-    `tien_giam_khuyen_mai` DECIMAL(12,2) DEFAULT 0.00,      
-    `tong_tien_cuoi_cung` DECIMAL(12,2) NOT NULL,     
+    `tien_giam_khuyen_mai` DECIMAL(12,2) DEFAULT 0.00,
+    `tong_tien_cuoi_cung` DECIMAL(12,2) NOT NULL,
     `tien_giam_giu` DECIMAL(12,2) DEFAULT 0.00,
-
-    `phuong_thuc_tt` VARCHAR(50) NOT NULL,            
-    `trang_thai_thanh_toan` VARCHAR(50) DEFAULT 'ChuaThanhToan',
-    `ma_giao_dich_online` VARCHAR(255) NULL,          
-    `trang_thai_don` VARCHAR(50) NOT NULL,            
+    `phuong_thuc_tt` VARCHAR(50) NOT NULL, 
+    `trang_thai_thanh_toan` VARCHAR(50) DEFAULT 'ChuaThanhToan', 
+    `ma_giao_dich_online` VARCHAR(255) NULL,
+    `trang_thai_don` VARCHAR(50) NOT NULL, 
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
     
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
-    FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`),
-    FOREIGN KEY (`tuy_chon_bien_the_dich_vu_id`) REFERENCES `TuyChonBienTheDichVu`(`id`),
+    -- KẾT NỐI KHÓA NGOẠI ĐẾN BẢNG TRUNG GIAN MỚI
+    FOREIGN KEY (`dich_vu_loai_goi_id`) REFERENCES `DichVu_LoaiGoi`(`id`),
+    FOREIGN KEY (`tuy_chon_bien_the_id`) REFERENCES `TuyChonBienTheDichVu`(`id`),
     FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`),
-    FOREIGN KEY (`tan_suat_id`) REFERENCES `TanSuat`(`id`),
     FOREIGN KEY (`nhan_vien_duoc_yeu_cau_id`) REFERENCES `NhanVien`(`id`)
 );
 
-CREATE TABLE `CaLamViec` (
+CREATE TABLE `QuyDinhPhuPhi` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `don_hang_id` INT NOT NULL,                        
-    `nhan_vien_id` INT NULL,                           
-    `ngay_lam` DATE NOT NULL,                          
-    `gio_bat_dau` TIME NOT NULL,                       
-    `thoi_gian_lam_phut` INT NOT NULL,                 
-    `loai_ca` VARCHAR(50) NOT NULL,                    
-    
-    `chi_tiet_dich_vu_them_json` JSON NULL,            
-
-    `is_cao_cap` BOOLEAN DEFAULT FALSE,                
-    `phi_chon_nv_snapshot` DECIMAL(12,2) DEFAULT 0.00, 
-    
-    `gia_ca_nay` DECIMAL(12,2) NOT NULL,               
-    `hoa_hong_app` DECIMAL(12,2) NOT NULL,             
-    `thuc_nhan_nv` DECIMAL(12,2) NOT NULL,             
-    `trang_thai_ca` VARCHAR(50) NOT NULL,              
-    `loai_ghep` VARCHAR(50) NOT NULL DEFAULT 'TuDong',
-
-    `thoi_gian_checkin` DATETIME NULL,                 
-    `checkin_kinh_do` DECIMAL(10,7) NULL,
-    `checkin_vi_do` DECIMAL(10,7) NULL,
-    `thoi_gian_checkout` DATETIME NULL,                
-    `checkout_kinh_do` DECIMAL(10,7) NULL,
-    `checkout_vi_do` DECIMAL(10,7) NULL,
-    `hinh_anh_nghiem_thu` TEXT NULL,                    
-    
-    INDEX `idx_ngay_trang_thai` (`ngay_lam`, `trang_thai_ca`),
-    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
+    `ma_phu_phi` VARCHAR(50) NOT NULL UNIQUE,
+    `gia_tri` VARCHAR(255) NOT NULL,
+    `mo_ta` VARCHAR(255) NULL
 );
 
-CREATE TABLE `LogHuyCa` (
+CREATE TABLE `LogThanhToanOnline` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `don_hang_id` INT NULL,
-    `ca_lam_viec_id` INT NULL,
-    `nguoi_huy_loai` VARCHAR(50) NOT NULL,     
-    `nguoi_huy_id` INT NOT NULL,               
-    `thoi_gian_huy` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `so_tien_phat` DECIMAL(12,2) DEFAULT 0.00,  
-    `ly_do` VARCHAR(255) NULL,
-    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
-    FOREIGN KEY (`ca_lam_viec_id`) REFERENCES `CaLamViec`(`id`)
+    `don_hang_id` INT NOT NULL,
+    `nha_cung_cap_tt` VARCHAR(50) NOT NULL, 
+    `ma_giao_dich_noi_bo` VARCHAR(100) NOT NULL UNIQUE,
+    `ma_giao_dich_doi_tac` VARCHAR(255) NULL,
+    `so_tien_giao_dich` DECIMAL(12,2) NOT NULL,
+    `trang_thai_giao_dich` VARCHAR(50) DEFAULT 'DangXuLy', 
+    `ma_loi_api` VARCHAR(50) NULL,
+    `tin_nhan_loi` VARCHAR(255) NULL,
+    `du_lieu_gui_di_json` TEXT NULL,
+    `du_lieu_tra_ve_json` TEXT NULL,
+    `ngay_tao_giao_dich` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `ngay_cap_nhat` DATETIME NULL,
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
 );
 
 CREATE TABLE `DonHang_DichVuThem` (
@@ -290,44 +282,70 @@ CREATE TABLE `DonHang_DichVuThem` (
     FOREIGN KEY (`dich_vu_them_id`) REFERENCES `DichVuThem`(`id`)
 );
 
-CREATE TABLE `QuyDinhPhuPhi` (
+CREATE TABLE `CaLamViec` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ma_phu_phi` VARCHAR(50) NOT NULL UNIQUE, 
-    `gia_tri` VARCHAR(255) NOT NULL,           
-    `mo_ta` VARCHAR(255) NULL  
-);
+    `don_hang_id` INT NOT NULL,
+    `nhan_vien_id` INT NULL,
+    `chi_tiet_dich_vu_them` JSON NULL, 
+    `ngay_lam` DATE NOT NULL,
+    `gio_bat_dau` TIME NOT NULL,
+    `thoi_gian_lam_phut` INT NOT NULL,
+    
+    -- [NÊN ĐỂ] Loại ca này lấy thông tin từ gói của Đơn Hàng lúc tạo ca để làm báo cáo thống kê nhanh
+    `loai_ca` VARCHAR(50) NOT NULL, 
+    
+    `is_cao_cap` BOOLEAN DEFAULT FALSE,
+    `phi_chon_nv_snapshot` DECIMAL(12,2) DEFAULT 0.00,
+    `gia_ca_nay` DECIMAL(12,2) NOT NULL,
+    `hoa_hong_app` DECIMAL(12,2) NOT NULL,
+    `thuc_nhan_nv` DECIMAL(12,2) NOT NULL,
+    `trang_thai_ca` VARCHAR(50) NOT NULL, 
+    `loai_ghep` VARCHAR(50) NOT NULL DEFAULT 'TuDong', 
+    `thoi_gian_checkin` DATETIME NULL,
+    `checkin_kinh_do` DECIMAL(10,7) NULL,
+    `checkin_vi_do` DECIMAL(10,7) NULL,
+    `thoi_gian_checkout` DATETIME NULL,
+    `checkout_kinh_do` DECIMAL(10,7) NULL,
+    `checkout_vi_do` DECIMAL(10,7) NULL,
+    `hinh_anh_nghiem_thu` TEXT NULL,
 
-CREATE TABLE `LogThanhToanOnline` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `don_hang_id` INT NOT NULL,               
-    `nha_cung_cap_tt` VARCHAR(50) NOT NULL,   
-    `ma_giao_dich_noi_bo` VARCHAR(100) NOT NULL UNIQUE, 
-    `ma_giao_dich_doi_tac` VARCHAR(255) NULL,           
-    `so_tien_giao_dich` DECIMAL(12,2) NOT NULL,         
-    `trang_thai_giao_dich` VARCHAR(50) DEFAULT 'DangXuLy', 
-    `ma_loi_api` VARCHAR(50) NULL,                                         
-    `tin_nhan_loi` VARCHAR(255) NULL,                                      
-    `du_lieu_gui_di_json` TEXT NULL,          
-    `du_lieu_tra_ve_json` TEXT NULL,          
-    `ngay_tao_giao_dich` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `ngay_cap_nhat` DATETIME NULL,            
-    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
+    INDEX `idx_ngay_trang_thai` (`ngay_lam`, `trang_thai_ca`),
+    INDEX `idx_nhanvien_ngaylam` (`nhan_vien_id`, `ngay_lam`),
+
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
 );
 
 CREATE TABLE `LichSuPhanHoiDeXuat` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `don_hang_id` INT NOT NULL,       
+    `don_hang_id` INT NOT NULL,
     `nhan_vien_id` INT NOT NULL,
+    `loai_de_xuat` VARCHAR(50) NOT NULL, 
     `hanh_dong` VARCHAR(50) NOT NULL, 
-    `ly_do_tu_choi` VARCHAR(255) NULL,
+    `ly_do_tu_choi` VARCHAR(255) NULL, 
     `thoi_gian` DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
 );
 
+CREATE TABLE `LichSuHuyDon` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ca_lam_viec_id` INT NULL,
+    `don_hang_id` INT NULL,
+    `nguoi_huy_loai` VARCHAR(50) NOT NULL, 
+    `nguoi_huy_id` INT NOT NULL,
+    `ly_do_huy` VARCHAR(255) NULL,
+    `thoi_diem_huy` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `co_phat_tien` BOOLEAN DEFAULT FALSE, 
+    `so_tien_phat` DECIMAL(12,2) DEFAULT 0.00,
+    `nguoi_nhan_tien_phat_loai` VARCHAR(50) NULL, 
+    `nguoi_nhan_tien_phat_id` INT NULL,
+    FOREIGN KEY (`ca_lam_viec_id`) REFERENCES `CaLamViec`(`id`),
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
+);
 
 -- -------------------------------------------------------------------------
--- MODULE 4: VÍ ĐIỆN TỬ & ĐỐI SOÁT TÀI CHÍNH
+-- MODULE 4: TÀI KHOẢN ADMIN, VÍ ĐIỆN TỬ & ĐỐI SOÁT TÀI CHÍNH
 -- -------------------------------------------------------------------------
 
 CREATE TABLE `ViKhachHang` (
@@ -342,7 +360,7 @@ CREATE TABLE `LichSuViKhachHang` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `ma_giao_dich` VARCHAR(100) NOT NULL UNIQUE,
     `vi_khach_hang_id` INT NOT NULL,
-    `loai_giao_dich` VARCHAR(50) NOT NULL,
+    `loai_giao_dich` VARCHAR(50) NOT NULL, 
     `so_tien` DECIMAL(12,2) NOT NULL,
     `ngay_giao_dich` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `noi_dung` VARCHAR(255) NOT NULL,
@@ -362,7 +380,7 @@ CREATE TABLE `LichSuViNhanVien` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `ma_giao_dich` VARCHAR(100) NOT NULL UNIQUE,
     `vi_nhan_vien_id` INT NOT NULL,
-    `loai_giao_dich` VARCHAR(50) NOT NULL,
+    `loai_giao_dich` VARCHAR(50) NOT NULL, 
     `so_tien` DECIMAL(12,2) NOT NULL,
     `ngay_giao_dich` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `noi_dung` VARCHAR(255) NOT NULL,
@@ -375,7 +393,7 @@ CREATE TABLE `TaiKhoanAdmin` (
     `ten_dang_nhap` VARCHAR(50) NOT NULL UNIQUE,
     `mat_khau` VARCHAR(255) NOT NULL,
     `ho_ten` VARCHAR(150) NOT NULL,
-    `quyen_han` VARCHAR(50) NOT NULL,
+    `quyen_han` VARCHAR(50) NOT NULL, 
     `trang_thai` BOOLEAN DEFAULT TRUE
 );
 
@@ -386,14 +404,13 @@ CREATE TABLE `YeuCauRutTien` (
     `ten_ngan_hang` VARCHAR(100) NOT NULL,
     `so_tai_khoan` VARCHAR(30) NOT NULL,
     `ten_chu_tk` VARCHAR(150) NOT NULL,
-    `trang_thai` VARCHAR(50) NOT NULL,
+    `trang_thai` VARCHAR(50) NOT NULL, 
     `ngay_yeu_cau` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `ngay_xu_ly` DATETIME NULL,
     `admin_xu_ly_id` INT NULL,
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
     FOREIGN KEY (`admin_xu_ly_id`) REFERENCES `TaiKhoanAdmin`(`id`)
 );
-
 
 -- -------------------------------------------------------------------------
 -- MODULE 5: CSKH, TƯƠNG TÁC & CÁC TÍNH NĂNG MỞ RỘNG
@@ -404,7 +421,7 @@ CREATE TABLE `DanhGiaNhanVien` (
     `ca_lam_viec_id` INT NOT NULL UNIQUE,
     `khach_hang_id` INT NOT NULL,
     `nhan_vien_id` INT NOT NULL,
-    `so_sao` INT NOT NULL,
+    `so_sao` INT NOT NULL, 
     `noi_dung` TEXT NULL,
     `ngay_danh_gia` DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`ca_lam_viec_id`) REFERENCES `CaLamViec`(`id`),
@@ -415,13 +432,13 @@ CREATE TABLE `DanhGiaNhanVien` (
 CREATE TABLE `KhieuNai` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `don_hang_id` INT NOT NULL,
-    `nguoi_khieu_nai_loai` VARCHAR(50) NOT NULL,       
+    `nguoi_khieu_nai_loai` VARCHAR(50) NOT NULL, 
     `nguoi_khieu_nai_id` INT NOT NULL,
     `ly_do_khieu_nai` VARCHAR(255) NOT NULL,
     `mo_ta_chi_tiet` TEXT NULL,
-    `hinh_anh_bang_chung` TEXT NULL,            
+    `hinh_anh_bang_chung` TEXT NULL,
     `trang_thai_xu_ly` VARCHAR(50) DEFAULT 'DangXuLy', 
-    `ket_qua_xu_ly` TEXT NULL,                                                                         
+    `ket_qua_xu_ly` TEXT NULL,
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `ngay_dong` DATETIME NULL,
     `admin_xu_ly_id` INT NULL,
@@ -434,12 +451,9 @@ CREATE TABLE `KhachHang_KhuyenMai` (
     `khach_hang_id` INT NOT NULL,
     `khuyen_mai_id` INT NOT NULL,
     `ngay_luu` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `ngay_su_dung` DATETIME NULL,                
+    `ngay_su_dung` DATETIME NULL,
     `trang_thai_luu` VARCHAR(50) DEFAULT 'DaLuu', 
-    
-    -- [ĐÃ FIX LỖI TẠI ĐÂY]
     UNIQUE KEY `unique_khachhang_khuyenmai` (`khach_hang_id`, `khuyen_mai_id`),
-    
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
     FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`)
 );
@@ -458,13 +472,13 @@ CREATE TABLE `LichSuDungKhuyenMai` (
 
 CREATE TABLE `ThongBao` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `loai_nguoi_nhan` VARCHAR(50) NOT NULL,
-    `nguoi_nhan_id` INT NOT NULL,
+    `loai_nguoi_nhan` VARCHAR(50) NOT NULL, 
+    `nguoi_nhan_id` INT NOT NULL, 
     `tieu_de` VARCHAR(255) NOT NULL,
     `noi_dung` TEXT NOT NULL,
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `is_da_doc` BOOLEAN DEFAULT FALSE,
-    `loai_doi_tuong` VARCHAR(50) NULL,
+    `loai_doi_tuong` VARCHAR(50) NULL, 
     `doi_tuong_id` INT NULL
 );
 
@@ -472,9 +486,9 @@ CREATE TABLE `PhongChat` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `khach_hang_id` INT NOT NULL,
     `nhan_vien_id` INT NOT NULL,
-    `don_hang_id` INT NULL,                                                                         
-    `thoi_gian_nhan_tin_cuoi` DATETIME DEFAULT CURRENT_TIMESTAMP, 
-    `trang_thai_phong` VARCHAR(50) DEFAULT 'DangHoatDong',        
+    `don_hang_id` INT NULL,
+    `thoi_gian_nhan_tin_cuoi` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `trang_thai_phong` VARCHAR(50) DEFAULT 'DangHoatDong', 
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
@@ -482,16 +496,15 @@ CREATE TABLE `PhongChat` (
 
 CREATE TABLE `TinNhan` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `phong_chat_id` INT NOT NULL,                    
-    `nguoi_gui_loai` VARCHAR(50) NOT NULL,          
-    `nguoi_gui_id` INT NOT NULL,                    
-    `noi_dung` TEXT NOT NULL,                       
-    `is_bi_chan` BOOLEAN DEFAULT FALSE,             
-    `trang_thai_doc` BOOLEAN DEFAULT FALSE,         
+    `phong_chat_id` INT NOT NULL,
+    `nguoi_gui_loai` VARCHAR(50) NOT NULL, 
+    `nguoi_gui_id` INT NOT NULL,
+    `noi_dung` TEXT NOT NULL,
+    `is_bi_chan` BOOLEAN DEFAULT FALSE,
+    `trang_thai_doc` BOOLEAN DEFAULT FALSE,
     `thoi_gian_gui` DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`)
 );
-
 
 -- -------------------------------------------------------------------------
 -- MODULE 6: LIÊN HỆ & TƯ VẤN KHÁCH VÃNG LAI
