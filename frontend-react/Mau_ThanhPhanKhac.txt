@@ -1,0 +1,2 @@
+-- Border 1px <color> - khung viền xám nhạt bao quanh div/card
+className = `border border-outline-variant/30`

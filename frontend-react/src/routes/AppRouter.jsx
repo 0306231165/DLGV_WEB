@@ -29,6 +29,7 @@ import AllBookingsPage     from '../pages/customer/mybooking/AllBookingsPage';
 import UpcomingBookingsPage from '../pages/customer/mybooking/UpcomingBookingsPage';
 import ActiveBookingsPage  from '../pages/customer/mybooking/ActiveBookingsPage';
 import CompletedBookingsPage from '../pages/customer/mybooking/CompletedBookingsPage';
+import BookingHistoryPage from '../pages/customer/mybooking/BookingHistoryPage';
 
 // Import Pages - Auth
 import LoginPage    from '../pages/customer/auth/LoginPage';
@@ -59,12 +60,21 @@ const AppRouter = () => {
             <Route path="vouchers"   element={<MyVouchersPage />} />
           </Route>
 
-          {/* Trang lịch của tôi — nested layout với sidebar riêng */}
-          <Route path="/my-bookings" element={<MyBookingsLayout />}>
-            <Route index             element={<AllBookingsPage />} />
-            <Route path="upcoming"   element={<UpcomingBookingsPage />} />
-            <Route path="active"     element={<ActiveBookingsPage />} />
-            <Route path="completed"  element={<CompletedBookingsPage />} />
+          {/* ─── NHÓM CÁC TRANG LIÊN QUAN ĐẾN LỊCH HẸN ─── */}
+          <Route path="my-bookings">
+            
+            {/* NHÁNH 1: Nhóm có Sidebar trái (Bọc bởi MyBookingsLayout cũ) */}
+            <Route element={<MyBookingsLayout />}>
+              <Route index           element={<AllBookingsPage />} />
+              <Route path="upcoming"   element={<UpcomingBookingsPage />} />
+              <Route path="active"     element={<ActiveBookingsPage />} />
+              <Route path="completed"  element={<CompletedBookingsPage />} />
+            </Route>
+
+            {/* NHÁNH 2: Trang Lịch sử riêng biệt - Đứng độc lập hoàn toàn */}
+            {/* Không bị bọc bởi MyBookingsLayout nên sẽ ăn trọn giao diện Full-width */}
+            <Route path="history" element={<BookingHistoryPage />} />
+
           </Route>
 
         </Route>

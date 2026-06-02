@@ -36,7 +36,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-surface text-on-surface font-body-md overflow-hidden h-screen w-screen flex items-center justify-center relative">
+    <div className="bg-surface text-on-surface font-body-md min-h-screen w-screen flex items-center justify-center relative py-10 overflow-y-auto">
       
       {/* Thêm Font & Icon Material Symbols trực tiếp vào trang thông qua thẻ style (Nếu dự án của bạn chưa cài toàn cục) */}
       <style>{`

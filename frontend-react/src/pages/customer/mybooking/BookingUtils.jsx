@@ -1,6 +1,7 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 
+// ─── Tab System ────────────────────────────────────────────────────────────────
 // ─── Tab System ────────────────────────────────────────────────────────────────
 export const BookingTabs = () => {
   const tabs = [
@@ -11,21 +12,35 @@ export const BookingTabs = () => {
   ];
 
   return (
-    <div className="flex items-center gap-2 p-1.5 bg-surface-container-low w-fit rounded-2xl mb-8 border border-outline-variant/20 shadow-sm flex-wrap">
-      {tabs.map((tab) => (
-        <NavLink
-          key={tab.to}
-          to={tab.to}
-          end={tab.end}
-          className={({ isActive }) =>
-            isActive
-              ? 'px-8 py-2.5 rounded-xl bg-primary text-on-primary font-label-sm shadow-md shadow-primary/20 transition-all active:scale-95'
-              : 'px-8 py-2.5 rounded-xl text-on-surface-variant hover:text-primary hover:bg-white/50 font-label-sm transition-all duration-300'
-          }
-        >
-          {tab.label}
-        </NavLink>
-      ))}
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      {/* Thanh Menu Tab cũ */}
+      <div className="flex items-center gap-2 p-1.5 bg-surface-container-low w-fit rounded-2xl border border-outline-variant/20 shadow-sm flex-wrap">
+        {tabs.map((tab) => (
+          <NavLink
+            key={tab.to}
+            to={tab.to}
+            end={tab.end}
+            className={({ isActive }) =>
+              isActive
+                ? 'px-8 py-2.5 rounded-xl bg-primary text-on-primary font-label-sm shadow-md shadow-primary/20 transition-all active:scale-95'
+                : 'px-8 py-2.5 rounded-xl text-on-surface-variant hover:text-primary hover:bg-white/50 font-label-sm transition-all duration-300'
+            }
+          >
+            {tab.label}
+          </NavLink>
+        ))}
+      </div>
+
+      {/* Nút "Lịch sử" chính thức trỏ sang Sub-route mới */}
+      <Link 
+        to="/my-bookings/history" 
+        className="group flex items-center gap-2 px-5 py-2.5 bg-white text-primary border border-outline-variant/30 hover:border-primary/30 rounded-xl font-label-sm shadow-md shadow-gray-200/80 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 active:scale-[0.98] w-fit"
+      >
+        <span className="material-symbols-outlined text-[20px] transition-transform duration-300 group-hover:scale-105">
+          history
+        </span>
+        <span className="font-bold">Lịch sử</span>
+      </Link>
     </div>
   );
 };
@@ -46,6 +61,7 @@ export const BookingCard = ({ booking }) => {
     actions,
   } = booking;
 
+  // Giữ lại borderAccent để nhận diện trạng thái ở viền trái card (nếu bạn vẫn muốn giữ)
   const borderAccent = {
     confirmed: 'border-l-primary',
     active: 'border-l-surface-tint',
@@ -53,28 +69,21 @@ export const BookingCard = ({ booking }) => {
     completed: 'border-l-outline',
   }[status] ?? 'border-l-outline-variant';
 
-  const iconBg = {
-    confirmed: 'bg-primary/10',
-    active: 'bg-surface-tint/15',
-    pending: 'bg-outline-variant/10',
-    completed: 'bg-outline/10',
-  }[status] ?? 'bg-primary/10';
-
-  const iconColor = {
-    confirmed: 'text-primary',
-    active: 'text-surface-tint',
-    pending: 'text-on-surface-variant',
-    completed: 'text-outline',
-  }[status] ?? 'text-primary';
-
   return (
     <div
       className={`glass-card bg-surface-container-item p-5 rounded-3xl flex gap-5 hover:shadow-2xl hover:shadow-primary/10 transition-all group border-l-4 ${borderAccent} shadow-sm shadow-gray-300`}
     >
-      {/* Icon Block */}
-      <div className="flex flex-col items-center gap-2 shrink-0">
-        <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center ${iconBg}`}>
-          <span className={`material-symbols-outlined text-4xl ${iconColor}`}>{serviceIcon}</span>
+      {/* Icon Block - Đã đồng bộ màu theo ServicesPage và đổi màu khi Hover/Active */}
+      <div className="flex flex-col items-center gap-2 shrink-0 select-none">
+        <div 
+          className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 
+                     bg-surface-container text-on-surface-variant 
+                     group-hover:bg-primary group-hover:text-on-primary 
+                     group-active:scale-95"
+        >
+          <span className="material-symbols-outlined text-3xl transition-transform duration-300 group-hover:scale-105">
+            {serviceIcon}
+          </span>
         </div>
         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold shadow-sm whitespace-nowrap ${statusClass}`}>
           {statusLabel}
