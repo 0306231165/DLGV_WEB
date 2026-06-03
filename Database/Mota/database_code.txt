@@ -95,12 +95,23 @@ CREATE TABLE `KhuyenMai` (
 
 CREATE TABLE `DichVuThem` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ten_dv_them` VARCHAR(150) NOT NULL UNIQUE, -- VD: 'Mang theo dụng cụ', 'Ủi đồ'
+    `icon` VARCHAR(255) NULL, -- Nâng cấp: Thêm icon cho đẹp giao diện
+    `mo_ta` VARCHAR(255) NULL,
+    `trang_thai` BOOLEAN DEFAULT TRUE
+);
+
+-- TẠI ĐÂY LƯU GIÁ & THỜI GIAN RIÊNG CHO TỪNG CẶP DỊCH VỤ
+CREATE TABLE `DichVu_DichVuThem` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
     `dich_vu_id` INT NOT NULL,
-    `ten_dv_them` VARCHAR(150) NOT NULL,
-    `gia_cong_them` DECIMAL(12,2) NOT NULL,
-    `thoi_gian_cong` INT NOT NULL, 
+    `dich_vu_them_id` INT NOT NULL,
+    `gia_cong_them` DECIMAL(12,2) NOT NULL, -- VD: Cùng là 'Dụng cụ' nhưng Dọn nhà giá 30k, Vệ sinh ML giá 50k
+    `thoi_gian_cong` INT NOT NULL, -- Thời gian cộng thêm (phút)
     `trang_thai` BOOLEAN DEFAULT TRUE,
-    FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`)
+    UNIQUE KEY `unique_dv_dvthem` (`dich_vu_id`, `dich_vu_them_id`),
+    FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`dich_vu_them_id`) REFERENCES `DichVuThem`(`id`) ON DELETE CASCADE
 );
 
 -- -------------------------------------------------------------------------
@@ -274,12 +285,12 @@ CREATE TABLE `LogThanhToanOnline` (
 
 CREATE TABLE `DonHang_DichVuThem` (
     `don_hang_id` INT NOT NULL,
-    `dich_vu_them_id` INT NOT NULL,
+    `dich_vu_dich_vu_them_id` INT NOT NULL, -- <== SỬA CHỖ NÀY: Trỏ thẳng vào bảng trung gian
     `so_luong` INT DEFAULT 1,
-    `gia_luc_dat` DECIMAL(12,2) NOT NULL,
-    PRIMARY KEY (`don_hang_id`, `dich_vu_them_id`),
+    `gia_luc_dat` DECIMAL(12,2) NOT NULL, -- Vẫn giữ nguyên cột này để lưu vết giá!
+    PRIMARY KEY (`don_hang_id`, `dich_vu_dich_vu_them_id`),
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
-    FOREIGN KEY (`dich_vu_them_id`) REFERENCES `DichVuThem`(`id`)
+    FOREIGN KEY (`dich_vu_dich_vu_them_id`) REFERENCES `DichVu_DichVuThem`(`id`)
 );
 
 CREATE TABLE `CaLamViec` (
