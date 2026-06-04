@@ -1,7 +1,7 @@
 -- =========================================================================
 -- DATABASE TỐI ƯU CHO VẬN HÀNH THỰC TẾ (BẢN CHUẨN HOÀN CHỈNH CHO ĐỒ ÁN)
 -- Phát triển & Tối ưu: Mô hình dịch vụ On-demand (Ví dụ: bTaskee, JupViec)
--- Đã chuẩn hóa: Mối quan hệ N-N giữa DichVu và LoaiGoiDichVu qua bảng trung gian
+-- Đã chuẩn hóa toàn diện theo góp ý của Giảng viên
 -- =========================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -38,7 +38,7 @@ CREATE TABLE `TuyChonBienTheDichVu` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `dich_vu_id` INT NOT NULL,
     `ten_tuy_chon` VARCHAR(150) NOT NULL, 
-    `don_vi_tinh` VARCHAR(50) NOT NULL DEFAULT 'Cai',
+    `don_vi_tinh` VARCHAR(50) NOT NULL DEFAULT 'Phut',
     `thoi_gian_chuan` INT NOT NULL,
     `don_gia` DECIMAL(12,2) NOT NULL,
     `trang_thai` BOOLEAN DEFAULT TRUE,
@@ -52,13 +52,11 @@ CREATE TABLE `LoaiGoiDichVu` (
     `trang_thai` BOOLEAN DEFAULT TRUE
 );
 
--- BẢNG TRUNG GIAN QUYẾT ĐỊNH MỐI QUAN HỆ N-N GIỮA DỊCH VỤ VÀ LOẠI GÓI
 CREATE TABLE `DichVu_LoaiGoi` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `dich_vu_id` INT NOT NULL,
     `loai_goi_id` INT NOT NULL,
     `trang_thai` BOOLEAN DEFAULT TRUE,
-    -- Chống trùng lặp dữ liệu cấu hình (Ví dụ: Dọn nhà - Gói tháng chỉ xuất hiện 1 dòng)
     UNIQUE KEY `unique_dichvu_loaigoi` (`dich_vu_id`, `loai_goi_id`),
     FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`loai_goi_id`) REFERENCES `LoaiGoiDichVu`(`id`) ON DELETE CASCADE
@@ -86,28 +84,27 @@ CREATE TABLE `KhuyenMai` (
     `ngay_ket_thuc` DATETIME NOT NULL,
     `luot_dung_moi_khach` INT DEFAULT 1, 
     `tong_luot_luu_toi_da` INT NOT NULL, 
-    `so_luong_da_luu` INT DEFAULT 0,     
+    `so_luong_da_luu` INT DEFAULT 0,      
     `tong_luot_dung_toi_da_toan_san` INT NOT NULL, 
-    `so_luong_da_dung` INT DEFAULT 0,       
+    `so_luong_da_dung` INT DEFAULT 0,        
     `trang_thai` BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (`dich_vu_id_ap_dung`) REFERENCES `DichVu`(`id`)
 );
 
 CREATE TABLE `DichVuThem` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ten_dv_them` VARCHAR(150) NOT NULL UNIQUE, -- VD: 'Mang theo dụng cụ', 'Ủi đồ'
-    `icon` VARCHAR(255) NULL, -- Nâng cấp: Thêm icon cho đẹp giao diện
+    `ten_dv_them` VARCHAR(150) NOT NULL UNIQUE,
+    `icon` VARCHAR(255) NULL,
     `mo_ta` VARCHAR(255) NULL,
     `trang_thai` BOOLEAN DEFAULT TRUE
 );
 
--- TẠI ĐÂY LƯU GIÁ & THỜI GIAN RIÊNG CHO TỪNG CẶP DỊCH VỤ
 CREATE TABLE `DichVu_DichVuThem` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `dich_vu_id` INT NOT NULL,
     `dich_vu_them_id` INT NOT NULL,
-    `gia_cong_them` DECIMAL(12,2) NOT NULL, -- VD: Cùng là 'Dụng cụ' nhưng Dọn nhà giá 30k, Vệ sinh ML giá 50k
-    `thoi_gian_cong` INT NOT NULL, -- Thời gian cộng thêm (phút)
+    `gia_cong_them` DECIMAL(12,2) NOT NULL,
+    `thoi_gian_cong` INT NOT NULL,
     `trang_thai` BOOLEAN DEFAULT TRUE,
     UNIQUE KEY `unique_dv_dvthem` (`dich_vu_id`, `dich_vu_them_id`),
     FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`) ON DELETE CASCADE,
@@ -115,27 +112,54 @@ CREATE TABLE `DichVu_DichVuThem` (
 );
 
 -- -------------------------------------------------------------------------
--- MODULE 2: TÀI KHOẢN NGƯỜI DÙNG & HỒ SƠ NHÂN VIÊN
+-- MODULE 2: HỆ THỐNG TÀI KHOẢN KẾ THỪA CHUNGS (GỘP THEO Ý CÔ)
 -- -------------------------------------------------------------------------
 
-CREATE TABLE `KhachHang` (
+-- Bảng gốc chứa thông tin định danh cốt lõi
+CREATE TABLE `TaiKhoan` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ho_ten` VARCHAR(150) NOT NULL,
     `so_dien_thoai` VARCHAR(15) NOT NULL UNIQUE,
     `mat_khau` VARCHAR(255) NOT NULL,
+    `ho_ten` VARCHAR(150) NOT NULL,
     `email` VARCHAR(100) NULL,
+    `loai_tai_khoan` VARCHAR(50) NOT NULL, -- 'KhachHang', 'NhanVien'
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `trang_thai` VARCHAR(50) NOT NULL 
+    `trang_thai` VARCHAR(50) DEFAULT 'HoatDong'
 );
 
+-- Vai trò Khách Hàng kế thừa từ TaiKhoan
+CREATE TABLE `KhachHang` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `tai_khoan_id` INT NOT NULL UNIQUE,
+    FOREIGN KEY (`tai_khoan_id`) REFERENCES `TaiKhoan`(`id`) ON DELETE CASCADE
+);
+
+-- Vai trò Nhân Viên kế thừa từ TaiKhoan (Bổ sung chỉ số kinh nghiệm & Đã bỏ tọa độ)
+CREATE TABLE `NhanVien` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `tai_khoan_id` INT NOT NULL UNIQUE,
+    `avatar` VARCHAR(255) NULL,
+    `cccd` VARCHAR(20) NOT NULL UNIQUE,
+    `ngay_sinh` DATE NOT NULL,
+    `gioi_tinh` VARCHAR(10) NOT NULL,
+    `dia_chi` VARCHAR(255) NOT NULL,
+    
+    -- Bộ đếm kinh nghiệm và chất lượng phục vụ
+    `danh_gia_sao_trung_binh` DECIMAL(3,2) DEFAULT 5.00,
+    `tong_so_danh_gia` INT DEFAULT 0,
+    `tong_so_ca_hoan_thanh` INT DEFAULT 0,
+    `tong_gio_lam` INT DEFAULT 0,
+    
+    FOREIGN KEY (`tai_khoan_id`) REFERENCES `TaiKhoan`(`id`) ON DELETE CASCADE
+);
+
+-- Đã lược bỏ kinh_do và vi_do
 CREATE TABLE `DiaChiDaLuu` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `khach_hang_id` INT NOT NULL,
     `ten_goi_nho` VARCHAR(100) NOT NULL, 
     `dia_chi_chi_tiet` VARCHAR(255) NOT NULL,
-    `kinh_do` DECIMAL(10,7) NULL,
-    `vi_do` DECIMAL(10,7) NULL,
-    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`)
+    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `LienHeDaLuu` (
@@ -143,48 +167,15 @@ CREATE TABLE `LienHeDaLuu` (
     `khach_hang_id` INT NOT NULL,
     `ten_nguoi_nhan` VARCHAR(150) NOT NULL,
     `sdt_nhan` VARCHAR(15) NOT NULL,
-    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`)
-);
-
-CREATE TABLE `NhanVien` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ho_ten` VARCHAR(150) NOT NULL,
-    `so_dien_thoai` VARCHAR(15) NOT NULL UNIQUE,
-    `mat_khau` VARCHAR(255) NOT NULL,
-    `avatar` VARCHAR(255) NULL,
-    `cccd` VARCHAR(20) NOT NULL UNIQUE,
-    `ngay_sinh` DATE NOT NULL,
-    `gioi_tinh` VARCHAR(10) NOT NULL,
-    `kinh_do_hoat_dong` DECIMAL(10,7) NULL,
-    `vi_do_hoat_dong` DECIMAL(10,7) NULL,
-    `danh_gia_sao` DECIMAL(3,2) DEFAULT 5.00,
-    `trang_thai` VARCHAR(50) NOT NULL 
-);
-
-CREATE TABLE `LichCamKet` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `nhan_vien_id` INT NOT NULL,
-    `ngay_bat_dau_cam_ket` DATE NOT NULL,
-    `ngay_ket_thuc_cam_ket` DATE NOT NULL,
-    `thu_trong_tuan` INT NOT NULL, 
-    
-    -- THÊM 2 CỘT NÀY ĐỂ XỬ LÝ GIỜ LINH HOẠT
-    `gio_bat_dau` TIME NOT NULL,
-    `gio_ket_thuc` TIME NOT NULL,
-    
-    -- (Tùy chọn) Giữ lại cột này chỉ để hiển thị nhãn cho đẹp (VD: 'CaSang', 'CaChieu/Toi', 'CaTuChon')
-    `ca_dang_ky` VARCHAR(50) NULL, 
-    
-    `trang_thai` VARCHAR(50) DEFAULT 'DangHoatDong',
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
+    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `NhanVienYeuThich` (
     `khach_hang_id` INT NOT NULL,
     `nhan_vien_id` INT NOT NULL,
     PRIMARY KEY (`khach_hang_id`, `nhan_vien_id`),
-    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
+    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `NhanVien_DichVu` (
@@ -195,21 +186,58 @@ CREATE TABLE `NhanVien_DichVu` (
     `ngay_dang_ky` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `ngay_duyet` DATETIME NULL,
     UNIQUE KEY `unique_nhanvien_dichvu` (`nhan_vien_id`, `dich_vu_id`),
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
-    FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`)
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`) ON DELETE CASCADE
 );
 
 -- -------------------------------------------------------------------------
--- MODULE 3: VẬN HÀNH ĐƠN HÀNG, ĐIỀU PHỐI CA LÀM & PHẠT HỦY
+-- MODULE 3: LỊCH RẢNH, XIN NGHỈ ĐỘT XUẤT VÀ LOG LỊCH (ĐÃ CHUẨN HÓA)
 -- -------------------------------------------------------------------------
 
+-- Đã đổi tên chuẩn thành LichRanh, lưu cấu hình chạy dài hạn theo tuần
+CREATE TABLE `LichRanh` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `nhan_vien_id` INT NOT NULL,
+    `ngay_bat_dau` DATE NOT NULL, 
+    `ngay_ket_thuc` DATE NOT NULL, 
+    `thu_trong_tuan` INT NOT NULL, -- 2, 3, 4, 5, 6, 7, 8 (Chủ Nhật)
+    `gio_bat_dau` TIME NOT NULL,
+    `gio_ket_thuc` TIME NOT NULL,
+    `trang_thai` VARCHAR(50) DEFAULT 'DangHoatDong',
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`) ON DELETE CASCADE
+);
+
+-- Xử lý ngày bận đột xuất/nghỉ ốm đè lên lịch rảnh mặc định
+CREATE TABLE `NgayNghiNhanVien` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `nhan_vien_id` INT NOT NULL,
+    `ngay_nghi` DATE NOT NULL,
+    `gio_bat_dau_nghi` TIME NULL, -- NULL tức là nghỉ cả ngày
+    `gio_ket_thuc_nghi` TIME NULL,
+    `ly_do` VARCHAR(255) NOT NULL,
+    `trang_thai_duyet` VARCHAR(50) DEFAULT 'DaDuyet', 
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`) ON DELETE CASCADE
+);
+
+-- Nơi tự động ghi vết tất cả hành động thêm/sửa/nghỉ liên quan tới lịch của nhân viên
+CREATE TABLE `LogThayDoiLich` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `nhan_vien_id` INT NOT NULL,
+    `loai_thay_doi` VARCHAR(50) NOT NULL, -- 'ThemLich', 'SuaLich', 'XinNghi', 'HuyNghi'
+    `noi_dung_thay_doi` TEXT NOT NULL,
+    `thoi_gian_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`) ON DELETE CASCADE
+);
+
+-- -------------------------------------------------------------------------
+-- MODULE 4: ĐƠN HÀNG VÀ ĐIỀU PHỐI CA LÀM VIỆC (ĐÃ BỎ CỘT TRÙNG LẶP & TỌA ĐỘ)
+-- -------------------------------------------------------------------------
+
+-- Đã loại bỏ: tien_giam_khuyen_mai (để backend tính), kinh_do, vi_do
 CREATE TABLE `DonHang` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `khach_hang_id` INT NOT NULL,
-    
-    -- THAY THẾ cặp (dich_vu_id, loai_goi_dich_vu_id) bằng 1 khóa ngoại trỏ thẳng tới bảng trung gian
     `dich_vu_loai_goi_id` INT NOT NULL,
-    
     `tuy_chon_bien_the_id` INT NULL, 
     `so_luong_tuy_chon` INT DEFAULT 1, 
     `khuyen_mai_id` INT NULL,
@@ -229,8 +257,6 @@ CREATE TABLE `DonHang` (
     `ho_ten_thuc_te` VARCHAR(150) NOT NULL,
     `sdt_thuc_te` VARCHAR(15) NOT NULL,
     `dia_chi_thuc_te` VARCHAR(255) NOT NULL,
-    `kinh_do` DECIMAL(10,7) NULL,
-    `vi_do` DECIMAL(10,7) NULL,
     `ghi_chu_cho_nhan_vien` TEXT NULL,
     `is_cao_cap` BOOLEAN DEFAULT FALSE,
     `ty_le_phu_phi_cao_cap_snapshot` INT DEFAULT 0,
@@ -242,7 +268,6 @@ CREATE TABLE `DonHang` (
     `don_gia_co_ban_snapshot` DECIMAL(12,2) NULL,
     `tong_tien_ban_dau` DECIMAL(12,2) NOT NULL,
     `phu_phi_dat_gap` DECIMAL(12,2) DEFAULT 0.00,
-    `tien_giam_khuyen_mai` DECIMAL(12,2) DEFAULT 0.00,
     `tong_tien_cuoi_cung` DECIMAL(12,2) NOT NULL,
     `tien_giam_giu` DECIMAL(12,2) DEFAULT 0.00,
     `phuong_thuc_tt` VARCHAR(50) NOT NULL, 
@@ -252,7 +277,6 @@ CREATE TABLE `DonHang` (
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
     
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
-    -- KẾT NỐI KHÓA NGOẠI ĐẾN BẢNG TRUNG GIAN MỚI
     FOREIGN KEY (`dich_vu_loai_goi_id`) REFERENCES `DichVu_LoaiGoi`(`id`),
     FOREIGN KEY (`tuy_chon_bien_the_id`) REFERENCES `TuyChonBienTheDichVu`(`id`),
     FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`),
@@ -285,14 +309,15 @@ CREATE TABLE `LogThanhToanOnline` (
 
 CREATE TABLE `DonHang_DichVuThem` (
     `don_hang_id` INT NOT NULL,
-    `dich_vu_dich_vu_them_id` INT NOT NULL, -- <== SỬA CHỖ NÀY: Trỏ thẳng vào bảng trung gian
+    `dich_vu_dich_vu_them_id` INT NOT NULL,
     `so_luong` INT DEFAULT 1,
-    `gia_luc_dat` DECIMAL(12,2) NOT NULL, -- Vẫn giữ nguyên cột này để lưu vết giá!
+    `gia_luc_dat` DECIMAL(12,2) NOT NULL,
     PRIMARY KEY (`don_hang_id`, `dich_vu_dich_vu_them_id`),
-    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
-    FOREIGN KEY (`dich_vu_dich_vu_them_id`) REFERENCES `DichVu_DichVuThem`(`id`)
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`dich_vu_dich_vu_them_id`) REFERENCES `DichVu_DichVuThem`(`id`) ON DELETE CASCADE
 );
 
+-- BẢNG UPDATE MẠNH: Mang đầy đủ địa chỉ, đổi tên loai_ca thành nhom_ca_lam, gộp ĐÁNH GIÁ trực tiếp vào đây, xóa tọa độ & phi_chon_nv_snapshot
 CREATE TABLE `CaLamViec` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `don_hang_id` INT NOT NULL,
@@ -302,27 +327,25 @@ CREATE TABLE `CaLamViec` (
     `gio_bat_dau` TIME NOT NULL,
     `thoi_gian_lam_phut` INT NOT NULL,
     
-    -- [NÊN ĐỂ] Loại ca này lấy thông tin từ gói của Đơn Hàng lúc tạo ca để làm báo cáo thống kê nhanh
-    `loai_ca` VARCHAR(50) NOT NULL, 
+    `loai_goi_ca_lam` VARCHAR(50) NOT NULL, -- Đổi tên theo ý cô ('Ca le', 'GoiThang', 'Goi 24/7, ...)
+    `dia_chi_lam_viec` VARCHAR(255) NOT NULL, -- Copy trực tiếp từ đơn hàng để NV xem nhanh
     
-    `is_cao_cap` BOOLEAN DEFAULT FALSE,
-    `phi_chon_nv_snapshot` DECIMAL(12,2) DEFAULT 0.00,
     `gia_ca_nay` DECIMAL(12,2) NOT NULL,
     `hoa_hong_app` DECIMAL(12,2) NOT NULL,
     `thuc_nhan_nv` DECIMAL(12,2) NOT NULL,
     `trang_thai_ca` VARCHAR(50) NOT NULL, 
     `loai_ghep` VARCHAR(50) NOT NULL DEFAULT 'TuDong', 
     `thoi_gian_checkin` DATETIME NULL,
-    `checkin_kinh_do` DECIMAL(10,7) NULL,
-    `checkin_vi_do` DECIMAL(10,7) NULL,
     `thoi_gian_checkout` DATETIME NULL,
-    `checkout_kinh_do` DECIMAL(10,7) NULL,
-    `checkout_vi_do` DECIMAL(10,7) NULL,
-    `hinh_anh_nghiem_thu` TEXT NULL,
+    `hinh_anh_xac_minh` TEXT NULL,
+
+    -- TÍNH NĂNG GỘP: Đánh giá ca làm việc trực tiếp tại đây, xóa bảng DanhGiaNhanVien riêng lẻ
+    `sao_danh_gia` INT NULL, 
+    `noi_dung_danh_gia` TEXT NULL,
+    `ngay_danh_gia` DATETIME NULL,
 
     INDEX `idx_ngay_trang_thai` (`ngay_lam`, `trang_thai_ca`),
     INDEX `idx_nhanvien_ngaylam` (`nhan_vien_id`, `ngay_lam`),
-
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
 );
@@ -356,47 +379,40 @@ CREATE TABLE `LichSuHuyDon` (
 );
 
 -- -------------------------------------------------------------------------
--- MODULE 4: TÀI KHOẢN ADMIN, VÍ ĐIỆN TỬ & ĐỐI SOÁT TÀI CHÍNH
+-- MODULE 5: VÍ ĐIỆN TỬ TẬP TRUNG & QUẢN LÝ GIAO DỊCH (GỘP THEO Ý CÔ)
 -- -------------------------------------------------------------------------
 
-CREATE TABLE `ViKhachHang` (
+-- Gộp chung Ví Khách Hàng và Ví Nhân Viên làm một bảng gắn trực tiếp vào TaiKhoan mẹ
+CREATE TABLE `ViTien` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `khach_hang_id` INT NOT NULL UNIQUE,
+    `tai_khoan_id` INT NOT NULL UNIQUE,
     `so_du` DECIMAL(12,2) DEFAULT 0.00,
-    `ngay_cap_nhat` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`)
+    `ngay_cap_nhat` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`tai_khoan_id`) REFERENCES `TaiKhoan`(`id`) ON DELETE CASCADE
 );
 
-CREATE TABLE `LichSuViKhachHang` (
+-- Bảng siêu tổng hợp: Xử lý Lịch sử ví khách, lịch sử ví NV, Nạp tiền, và Yêu cầu rút tiền vào chung 1 nơi
+CREATE TABLE `GiaoDichVi` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `vi_tien_id` INT NOT NULL,
     `ma_giao_dich` VARCHAR(100) NOT NULL UNIQUE,
-    `vi_khach_hang_id` INT NOT NULL,
-    `loai_giao_dich` VARCHAR(50) NOT NULL, 
+    `loai_giao_dich` VARCHAR(50) NOT NULL, -- 'NapTien', 'RutTien', 'ThanhToanDonHang', 'NhanLuongCaLam', 'PhatHuyDon'
     `so_tien` DECIMAL(12,2) NOT NULL,
-    `ngay_giao_dich` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `noi_dung` VARCHAR(255) NOT NULL,
-    `ma_tham_chieu_dh` INT NULL,
-    FOREIGN KEY (`vi_khach_hang_id`) REFERENCES `ViKhachHang`(`id`)
-);
-
-CREATE TABLE `ViNhanVien` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `nhan_vien_id` INT NOT NULL UNIQUE,
-    `so_du` DECIMAL(12,2) DEFAULT 0.00,
-    `ngay_cap_nhat` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
-);
-
-CREATE TABLE `LichSuViNhanVien` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ma_giao_dich` VARCHAR(100) NOT NULL UNIQUE,
-    `vi_nhan_vien_id` INT NOT NULL,
-    `loai_giao_dich` VARCHAR(50) NOT NULL, 
-    `so_tien` DECIMAL(12,2) NOT NULL,
-    `ngay_giao_dich` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `noi_dung` VARCHAR(255) NOT NULL,
-    `ma_tham_chieu_ca` INT NULL,
-    FOREIGN KEY (`vi_nhan_vien_id`) REFERENCES `ViNhanVien`(`id`)
+    `trang_thai` VARCHAR(50) NOT NULL DEFAULT 'ThanhCong', -- 'ThanhCong', 'DangXuLy' (cho lệnh rút), 'TuChoi'
+    
+    -- Phục vụ cho yêu cầu rút tiền tài khoản ngân hàng của Nhân viên / Khách hàng
+    `ten_ngan_hang` VARCHAR(100) NULL,
+    `so_tai_khoan` VARCHAR(30) NULL,
+    `ten_chu_tk` VARCHAR(150) NULL,
+    
+    `ma_tham_chieu_he_thong` INT NULL, -- Gắn ID Đơn Hàng hoặc Ca Làm Việc liên quan để đối soát
+    `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `ngay_xu_ly` DATETIME NULL, -- Thời gian admin duyệt lệnh nạp/rút tiền
+    `admin_xu_ly_id` INT NULL,
+    
+    FOREIGN KEY (`vi_tien_id`) REFERENCES `ViTien`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`admin_xu_ly_id`) REFERENCES `TaiKhoanAdmin`(`id`)
 );
 
 CREATE TABLE `TaiKhoanAdmin` (
@@ -408,37 +424,9 @@ CREATE TABLE `TaiKhoanAdmin` (
     `trang_thai` BOOLEAN DEFAULT TRUE
 );
 
-CREATE TABLE `YeuCauRutTien` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `nhan_vien_id` INT NOT NULL,
-    `so_tien_rut` DECIMAL(12,2) NOT NULL,
-    `ten_ngan_hang` VARCHAR(100) NOT NULL,
-    `so_tai_khoan` VARCHAR(30) NOT NULL,
-    `ten_chu_tk` VARCHAR(150) NOT NULL,
-    `trang_thai` VARCHAR(50) NOT NULL, 
-    `ngay_yeu_cau` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `ngay_xu_ly` DATETIME NULL,
-    `admin_xu_ly_id` INT NULL,
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
-    FOREIGN KEY (`admin_xu_ly_id`) REFERENCES `TaiKhoanAdmin`(`id`)
-);
-
 -- -------------------------------------------------------------------------
--- MODULE 5: CSKH, TƯƠNG TÁC & CÁC TÍNH NĂNG MỞ RỘNG
+-- MODULE 6: TƯƠNG TÁC, CSKH VÀ ĐỐI THOẠI (ĐÃ BỎ LỊCH SỬ KHUYẾN MÃI THEO Ý CÔ)
 -- -------------------------------------------------------------------------
-
-CREATE TABLE `DanhGiaNhanVien` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ca_lam_viec_id` INT NOT NULL UNIQUE,
-    `khach_hang_id` INT NOT NULL,
-    `nhan_vien_id` INT NOT NULL,
-    `so_sao` INT NOT NULL, 
-    `noi_dung` TEXT NULL,
-    `ngay_danh_gia` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`ca_lam_viec_id`) REFERENCES `CaLamViec`(`id`),
-    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
-);
 
 CREATE TABLE `KhieuNai` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -465,20 +453,8 @@ CREATE TABLE `KhachHang_KhuyenMai` (
     `ngay_su_dung` DATETIME NULL,
     `trang_thai_luu` VARCHAR(50) DEFAULT 'DaLuu', 
     UNIQUE KEY `unique_khachhang_khuyenmai` (`khach_hang_id`, `khuyen_mai_id`),
-    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
-    FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`)
-);
-
-CREATE TABLE `LichSuDungKhuyenMai` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `khach_hang_id` INT NOT NULL,
-    `khuyen_mai_id` INT NOT NULL,
-    `don_hang_id` INT NOT NULL,
-    `so_tien_duoc_giam` DECIMAL(12,2) NOT NULL,
-    `ngay_su_dung` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
-    FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`),
-    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
+    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`khuyen_mai_id`) REFERENCES `KhuyenMai`(`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `ThongBao` (
@@ -500,9 +476,9 @@ CREATE TABLE `PhongChat` (
     `don_hang_id` INT NULL,
     `thoi_gian_nhan_tin_cuoi` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `trang_thai_phong` VARCHAR(50) DEFAULT 'DangHoatDong', 
-    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
-    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`)
+    FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `TinNhan` (
@@ -514,26 +490,25 @@ CREATE TABLE `TinNhan` (
     `is_bi_chan` BOOLEAN DEFAULT FALSE,
     `trang_thai_doc` BOOLEAN DEFAULT FALSE,
     `thoi_gian_gui` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`)
+    FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `LichSuCuocGoi` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `phong_chat_id` INT NOT NULL, -- Lấy ID này làm RoomID cho ZegoCloud
-    `nguoi_goi_loai` VARCHAR(50) NOT NULL, -- 'KhachHang' hoặc 'NhanVien'
+    `phong_chat_id` INT NOT NULL,
+    `nguoi_goi_loai` VARCHAR(50) NOT NULL,
     `nguoi_goi_id` INT NOT NULL,
     `nguoi_nhan_loai` VARCHAR(50) NOT NULL,
     `nguoi_nhan_id` INT NOT NULL,
     `thoi_gian_bat_dau` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `thoi_gian_ket_thuc` DATETIME NULL,
     `thoi_luong_giay` INT DEFAULT 0,
-    `trang_thai_cuoc_goi` VARCHAR(50) NOT NULL, -- 'ThanhCong', 'GoiNho', 'TuChoi'
-    
-    FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`)
+    `trang_thai_cuoc_goi` VARCHAR(50) NOT NULL, 
+    FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`) ON DELETE CASCADE
 );
 
 -- -------------------------------------------------------------------------
--- MODULE 6: LIÊN HỆ & TƯ VẤN KHÁCH VÃNG LAI
+-- MODULE 7: LIÊN HỆ VÀ TƯ VẤN KHÁCH VÃNG LAI
 -- -------------------------------------------------------------------------
 
 CREATE TABLE `LienHe` (
