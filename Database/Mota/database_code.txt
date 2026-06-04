@@ -115,33 +115,39 @@ CREATE TABLE `DichVu_DichVuThem` (
 -- MODULE 2: HỆ THỐNG TÀI KHOẢN KẾ THỪA CHUNGS (GỘP THEO Ý CÔ)
 -- -------------------------------------------------------------------------
 
--- Bảng gốc chứa thông tin định danh cốt lõi
+-- Bảng cha: Gom toàn bộ những gì mà cả Khách và Nhân viên đều có
 CREATE TABLE `TaiKhoan` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `so_dien_thoai` VARCHAR(15) NOT NULL UNIQUE,
     `mat_khau` VARCHAR(255) NOT NULL,
     `ho_ten` VARCHAR(150) NOT NULL,
     `email` VARCHAR(100) NULL,
+    
+    -- Các trường dùng chung mới được kéo lên (Cho phép NULL vì khách hàng có thể chưa điền)
+    `avatar` VARCHAR(255) NULL,
+    `ngay_sinh` DATE NULL,
+    `gioi_tinh` VARCHAR(10) NULL,
+    
     `loai_tai_khoan` VARCHAR(50) NOT NULL, -- 'KhachHang', 'NhanVien'
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `trang_thai` VARCHAR(50) DEFAULT 'HoatDong'
 );
 
--- Vai trò Khách Hàng kế thừa từ TaiKhoan
+-- Vai trò Khách Hàng (Bây giờ cực kỳ gọn nhẹ, chỉ làm gốc để móc nối Đơn hàng, Địa chỉ...)
 CREATE TABLE `KhachHang` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `tai_khoan_id` INT NOT NULL UNIQUE,
+    -- (Có thể thêm các cột rêng cho khách như: diem_thuong_thanh_vien, hang_thanh_vien nếu muốn)
     FOREIGN KEY (`tai_khoan_id`) REFERENCES `TaiKhoan`(`id`) ON DELETE CASCADE
 );
 
--- Vai trò Nhân Viên kế thừa từ TaiKhoan (Bổ sung chỉ số kinh nghiệm & Đã bỏ tọa độ)
+-- Vai trò Nhân Viên (Chỉ giữ lại những thứ đặc thù của người lao động)
 CREATE TABLE `NhanVien` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `tai_khoan_id` INT NOT NULL UNIQUE,
-    `avatar` VARCHAR(255) NULL,
+    
+    -- Giữ lại giấy tờ và địa chỉ cư trú bắt buộc
     `cccd` VARCHAR(20) NOT NULL UNIQUE,
-    `ngay_sinh` DATE NOT NULL,
-    `gioi_tinh` VARCHAR(10) NOT NULL,
     `dia_chi` VARCHAR(255) NOT NULL,
     
     -- Bộ đếm kinh nghiệm và chất lượng phục vụ
@@ -263,7 +269,6 @@ CREATE TABLE `DonHang` (
     `phu_phi_cao_cap` DECIMAL(12,2) DEFAULT 0.00,
     `co_thu_cung` BOOLEAN DEFAULT FALSE,
     `uu_tien_nv_yt` BOOLEAN DEFAULT FALSE,
-    `phi_chon_nhan_vien_snapshot` DECIMAL(12,2) DEFAULT 0.00,
     `phu_phi_chon_nhan_vien` DECIMAL(12,2) DEFAULT 0.00,
     `don_gia_co_ban_snapshot` DECIMAL(12,2) NULL,
     `tong_tien_ban_dau` DECIMAL(12,2) NOT NULL,
@@ -383,6 +388,15 @@ CREATE TABLE `LichSuHuyDon` (
 -- -------------------------------------------------------------------------
 
 -- Gộp chung Ví Khách Hàng và Ví Nhân Viên làm một bảng gắn trực tiếp vào TaiKhoan mẹ
+CREATE TABLE `TaiKhoanAdmin` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ten_dang_nhap` VARCHAR(50) NOT NULL UNIQUE,
+    `mat_khau` VARCHAR(255) NOT NULL,
+    `ho_ten` VARCHAR(150) NOT NULL,
+    `quyen_han` VARCHAR(50) NOT NULL, 
+    `trang_thai` BOOLEAN DEFAULT TRUE
+);
+
 CREATE TABLE `ViTien` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `tai_khoan_id` INT NOT NULL UNIQUE,
@@ -413,15 +427,6 @@ CREATE TABLE `GiaoDichVi` (
     
     FOREIGN KEY (`vi_tien_id`) REFERENCES `ViTien`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`admin_xu_ly_id`) REFERENCES `TaiKhoanAdmin`(`id`)
-);
-
-CREATE TABLE `TaiKhoanAdmin` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ten_dang_nhap` VARCHAR(50) NOT NULL UNIQUE,
-    `mat_khau` VARCHAR(255) NOT NULL,
-    `ho_ten` VARCHAR(150) NOT NULL,
-    `quyen_han` VARCHAR(50) NOT NULL, 
-    `trang_thai` BOOLEAN DEFAULT TRUE
 );
 
 -- -------------------------------------------------------------------------
