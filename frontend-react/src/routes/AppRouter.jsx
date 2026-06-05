@@ -10,11 +10,18 @@ import Home           from '../pages/customer/home/Home';
 import ServicesPage   from '../pages/customer/services/ServicesPage';
 import ServiceDetailPage from '../pages/customer/services/ServiceDetailPage';
 import BookingPage    from '../pages/customer/BookingPage';
+import VoucherPage    from '../pages/customer/voucher/VoucherPage';
+import ContactPage    from '../pages/customer/contact/ContactPage';
+
+// Import Pages — Staff
+import StaffListPage   from '../pages/customer/staff/StaffListPage';
+import StaffDetailPage from '../pages/customer/staff/StaffDetailPage';
 
 // Import Pages — Account
 import ProfilePage    from '../pages/customer/account/ProfilePage';
 import AddressesPage  from '../pages/customer/account/AddressesPage';
 import PaymentPage    from '../pages/customer/account/PaymentPage';
+import MyVouchersPage from '../pages/customer/account/MyVouchersPage';
 
 // Import Pages — MyBooking
 import MyBookingsLayout    from '../pages/customer/mybooking/MyBookingsLayout';
@@ -22,6 +29,15 @@ import AllBookingsPage     from '../pages/customer/mybooking/AllBookingsPage';
 import UpcomingBookingsPage from '../pages/customer/mybooking/UpcomingBookingsPage';
 import ActiveBookingsPage  from '../pages/customer/mybooking/ActiveBookingsPage';
 import CompletedBookingsPage from '../pages/customer/mybooking/CompletedBookingsPage';
+import BookingHistoryPage from '../pages/customer/mybooking/BookingHistoryPage';
+import BookingDetailPage  from '../pages/customer/mybooking/BookingDetailPage';
+
+// Import Pages - Wallet
+import WalletPage from '../pages/customer/wallet/WalletPage';
+
+// Import Pages - Auth
+import LoginPage    from '../pages/customer/auth/LoginPage';
+import RegisterPage from '../pages/customer/auth/RegisterPage';
 
 const AppRouter = () => {
   return (
@@ -33,6 +49,13 @@ const AppRouter = () => {
           <Route path="services"   element={<ServicesPage />} />
           <Route path="services/:id" element={<ServiceDetailPage />} />
           <Route path="booking"    element={<BookingPage />} />
+          <Route path="promotions" element={<VoucherPage />} />
+          <Route path="contact"    element={<ContactPage />} />
+
+          <Route path="wallet"     element={<WalletPage />} />
+
+          <Route path="staff"      element={<StaffListPage />} />
+          <Route path="staff/:id"  element={<StaffDetailPage />} />
 
           {/* Trang tài khoản — nested layout với sidebar riêng */}
           <Route path="account" element={<AccountLayout />}>
@@ -40,17 +63,37 @@ const AppRouter = () => {
             <Route path="profile"    element={<ProfilePage />} />
             <Route path="addresses"  element={<AddressesPage />} />
             <Route path="payment"    element={<PaymentPage />} />
+            <Route path="vouchers"   element={<MyVouchersPage />} />
           </Route>
 
-          {/* Trang lịch của tôi — nested layout với sidebar riêng */}
-          <Route path="/my-bookings" element={<MyBookingsLayout />}>
-            <Route index             element={<AllBookingsPage />} />
-            <Route path="upcoming"   element={<UpcomingBookingsPage />} />
-            <Route path="active"     element={<ActiveBookingsPage />} />
-            <Route path="completed"  element={<CompletedBookingsPage />} />
+          {/* ─── NHÓM CÁC TRANG LIÊN QUAN ĐẾN LỊCH HẸN ─── */}
+          <Route path="my-bookings">
+            
+            {/* NHÁNH 1: Nhóm có Sidebar trái (Bọc bởi MyBookingsLayout cũ) */}
+            <Route element={<MyBookingsLayout />}>
+              <Route index           element={<AllBookingsPage />} />
+              <Route path="upcoming"   element={<UpcomingBookingsPage />} />
+              <Route path="active"     element={<ActiveBookingsPage />} />
+              <Route path="completed"  element={<CompletedBookingsPage />} />
+            </Route>
+
+            {/* NHÁNH 2: Trang Lịch sử riêng biệt - Đứng độc lập hoàn toàn */}
+            {/* Không bị bọc bởi MyBookingsLayout nên sẽ ăn trọn giao diện Full-width */}
+            <Route path="history" element={<BookingHistoryPage />} />
+            <Route path=":id" element={<BookingDetailPage />} />
+
           </Route>
 
         </Route>
+
+        {/* PHÂN VÙNG XÁC THỰC CỦA KHÁCH HÀNG(Không có Header & Footer) */}
+        {/* Đứng độc lập hoàn toàn, không bị bọc bởi CustomerLayout */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Tự động chuyển hướng nếu gõ sai đường dẫn */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+
       </Routes>
     </BrowserRouter>
   );

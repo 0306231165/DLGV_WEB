@@ -23,7 +23,7 @@ const MyBookingsLayout = () => {
     <BookingFilterContext.Provider value={{ activeFilter, setActiveFilter }}>
       <main className="pt-32 pb-section-padding px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-screen">
         <div className="mb-10">
-          <h1 className="font-h1 text-h1 text-on-surface mb-2">Quản lý lịch hẹn</h1>
+          <h1 className="font-h1 text-h1 text-on-surface text-primary mb-2">Quản lý lịch hẹn</h1>
           <p className="text-on-surface-variant font-body-lg">
             Xem và điều chỉnh các yêu cầu dọn dẹp của bạn.
           </p>
