@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
 // ─── Mock Data cho 3 card khác nhau ─────────────────────────────────────────
@@ -143,11 +143,31 @@ const BookingDetailPage = () => {
   const { id } = useParams();
   const [booking, setBooking] = useState(null);
 
+  // States quản lý Chat Widget hiện đại
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [inputMessage, setInputMessage] = useState('');
+  const [selectedImages, setSelectedImages] = useState([]); 
+  const [previewImageModal, setPreviewImageModal] = useState(null); 
+  const [messages, setMessages] = useState([
+    { id: 1, sender: 'staff', text: 'Xin chào anh/chị, em đã nhận được lịch hẹn dọn dẹp rồi ạ!', time: 'Hôm nay' },
+    { id: 2, sender: 'staff', text: 'Em sẽ đến đúng giờ như trong lịch đặt nhé.', time: 'Hôm nay' }
+  ]);
+
+  const chatEndRef = useRef(null);
+  const textareaRef = useRef(null);
+
   useEffect(() => {
     window.scrollTo(0, 0);
     const data = MOCK_BOOKINGS[id] || MOCK_BOOKINGS['1'];
     setBooking(data);
   }, [id]);
+
+  // Cuộn xuống tin nhắn cuối khi mở hộp thoại hoặc có tin mới
+  useEffect(() => {
+    if (isChatOpen && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isChatOpen]);
 
   if (!booking) {
     return (
@@ -165,7 +185,6 @@ const BookingDetailPage = () => {
   const isCompleted = booking.status === 'completed';
   const isCancelled = booking.status === 'cancelled';
 
-  // Hàm lấy icon tương ứng với từng trạng thái
   const getStatusIcon = (status) => {
     switch (status) {
       case 'pending': return 'hourglass_empty';
@@ -177,8 +196,41 @@ const BookingDetailPage = () => {
     }
   };
 
+  // Hàm gửi tin nhắn (Bao gồm chữ và hình ảnh)
+  const handleSendMessage = (e) => {
+    if (e) e.preventDefault();
+    if (!inputMessage.trim() && selectedImages.length === 0) return;
+
+    const newMsg = {
+      id: Date.now(),
+      sender: 'customer',
+      text: inputMessage,
+      images: selectedImages.map(img => img.url),
+      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages(prev => [...prev, newMsg]);
+    
+    // Reset toàn bộ form và ép chiều cao textarea về ban đầu
+    setInputMessage('');
+    setSelectedImages([]);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+
+    // Nhân viên phản hồi tự động
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'staff',
+        text: 'Dạ em đã nhận được thông tin rồi ạ! Em sẽ lưu ý xử lý ngay.',
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      }]);
+    }, 1200);
+  };
+
   return (
-    <div className="min-h-screen bg-background-2 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background-2 py-8 px-4 sm:px-6 lg:px-8 relative">
       <div className="max-w-6xl mx-auto">
 
         {/* ── Nút Quay lại ── */}
@@ -197,7 +249,6 @@ const BookingDetailPage = () => {
         {/* ── Header ── */}
         <div className="mb-8 flex flex-col gap-2.5">
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Chữ trạng thái bọc nền kèm Icon nằm chung div ở bên trái */}
             <h1 className={`font-h1 text-xl md:text-2xl px-4 py-1.5 rounded-2xl font-black border w-fit uppercase flex items-center gap-2 ${booking.statusColor}`}>
               <span className="material-symbols-outlined text-[22px] md:text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                 {getStatusIcon(booking.status)}
@@ -205,7 +256,6 @@ const BookingDetailPage = () => {
               {booking.statusLabel}
             </h1>
             
-            {/* Mã đơn lịch luôn cố định 1 màu xám đen sang trọng */}
             <span className="px-3 py-1 rounded-full text-xs font-bold border text-slate-700 bg-slate-100 border-slate-200/80">
               {booking.code}
             </span>
@@ -249,7 +299,6 @@ const BookingDetailPage = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
-                {/* Diện tích */}
                 <div className="bg-surface p-4 rounded-xl border border-outline-variant/20 flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>straighten</span>
                   <div>
@@ -257,7 +306,6 @@ const BookingDetailPage = () => {
                     <div className="font-bold text-on-surface text-sm">{booking.service.areaSize}</div>
                   </div>
                 </div>
-                {/* Thú cưng */}
                 <div className="bg-surface p-4 rounded-xl border border-outline-variant/20 flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>pets</span>
                   <div>
@@ -372,11 +420,14 @@ const BookingDetailPage = () => {
                 </div>
 
                 <div className="flex gap-3">
-                  <button className="flex-1 py-3 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm">
+                  <a href={`tel:${booking.location.phone}`} className="flex-1 py-3 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm text-center">
                     <span className="material-symbols-outlined text-base">call</span> Gọi điện
-                  </button>
-                  <button className="flex-1 py-3 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm">
-                    <span className="material-symbols-outlined text-base">chat</span> Nhắn tin
+                  </a>
+                  <button 
+                    onClick={() => setIsChatOpen(true)}
+                    className="flex-1 py-3 bg-[#1a368d] text-white font-bold rounded-xl hover:bg-[#1a368d]/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm shadow-md shadow-blue-900/10"
+                  >
+                    <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>chat</span> Nhắn tin
                   </button>
                 </div>
               </div>
@@ -493,6 +544,195 @@ const BookingDetailPage = () => {
         </div>
 
       </div>
+
+      {/* ─── 💬 CỬA SỔ CHAT NỔI HIỆN ĐẠI (FLOATING CHAT WIDGET) ─── */}
+      {isChatOpen && booking.staff && (
+        <div className="fixed bottom-6 right-6 sm:w-96 w-[calc(100vw-32px)] sm:h-[480px] h-[75vh] bg-white shadow-2xl rounded-2xl border border-outline-variant/40 flex flex-col z-50 overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+          
+          {/* Header Widget */}
+          <div className="p-4 bg-[#1a368d] text-white flex justify-between items-center shadow-md shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="relative">
+                <img src={booking.staff.avatar} alt={booking.staff.name} className="w-9 h-9 rounded-full object-cover border border-white/20" />
+                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#1a368d]"></div>
+              </div>
+              <div>
+                <p className="font-bold text-sm leading-tight">{booking.staff.name}</p>
+                <p className="text-[11px] text-blue-200/90 font-medium">Đơn lịch: {booking.code}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-1.5">
+              <Link 
+                to="/messages" 
+                title="Mở rộng cuộc trò chuyện"
+                className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">open_in_full</span>
+              </Link>
+              <button 
+                onClick={() => setIsChatOpen(false)} 
+                className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Body chứa dòng tin nhắn */}
+          <div className="flex-1 p-4 overflow-y-auto bg-slate-50 space-y-3.5 flex flex-col">
+            <div className="text-center my-1">
+              <span className="text-[11px] text-slate-400 font-bold bg-slate-200/50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                Bảo mật bởi CleanTrust
+              </span>
+            </div>
+
+            {messages.map((msg) => {
+              const isMe = msg.sender === 'customer';
+              return (
+                <div key={msg.id} className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                  <div className={`p-3 rounded-2xl text-sm font-medium leading-relaxed shadow-sm transition-all ${
+                    isMe 
+                      ? 'bg-[#1a368d] text-white rounded-br-none' 
+                      : 'bg-white text-slate-800 border border-slate-100 rounded-bl-none'
+                  }`}
+                  style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} // Fix lỗi tràn chuỗi viết liền trong image_8bc93a.png
+                  >
+                    {msg.text && <div>{msg.text}</div>}
+                    
+                    {/* Render hình ảnh trong tin nhắn */}
+                    {msg.images && msg.images.length > 0 && (
+                    /* Tăng gap từ 1 lên 2 để các ảnh giãn cách nhau rõ ràng hơn */
+                    <div className={`grid gap-2 mt-2 ${msg.images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      {msg.images.map((imgUrl, i) => (
+                        <img 
+                          key={i} 
+                          src={imgUrl} 
+                          alt="Sent content" 
+                          onClick={() => setPreviewImageModal(imgUrl)}
+                          /* THÊM: border border-white/20, shadow-md để phân tách rõ các ảnh với nền xanh/trắng */
+                          className="rounded-xl max-h-32 w-full object-cover cursor-zoom-in hover:opacity-90 border border-slate-400 shadow-sm transition-all"
+                        />
+                      ))}
+                    </div>
+                  )}
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 px-1 font-medium">{msg.time}</span>
+                </div>
+              );
+            })}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Form nhập liệu chân trang (Tích hợp preview ảnh và auto-resize) */}
+          <div className="bg-white border-t border-outline-variant/20 flex flex-col shrink-0">
+            
+            {/* Thanh Preview Danh sách ảnh chờ gửi */}
+            {selectedImages.length > 0 && (
+              <div className="p-3 bg-slate-50 border-b border-slate-100 flex gap-2 overflow-x-auto max-h-24 items-center">
+                {selectedImages.map((img) => (
+                  <div key={img.id} className="relative w-14 h-14 shrink-0">
+                    <img 
+                      src={img.url} 
+                      alt="Selected preview" 
+                      onClick={() => setPreviewImageModal(img.url)}
+                      /* CẬP NHẬT THÊM: tăng border rõ hơn (border-slate-300) và hiệu ứng hover nhẹ */
+                      className="w-14 h-14 object-cover rounded-xl border-2 border-slate-300 shadow-md cursor-zoom-in hover:border-[#1a368d] transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImages(prev => prev.filter(item => item.id !== img.id))}
+                      className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow hover:bg-rose-600 transition-colors z-10"
+                    >
+                      <span className="material-symbols-outlined text-[12px] font-bold">close</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <form onSubmit={handleSendMessage} className="p-3 flex items-end gap-2 relative">
+              <input 
+                type="file" 
+                id="chat-image-input" 
+                accept="image/*" 
+                multiple 
+                className="hidden" 
+                onChange={(e) => {
+                  if (e.target.files) {
+                    const filesArray = Array.from(e.target.files).map(file => ({
+                      id: Math.random().toString(36).substr(2, 9),
+                      file: file,
+                      url: URL.createObjectURL(file)
+                    }));
+                    setSelectedImages(prev => [...prev, ...filesArray]);
+                    e.target.value = ''; 
+                  }
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={() => document.getElementById('chat-image-input').click()}
+                className="w-9 h-9 rounded-xl text-slate-500 hover:text-[#1a368d] hover:bg-slate-100 flex items-center justify-center transition-all duration-200 active:scale-[0.93] shrink-0 mb-0.5"
+                title="Chọn hình ảnh"
+              >
+                <span className="material-symbols-outlined text-[22px]">image</span>
+              </button>
+
+              <textarea 
+                ref={textareaRef}
+                value={inputMessage}
+                onChange={(e) => {
+                  setInputMessage(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`;
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage(e);
+                  }
+                }}
+                placeholder="Nhập tin nhắn..."
+                rows={1}
+                className="flex-1 bg-slate-100 border border-transparent focus:border-primary/20 focus:bg-white outline-none rounded-xl py-2 px-4 text-sm font-medium text-slate-800 transition-all placeholder:text-slate-400 resize-none max-h-[100px] min-h-[36px] overflow-y-auto leading-relaxed"
+              />
+              
+              <button 
+                type="submit" 
+                disabled={!inputMessage.trim() && selectedImages.length === 0}
+                className="w-9 h-9 bg-[#1a368d] disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl flex items-center justify-center active:scale-[0.95] transition-all shadow-md shadow-blue-900/10 shrink-0 mb-0.5"
+              >
+                <span className="material-symbols-outlined text-[18px]">send</span>
+              </button>
+            </form>
+          </div>
+
+        </div>
+      )}
+
+      {/* ─── MODAL PHÓNG TO XEM ẢNH TRƯỚC VÀ SAU KHI GỬI ─── */}
+      {previewImageModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewImageModal(null)}
+        >
+          <button 
+            className="absolute top-4 right-4 text-white bg-black/40 hover:bg-black/60 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+            onClick={() => setPreviewImageModal(null)}
+          >
+            <span className="material-symbols-outlined text-2xl">close</span>
+          </button>
+          <img 
+            src={previewImageModal} 
+            alt="Enlarged content" 
+            className="max-w-full max-h-[90vh] object-contain rounded-lg animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
     </div>
   );
 };
