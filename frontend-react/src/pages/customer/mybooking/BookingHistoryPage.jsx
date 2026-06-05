@@ -174,7 +174,7 @@ const BookingHistoryPage = () => {
 
       {/* Tiêu đề trang độc lập */}
       <div className="mb-10">
-        <h1 className="font-h1 text-h1 text-on-surface mb-2">Lịch sử đặt lịch</h1>
+        <h1 className="font-h1 text-h1 text-on-surface text-primary mb-2">Lịch sử đặt lịch</h1>
         <p className="text-on-surface-variant font-body-lg">
           Theo dõi, tra cứu và quản lý lại toàn bộ hồ sơ các ca vệ sinh của bạn.
         </p>

@@ -466,7 +466,7 @@ const isUrgentSlot = (dayObj, timeStr, durationHours = 0) => {
 const calcTotalHours = (baseHours, extraIds) =>
   baseHours + EXTRA_SERVICES.filter(s => extraIds.includes(s.id)).reduce((sum, s) => sum + s.addHours, 0);
 
-const calcMonthlySessions = (weekDayCount, months) => weekDayCount * 4 * months;
+// Hàm không còn dùng tới, đã xóa calcMonthlySessions để tránh fix cứng số buổi
 
 const generateMonthlyDates = (months, weekDaysList) => {
   if (!months || !weekDaysList || weekDaysList.length === 0) return [];
@@ -474,6 +474,7 @@ const generateMonthlyDates = (months, weekDaysList) => {
   start.setDate(start.getDate() + 3);
   start.setHours(0, 0, 0, 0);
 
+  // Tính đúng theo Lịch Dương (Calendar Month). Máy tính tự động xử lý năm nhuận, tháng 28/29/30/31 ngày.
   const end = new Date(start);
   end.setMonth(end.getMonth() + parseInt(months, 10));
   end.setDate(end.getDate() - 1);
@@ -1412,13 +1413,12 @@ const BookingPage = () => {
 
   const isCustomSchedule = customDates !== null && customDates.length > 0;
 
+  // Luôn đếm số buổi thực tế trên lịch để tính tiền, không fix cứng 4 buổi
   const totalSessions =
   isMonthly && selectedWeekDays.length > 0 && monthlyDurationData
     ? (isCustomSchedule && customDates
         ? customDates.length
-        : defaultDates.length > 0
-          ? defaultDates.length
-          : calcMonthlySessions(selectedWeekDays.length, monthlyDurationData.months))
+        : defaultDates.length)
     : null;
 
   const monthlyRawTotal = isMonthly

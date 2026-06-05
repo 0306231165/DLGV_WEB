@@ -127,7 +127,7 @@ const VoucherPage = () => {
         <div className="space-y-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
             <div>
-              <h2 className="text-3xl font-black text-[#1c2b4d]">Khám Phá Ưu Đãi Hấp Dẫn</h2>
+              <h2 className="text-3xl font-black text-primary">Khám Phá Ưu Đãi Hấp Dẫn</h2>
               <p className="text-[14px] text-[#6b7280] mt-2 font-medium">Lưu mã để áp dụng tự động khi đặt lịch dịch vụ.</p>
             </div>
             

@@ -30,6 +30,10 @@ import UpcomingBookingsPage from '../pages/customer/mybooking/UpcomingBookingsPa
 import ActiveBookingsPage  from '../pages/customer/mybooking/ActiveBookingsPage';
 import CompletedBookingsPage from '../pages/customer/mybooking/CompletedBookingsPage';
 import BookingHistoryPage from '../pages/customer/mybooking/BookingHistoryPage';
+import BookingDetailPage  from '../pages/customer/mybooking/BookingDetailPage';
+
+// Import Pages - Wallet
+import WalletPage from '../pages/customer/wallet/WalletPage';
 
 // Import Pages - Auth
 import LoginPage    from '../pages/customer/auth/LoginPage';
@@ -47,6 +51,8 @@ const AppRouter = () => {
           <Route path="booking"    element={<BookingPage />} />
           <Route path="promotions" element={<VoucherPage />} />
           <Route path="contact"    element={<ContactPage />} />
+
+          <Route path="wallet"     element={<WalletPage />} />
 
           <Route path="staff"      element={<StaffListPage />} />
           <Route path="staff/:id"  element={<StaffDetailPage />} />
@@ -74,6 +80,7 @@ const AppRouter = () => {
             {/* NHÁNH 2: Trang Lịch sử riêng biệt - Đứng độc lập hoàn toàn */}
             {/* Không bị bọc bởi MyBookingsLayout nên sẽ ăn trọn giao diện Full-width */}
             <Route path="history" element={<BookingHistoryPage />} />
+            <Route path=":id" element={<BookingDetailPage />} />
 
           </Route>
 

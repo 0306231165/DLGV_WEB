@@ -115,15 +115,23 @@ export const BookingCard = ({ booking }) => {
 
         {/* Action buttons */}
         <div className="flex gap-2">
-          {actions.map((action, i) => (
-            <button
-              key={i}
-              className={`flex-1 py-2 rounded-xl font-label-sm text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 ${action.className}`}
-            >
-              {action.icon && <span className="material-symbols-outlined text-[16px]">{action.icon}</span>}
-              {action.label}
-            </button>
-          ))}
+          {actions.map((action, i) => {
+            const commonClass = `flex-1 py-2 rounded-xl font-label-sm text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 ${action.className}`;
+            if (action.isLink) {
+              return (
+                <Link key={i} to={action.to} className={commonClass}>
+                  {action.icon && <span className="material-symbols-outlined text-[16px]">{action.icon}</span>}
+                  {action.label}
+                </Link>
+              );
+            }
+            return (
+              <button key={i} className={commonClass}>
+                {action.icon && <span className="material-symbols-outlined text-[16px]">{action.icon}</span>}
+                {action.label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -146,8 +154,8 @@ export const BOOKINGS = {
       statusLabel: 'ĐÃ XÁC NHẬN',
       statusClass: 'bg-white/90 backdrop-blur-md text-primary border border-primary/20',
       actions: [
-        { label: 'Đổi lịch', className: 'bg-secondary-container text-on-secondary-fixed-variant hover:bg-secondary-fixed' },
-        { label: 'Hủy đơn', className: 'border border-error/20 text-error hover:bg-error/5' },
+        { label: 'Chi tiết', isLink: true, to: '/my-bookings/1', className: 'bg-secondary-container text-on-secondary-fixed-variant hover:bg-secondary-fixed' },
+        { label: 'Hủy lịch', className: 'border border-error/20 text-error hover:bg-error/5' },
       ],
     },
     {
@@ -163,8 +171,8 @@ export const BOOKINGS = {
       statusLabel: 'CHỜ XÁC NHẬN',
       statusClass: 'bg-surface-container-high text-on-surface-variant border border-outline-variant/30',
       actions: [
-        { label: 'Chi tiết', className: 'bg-secondary-container text-on-secondary-fixed-variant hover:bg-secondary-fixed' },
-        { label: 'Hủy đơn', className: 'border border-error/20 text-error hover:bg-error/5' },
+        { label: 'Chi tiết', isLink: true, to: '/my-bookings/3', className: 'bg-secondary-container text-on-secondary-fixed-variant hover:bg-secondary-fixed' },
+        { label: 'Hủy lịch', className: 'border border-error/20 text-error hover:bg-error/5' },
       ],
     },
   ],
@@ -182,7 +190,7 @@ export const BOOKINGS = {
       statusLabel: 'ĐANG THỰC HIỆN',
       statusClass: 'bg-surface-tint text-white',
       actions: [
-        { label: 'Theo dõi', icon: 'location_on', className: 'bg-primary text-on-primary hover:bg-primary-container' },
+        { label: 'Chi tiết', isLink: true, to: '/my-bookings/2', className: 'bg-primary text-on-primary hover:bg-primary-container' },
       ],
     },
   ],
