@@ -1,30 +1,35 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-// Import Layouts
+// =========================================================
+// 1. IMPORT LAYOUTS (Dùng chung cho toàn hệ thống)
+// =========================================================
+// -- CUSTOMER
 import CustomerLayout from '../layouts/CustomerLayout';
 import AccountLayout  from '../pages/customer/account/AccountLayout';
+import MyBookingsLayout    from '../pages/customer/mybooking/MyBookingsLayout';
+//------------------------------------------------------------------------------------------
 
-// Import Pages — Customer
+// =========================================================
+// 2. IMPORT PAGES — KHÁCH HÀNG (CUSTOMER)
+// =========================================================
 import Home           from '../pages/customer/home/Home';
 import ServicesPage   from '../pages/customer/services/ServicesPage';
 import ServiceDetailPage from '../pages/customer/services/ServiceDetailPage';
 import BookingPage    from '../pages/customer/BookingPage';
 import VoucherPage    from '../pages/customer/voucher/VoucherPage';
 import ContactPage    from '../pages/customer/contact/ContactPage';
-
-// Import Pages — Staff
+import WalletPage     from '../pages/customer/wallet/WalletPage';
 import StaffListPage   from '../pages/customer/staff/StaffListPage';
 import StaffDetailPage from '../pages/customer/staff/StaffDetailPage';
 
-// Import Pages — Account
+// -- Pages — Account
 import ProfilePage    from '../pages/customer/account/ProfilePage';
 import AddressesPage  from '../pages/customer/account/AddressesPage';
 import PaymentPage    from '../pages/customer/account/PaymentPage';
 import MyVouchersPage from '../pages/customer/account/MyVouchersPage';
 
-// Import Pages — MyBooking
-import MyBookingsLayout    from '../pages/customer/mybooking/MyBookingsLayout';
+// -- Pages — MyBooking
 import AllBookingsPage     from '../pages/customer/mybooking/AllBookingsPage';
 import UpcomingBookingsPage from '../pages/customer/mybooking/UpcomingBookingsPage';
 import ActiveBookingsPage  from '../pages/customer/mybooking/ActiveBookingsPage';
@@ -32,32 +37,54 @@ import CompletedBookingsPage from '../pages/customer/mybooking/CompletedBookings
 import BookingHistoryPage from '../pages/customer/mybooking/BookingHistoryPage';
 import BookingDetailPage  from '../pages/customer/mybooking/BookingDetailPage';
 
-// Import Pages - Wallet
-import WalletPage from '../pages/customer/wallet/WalletPage';
+// -- Pages — Message
+import MessagePage from '../pages/customer/messages/MessagePage';
 
-// Import Pages - Auth
+// -- Pages - Auth
 import LoginPage    from '../pages/customer/auth/LoginPage';
 import RegisterPage from '../pages/customer/auth/RegisterPage';
+//------------------------------------------------------------------------------------------
+
+// =========================================================
+// 3. IMPORT PAGES — NHÂN VIÊN (STAFF / NHANVIEN)
+// =========================================================
+//import...
+//------------------------------------------------------------------------------------------
+
+// =========================================================
+// 4. IMPORT PAGES — QUẢN TRỊ VIÊN (ADMIN)
+// =========================================================
+//import...
+//------------------------------------------------------------------------------------------
+
 
 const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Phân vùng Khách hàng */}
+
+        {/* ========================================================= */}
+        {/* TOÀN BỘ PHÂN VÙNG KHÁCH HÀNG (Bọc chung CustomerLayout)    */}
+        {/* ========================================================= */}
         <Route path="/" element={<CustomerLayout />}>
+          {/* Giao diện chính */}
           <Route index element={<Home />} />
           <Route path="services"   element={<ServicesPage />} />
           <Route path="services/:id" element={<ServiceDetailPage />} />
           <Route path="booking"    element={<BookingPage />} />
           <Route path="promotions" element={<VoucherPage />} />
           <Route path="contact"    element={<ContactPage />} />
-
           <Route path="wallet"     element={<WalletPage />} />
-
           <Route path="staff"      element={<StaffListPage />} />
           <Route path="staff/:id"  element={<StaffDetailPage />} />
 
-          {/* Trang tài khoản — nested layout với sidebar riêng */}
+          {/* Các trang có Layout riêng của Khách hàng (Được ẩn Layout trong file CustomerLayout.jsx) */}
+          <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegisterPage />} />
+
+          <Route path="messages" element={<MessagePage />} />
+
+          {/* Trang tài khoản nested layout */}
           <Route path="account" element={<AccountLayout />}>
             <Route index             element={<Navigate to="profile" replace />} />
             <Route path="profile"    element={<ProfilePage />} />
@@ -66,33 +93,47 @@ const AppRouter = () => {
             <Route path="vouchers"   element={<MyVouchersPage />} />
           </Route>
 
-          {/* ─── NHÓM CÁC TRANG LIÊN QUAN ĐẾN LỊCH HẸN ─── */}
+          {/* Nhóm lịch hẹn */}
           <Route path="my-bookings">
-            
-            {/* NHÁNH 1: Nhóm có Sidebar trái (Bọc bởi MyBookingsLayout cũ) */}
             <Route element={<MyBookingsLayout />}>
               <Route index           element={<AllBookingsPage />} />
               <Route path="upcoming"   element={<UpcomingBookingsPage />} />
               <Route path="active"     element={<ActiveBookingsPage />} />
               <Route path="completed"  element={<CompletedBookingsPage />} />
             </Route>
-
-            {/* NHÁNH 2: Trang Lịch sử riêng biệt - Đứng độc lập hoàn toàn */}
-            {/* Không bị bọc bởi MyBookingsLayout nên sẽ ăn trọn giao diện Full-width */}
             <Route path="history" element={<BookingHistoryPage />} />
             <Route path=":id" element={<BookingDetailPage />} />
-
           </Route>
 
+          {/* Cơ chế 1: Khách hàng gõ sai bất kỳ URL nào thuộc vùng khách hàng */}
+          {/* Ví dụ: /dich-vu-khong-co -> đá về trang chủ / */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
 
-        {/* PHÂN VÙNG XÁC THỰC CỦA KHÁCH HÀNG(Không có Header & Footer) */}
-        {/* Đứng độc lập hoàn toàn, không bị bọc bởi CustomerLayout */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
 
-        {/* Tự động chuyển hướng nếu gõ sai đường dẫn */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* ========================================================= */}
+        {/* TOÀN BỘ PHÂN VÙNG NHÂN VIÊN                               */}
+        {/* ========================================================= */}
+        <Route path="/staff">
+          {/* <Route index element={<NhanVienDashboard />} /> */}
+          {/* <Route path="profile" element={<RegisterProfile />} /> */}
+
+          {/* Cơ chế 2: Nhân viên gõ sai URL trong phân vùng của mình */}
+          {/* Ví dụ: /nhanvien/sai-chinh-ta -> đá về trang chủ nhân viên /nhanvien */}
+          <Route path="*" element={<Navigate to="/staff" replace />} />
+        </Route>
+
+
+        {/* ========================================================= */}
+        {/* TOÀN BỘ PHÂN VÙNG ADMIN                                  */}
+        {/* ========================================================= */}
+        <Route path="/admin">
+          {/* <Route index element={<AdminDashboard />} /> */}
+
+          {/* Cơ chế 3: Admin gõ sai URL trong phân vùng quản trị */}
+          {/* Ví dụ: /admin/chuc-nang-linh-tinh -> đá về /admin */}
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Route>
 
       </Routes>
     </BrowserRouter>
