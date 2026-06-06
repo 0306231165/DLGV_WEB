@@ -20,8 +20,11 @@ import BookingPage    from '../pages/customer/BookingPage';
 import VoucherPage    from '../pages/customer/voucher/VoucherPage';
 import ContactPage    from '../pages/customer/contact/ContactPage';
 import WalletPage     from '../pages/customer/wallet/WalletPage';
+
+// -- Pages — Staff (Liên quan đến Nhân viên như 'xem thông tin, nhân viên yêu thích, ...)
 import StaffListPage   from '../pages/customer/staff/StaffListPage';
 import StaffDetailPage from '../pages/customer/staff/StaffDetailPage';
+import SavedStaffPage from '../pages/customer/staff/SavedStaffPage';
 
 // -- Pages — Account
 import ProfilePage    from '../pages/customer/account/ProfilePage';
@@ -75,8 +78,11 @@ const AppRouter = () => {
           <Route path="promotions" element={<VoucherPage />} />
           <Route path="contact"    element={<ContactPage />} />
           <Route path="wallet"     element={<WalletPage />} />
+          
           <Route path="staff"      element={<StaffListPage />} />
           <Route path="staff/:id"  element={<StaffDetailPage />} />
+
+          <Route path="/saved-staffs" element={<SavedStaffPage />} />
 
           {/* Các trang có Layout riêng của Khách hàng (Được ẩn Layout trong file CustomerLayout.jsx) */}
           <Route path="login" element={<LoginPage />} />
