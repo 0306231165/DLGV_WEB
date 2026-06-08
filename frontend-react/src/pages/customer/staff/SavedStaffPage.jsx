@@ -25,6 +25,20 @@ const SavedStaffPage = () => {
   const [modalAnimate, setModalAnimate] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
 
+  // Hàm xử lý truyền tham số sang BookingPage.jsx giống StaffDetailPage
+  const handleBookWithStaff = (staff) => {
+    navigate('/booking', {
+      state: {
+        preselectedStaff: {
+          id: staff.id,
+          name: staff.name,
+          avatar: staff.avatar,
+          rating: staff.rating,
+        }
+      }
+    });
+  };
+
   const openDeleteModal = (staff, e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -65,7 +79,7 @@ const SavedStaffPage = () => {
       <div className="mb-12 text-center max-w-2xl mx-auto">
         <h1 className="font-h1 text-h1 text-primary mb-4">Nhân viên Yêu thích</h1>
         <p className="text-body-lg text-on-surface-variant">
-          Danh sách những người giúp việc tin cậy bạn đã lưu. Hệ thống CleanTrust sẽ tự động ưu thiện hiển thị họ khi bạn đặt lịch mới.
+          Danh sách những người giúp việc tin cậy bạn đã lưu. Hệ thống CleanTrust sẽ tự động ưu tiên hiển thị họ khi bạn đặt lịch mới.
         </p>
       </div>
 
@@ -117,21 +131,33 @@ const SavedStaffPage = () => {
               </div>
             </div>
 
-            {/* Cặp nút Hành động */}
-            <div className="flex items-center gap-3 mt-auto w-full">
-              <Link
-                to={`/staff/${staff.id}`}
-                className="w-1/3 text-center py-3 rounded-xl bg-primary/10 text-primary font-bold hover:bg-primary/20 transition-colors text-sm active:scale-95"
-              >
-                Hồ sơ
-              </Link>
+            {/* Ba nút Hành động được sắp xếp lại vô cùng cân đối */}
+            <div className="flex flex-col gap-2 mt-auto w-full">
+              {/* Nút Đặt lịch ngay chiếm trọn spotlight hàng trên */}
               <button
-                onClick={() => navigate('/messages')}
-                className="flex-1 bg-primary text-on-primary font-bold py-3 rounded-xl hover:opacity-90 shadow-sm transition-all text-sm flex items-center justify-center gap-2 active:scale-95"
+                onClick={() => handleBookWithStaff(staff)}
+                className="w-full bg-primary text-on-primary font-bold py-3 rounded-xl hover:opacity-90 shadow-md shadow-primary/10 transition-all text-sm flex items-center justify-center gap-2 active:scale-95"
               >
-                <span className="material-symbols-outlined text-lg">chat</span>
-                Nhắn tin
+                <span className="material-symbols-outlined text-lg">event_available</span>
+                Đặt lịch ngay
               </button>
+
+              {/* Hàng dưới chia đôi: Hồ sơ và Nhắn tin */}
+              <div className="flex items-center gap-2 w-full">
+                <Link
+                  to={`/staff/${staff.id}`}
+                  className="flex-1 text-center py-2.5 rounded-xl bg-primary/10 text-primary font-bold hover:bg-primary/20 transition-colors text-xs active:scale-95"
+                >
+                  Hồ sơ
+                </Link>
+                <button
+                  onClick={() => navigate('/messages')}
+                  className="flex-1 bg-outline-variant/20 hover:bg-outline-variant/40 text-on-surface font-bold py-2.5 rounded-xl transition-all text-xs flex items-center justify-center gap-1 active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-sm">chat</span>
+                  Nhắn tin
+                </button>
+              </div>
             </div>
           </div>
         ))}

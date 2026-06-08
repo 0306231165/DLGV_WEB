@@ -40,6 +40,9 @@ import CompletedBookingsPage from '../pages/customer/mybooking/CompletedBookings
 import BookingHistoryPage from '../pages/customer/mybooking/BookingHistoryPage';
 import BookingDetailPage  from '../pages/customer/mybooking/BookingDetailPage';
 
+// -- Pages — Notification
+import NotificationPage from '../pages/customer/notifications/NotificationPage';
+
 // -- Pages — Message
 import MessagePage from '../pages/customer/messages/MessagePage';
 
@@ -78,6 +81,7 @@ const AppRouter = () => {
           <Route path="promotions" element={<VoucherPage />} />
           <Route path="contact"    element={<ContactPage />} />
           <Route path="wallet"     element={<WalletPage />} />
+          <Route path="notifications" element={<NotificationPage />} />
           
           <Route path="staff"      element={<StaffListPage />} />
           <Route path="staff/:id"  element={<StaffDetailPage />} />
