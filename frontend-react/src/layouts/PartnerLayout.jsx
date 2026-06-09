@@ -3,10 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 
 const PartnerLayout = () => {
   const navigate = useNavigate();
-  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [newJobsCount] = useState(3);
-  
-  // State giả lập số lượng tin nhắn và thông báo mới chưa đọc cho đối tác
   const [unreadNotifications] = useState(2);
   const [unreadMessages] = useState(4);
 
@@ -77,10 +74,8 @@ const PartnerLayout = () => {
             Xin chào, <span className="text-emerald-600">Chị Nguyễn Thị Hoa</span> 👋
           </h2>
 
-          {/* KHU VỰC TIỆN ÍCH GỒM: THÔNG BÁO -> TIN NHẮN -> AVATAR */}
           <div className="flex items-center gap-5">
-            
-            {/* 1. CHUÔNG THÔNG BÁO (Đã đổi thành nền tròn) */}
+            {/* 1. CHUÔNG THÔNG BÁO */}
             <button className="relative w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60 transition-all focus:outline-none group">
               <span className="material-symbols-outlined text-[23px] group-hover:rotate-12 transition-transform">notifications</span>
               {unreadNotifications > 0 && (
@@ -93,7 +88,7 @@ const PartnerLayout = () => {
               )}
             </button>
 
-            {/* 2. TIN NHẮN CHAT (Đã đổi thành nền tròn) */}
+            {/* 2. TIN NHẮN CHAT */}
             <button className="relative w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60 transition-all focus:outline-none group">
               <span className="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">chat_bubble</span>
               {unreadMessages > 0 && (
@@ -106,35 +101,48 @@ const PartnerLayout = () => {
               )}
             </button>
 
-            {/* ĐƯỜNG PHÂN CÁCH NHẸ GIỮA ICON VÀ AVATAR */}
             <div className="h-6 w-[1px] bg-slate-200"></div>
 
-            {/* 3. KHỐI AVATAR DROP DOWN MENU */}
-            <div className="relative">
+            {/* 3. KHỐI AVATAR HOVER DROPDOWN MENU */}
+            <div className="relative group/avatar py-2">
               <button 
-                onClick={() => setShowAvatarMenu(!showAvatarMenu)}
-                onBlur={() => setTimeout(() => setShowAvatarMenu(false), 200)}
-                className="flex items-center gap-3 p-1.5 pr-3 rounded-full hover:bg-slate-50 border border-slate-100 transition-colors focus:outline-none shadow-sm"
+                className="flex items-center gap-3 p-1.5 pr-3 rounded-full hover:bg-slate-50 border border-slate-100 transition-colors focus:outline-none shadow-sm cursor-pointer"
               >
-                <img src="https://i.pravatar.cc/150?img=41" alt="Partner Avatar" className="w-10 h-10 rounded-full object-cover border-2 border-emerald-500" />
+                <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150&auto=format&fit=crop" alt="Partner Avatar" className="w-10 h-10 rounded-full object-cover border-2 border-emerald-500" />
                 <div className="hidden md:flex flex-col text-left">
                   <span className="text-xs font-bold text-slate-700 leading-none">Nguyễn Thị Hoa</span>
                   <span className="text-[10px] text-slate-400 mt-1">Mã: PT-8821</span>
                 </div>
-                <span className="material-symbols-outlined text-slate-400 text-sm">keyboard_arrow_down</span>
+                <span className="material-symbols-outlined text-slate-400 text-sm group-hover/avatar:rotate-180 transition-transform duration-200">keyboard_arrow_down</span>
               </button>
 
-              {showAvatarMenu && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
-                  <button className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3">
+              {/* MENU DROPDOWN TỰ ĐỘNG HIỆN KHI HOVER */}
+              <div className="absolute right-0 top-full invisible opacity-0 group-hover/avatar:visible group-hover/avatar:opacity-100 pt-2 w-56 transition-all duration-200 z-50 transform origin-top-right group-hover/avatar:scale-100 scale-95">
+                <div className="bg-white rounded-2xl shadow-xl border border-slate-100 py-2">
+                  <button 
+                    onClick={() => navigate('/partner/profile')}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors"
+                  >
                     <span className="material-symbols-outlined text-slate-400 text-base">account_circle</span> Hồ sơ công việc
                   </button>
+                  
+                  <button 
+                    onClick={() => navigate('/partner/change-password')}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-slate-400 text-base">lock_reset</span> Đổi mật khẩu
+                  </button>
+
                   <div className="border-t border-slate-100 my-1.5"></div>
-                  <button onClick={() => navigate('/partner/logout')} className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 font-medium flex items-center gap-3">
+                  
+                  <button 
+                    onClick={() => navigate('/partner/logout')} 
+                    className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 font-semibold flex items-center gap-3 transition-colors"
+                  >
                     <span className="material-symbols-outlined text-rose-500 text-base">logout</span> Đăng xuất
                   </button>
                 </div>
-              )}
+              </div>
             </div>
 
           </div>

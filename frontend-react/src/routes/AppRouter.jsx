@@ -59,6 +59,7 @@ import PartnerDashboard from '../pages/partner/dashboard/PartnerDashboard';
 import ScheduleManager from '../pages/partner/schedule/ScheduleManager';
 import PartnerWallet from '../pages/partner/wallet/PartnerWallet';
 import PartnerReviews from '../pages/partner/reviews/PartnerReviews';
+import PartnerProfile from '../pages/partner/profile/PartnerProfile';
 //------------------------------------------------------------------------------------------
 
 // =========================================================
@@ -135,6 +136,7 @@ const AppRouter = () => {
           <Route path="schedule" element={<ScheduleManager />} />
           <Route path="wallet" element={<PartnerWallet />} />
           <Route path="reviews" element={<PartnerReviews />} />
+          <Route path="profile" element={<PartnerProfile />} />
 
           {/* Cơ chế 2: Nhân viên gõ sai URL trong phân vùng của mình */}
           {/* Ví dụ: /nhanvien/sai-chinh-ta -> đá về trang chủ nhân viên /nhanvien */}
