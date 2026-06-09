@@ -52,9 +52,13 @@ import RegisterPage from '../pages/customer/auth/RegisterPage';
 //------------------------------------------------------------------------------------------
 
 // =========================================================
-// 3. IMPORT PAGES — NHÂN VIÊN (STAFF / NHANVIEN)
+// 3. IMPORT PAGES — NHÂN VIÊN (PARTNER / NHANVIEN)
 // =========================================================
-//import...
+import PartnerLayout from '../layouts/PartnerLayout';
+import PartnerDashboard from '../pages/partner/dashboard/PartnerDashboard';
+import ScheduleManager from '../pages/partner/schedule/ScheduleManager';
+import PartnerWallet from '../pages/partner/wallet/PartnerWallet';
+import PartnerReviews from '../pages/partner/reviews/PartnerReviews';
 //------------------------------------------------------------------------------------------
 
 // =========================================================
@@ -124,13 +128,17 @@ const AppRouter = () => {
         {/* ========================================================= */}
         {/* TOÀN BỘ PHÂN VÙNG NHÂN VIÊN                               */}
         {/* ========================================================= */}
-        <Route path="/staff">
-          {/* <Route index element={<NhanVienDashboard />} /> */}
-          {/* <Route path="profile" element={<RegisterProfile />} /> */}
+        <Route path="/partner" element={<PartnerLayout />}>
+          <Route index element={<Navigate to="/partner/dashboard" replace />} />
+          
+          <Route path="dashboard" element={<PartnerDashboard />} />
+          <Route path="schedule" element={<ScheduleManager />} />
+          <Route path="wallet" element={<PartnerWallet />} />
+          <Route path="reviews" element={<PartnerReviews />} />
 
           {/* Cơ chế 2: Nhân viên gõ sai URL trong phân vùng của mình */}
           {/* Ví dụ: /nhanvien/sai-chinh-ta -> đá về trang chủ nhân viên /nhanvien */}
-          <Route path="*" element={<Navigate to="/staff" replace />} />
+          <Route path="/partner/*" element={<Navigate to="/partner/dashboard" replace />} />
         </Route>
 
 
