@@ -62,6 +62,8 @@ import PartnerReviews from '../pages/partner/reviews/PartnerReviews';
 import PartnerProfile from '../pages/partner/profile/PartnerProfile';
 import SkillsRegistration from '../pages/partner/skills/SkillsRegistration';
 import PartnerNotifications from '../pages/partner/notifications/PartnerNotifications';
+import PartnerMessagePage from '../pages/partner/messages/PartnerMessagePage';
+
 //------------------------------------------------------------------------------------------
 
 // =========================================================
@@ -140,6 +142,7 @@ const AppRouter = () => {
           <Route path="reviews" element={<PartnerReviews />} />
           <Route path="profile" element={<PartnerProfile />} />
           <Route path="notifications" element={<PartnerNotifications />} />
+          <Route path="messages" element={<PartnerMessagePage />} />
 
           <Route path="skills-registration" element={<SkillsRegistration />} />
 

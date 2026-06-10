@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+// 1. CHÈN THÊM useLocation VÀO ĐÂY
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 
 const PartnerLayout = () => {
   const navigate = useNavigate();
+  
+  // 2. CHÈN ĐOẠN LẤY PATHNAME VÀ ĐỊNH NGHĨA BIẾN TẠI ĐÂY
+  const location = useLocation();
+  const isMinimalLayoutPage = ['/login', '/register', '/partner/messages'].includes(location.pathname);
 
   // Quản lý trạng thái số lượng của các mục khác
   const [newJobsCount] = useState(3);
@@ -76,6 +81,16 @@ const PartnerLayout = () => {
     { path: '/partner/skills-registration', icon: 'model_training', label: 'Đăng ký chuyên môn' },
   ];
 
+  // 3. CHÈN KHỐI ĐIỀU KIỆN NÀY NGAY TRƯỚC LỆNH RETURN CHÍNH
+  // Nếu rơi vào trang không cần layout, trả về Outlet trống hoàn toàn (Full màn hình)
+  if (isMinimalLayoutPage) {
+    return (
+      <main className="min-h-screen w-full bg-white">
+        <Outlet />
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100/70 flex text-slate-800 antialiased font-sans">
       
@@ -136,10 +151,8 @@ const PartnerLayout = () => {
 
           <div className="flex items-center gap-5">
             
-            {/* ================= KHỐI CHUÔNG THÔNG BÁO HOVER XỔ XUỐNG (ĐÃ SỬA) ================= */}
+            {/* ================= KHỐI CHUÔNG THÔNG BÁO HOVER XỔ XUỐNG ================= */}
             <div className="relative group/noti py-2">
-              
-              {/* NÚT CHUÔNG */}
               <button 
                 className="relative w-10 h-10 flex items-center justify-center rounded-full border transition-all focus:outline-none shadow-sm bg-slate-50 text-slate-600 group-hover/noti:bg-emerald-50 group-hover/noti:text-emerald-600 group-hover/noti:border-emerald-300 group-hover/noti:shadow-inner border-slate-200/60 cursor-pointer"
               >
@@ -154,10 +167,7 @@ const PartnerLayout = () => {
                 )}
               </button>
 
-              {/* DROPDOWN MENU CHÍNH (Tự động hiển thị khi hover group/noti) */}
               <div className="absolute right-0 top-full invisible opacity-0 group-hover/noti:visible group-hover/noti:opacity-100 w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 transform origin-top-right scale-95 group-hover/noti:scale-100 transition-all duration-200 select-none">
-                
-                {/* TIÊU ĐỀ DROPDOWN */}
                 <div className="p-4 bg-gradient-to-b from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
                   <div>
                     <h3 className="font-black text-slate-900 text-sm tracking-wide">Thông báo công việc</h3>
@@ -173,7 +183,6 @@ const PartnerLayout = () => {
                   )}
                 </div>
 
-                {/* THANH TAB PHÂN LOẠI CHƯA ĐỌC / TẤT CẢ */}
                 <div className="flex border-b border-slate-100 px-2 pt-1.5 bg-slate-50/40">
                   <button 
                     onClick={(e) => { e.stopPropagation(); setNotiTab('all'); }}
@@ -198,7 +207,6 @@ const PartnerLayout = () => {
                   </button>
                 </div>
 
-                {/* DANH SÁCH THÔNG BÁO GIỚI HẠN TỐI ĐA 3 ITEMS */}
                 <div className="max-h-[310px] overflow-y-auto divide-y divide-slate-100">
                   {filteredNotifications.length > 0 ? (
                     filteredNotifications.map((noti) => (
@@ -243,19 +251,20 @@ const PartnerLayout = () => {
                   )}
                 </div>
 
-                {/* FOOTER: NÚT XEM TẤT CẢ */}
                 <button 
                   onClick={() => navigate('/partner/notifications')}
                   className="w-full py-3 bg-slate-50 hover:bg-slate-100 border-t border-slate-100 text-center text-xs font-black text-emerald-600 tracking-wide transition-all block cursor-pointer"
                 >
                   Xem tất cả thông báo ({notifications.length})
                 </button>
-
               </div>
             </div>
 
             {/* 2. TIN NHẮN CHAT */}
-            <button className="relative w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60 transition-all focus:outline-none group">
+            <button 
+              onClick={() => navigate('/partner/messages')}
+              className="relative w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60 transition-all focus:outline-none group"
+            >
               <span className="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">chat_bubble</span>
               {unreadMessages > 0 && (
                 <span className="absolute top-0 right-0 flex h-4 w-4">
