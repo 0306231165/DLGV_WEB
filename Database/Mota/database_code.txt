@@ -340,7 +340,17 @@ CREATE TABLE `CaLamViec` (
     `gia_ca_nay` DECIMAL(12,2) NOT NULL,
     `hoa_hong_app` DECIMAL(12,2) NOT NULL,
     `thuc_nhan_nv` DECIMAL(12,2) NOT NULL,
-    `trang_thai_ca` VARCHAR(50) NOT NULL, -- 'ChoNhanVienNhan', 'DaNhan', 'NhanVienHuy', 'KhachHuy', 'HoanThanh'
+
+    -- CẢI TIẾN 1: Chuẩn hóa trạng thái để Backend và Frontend xử lý nút bấm
+    -- 'ChoHieuluc'             : Ca tương lai (thuộc gói tháng) chưa đến ngày đẩy lên chợ
+    -- 'ChoKhachChidinhXacNhan' : Lịch khách chỉ định riêng (Hiển thị 2 nút: Nhận/Từ chối)
+    -- 'ChoNhanVienTuDoNhan'   : Lịch tự do trên chợ (Hiển thị 1 nút: Nhận lịch)
+    -- 'DaNhan', 'NhanVienHuy', 'KhachHuy', 'NhanVienQuaHanKhoe', 'HoanThanh'
+    `trang_thai_ca` VARCHAR(50) NOT NULL DEFAULT 'ChoNhanVienTuDoNhan',
+
+    -- CẢI TIẾN 2: Cột mốc thời gian cực kỳ quan trọng để Backend làm cổng đếm ngược
+    `thoi_gian_day_len_cho` DATETIME NULL, -- Thời điểm bắt đầu nhảy vào chợ hoặc gửi cho NV chỉ định
+
     `loai_ghep` VARCHAR(50) NOT NULL DEFAULT 'TuDong', 
     `thoi_gian_checkin` DATETIME NULL,
     `thoi_gian_checkout` DATETIME NULL,
