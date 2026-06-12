@@ -371,7 +371,8 @@ CREATE TABLE `CaLamViec` (
     INDEX `idx_ngay_trang_thai` (`ngay_lam`, `trang_thai_ca`),
     INDEX `idx_nhanvien_ngaylam` (`nhan_vien_id`, `ngay_lam`),
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`),
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`)
+    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`),
+    FOREIGN KEY (`dich_vu_id`) REFERENCES `DichVu`(`id`)
 );
 
 CREATE TABLE `YeuCauXuLy` (
