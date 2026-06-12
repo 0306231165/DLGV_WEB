@@ -290,8 +290,14 @@ CREATE TABLE `DonHang` (
 
 CREATE TABLE `QuyDinhPhuPhi` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `ma_phu_phi` VARCHAR(50) NOT NULL UNIQUE,
-    `gia_tri` VARCHAR(255) NOT NULL,
+    `ma_phu_phi` VARCHAR(50) NOT NULL UNIQUE, -- VD: 'PHUPHI_CUOITUAN_TOI'
+    `ten_phu_phi` VARCHAR(150) NOT NULL,      -- VD: 'Phụ phí buổi tối cuối tuần'
+
+    -- Quy định mức thu
+    `loai_phu_phi` VARCHAR(50) NOT NULL DEFAULT 'PhanTram', -- 'PhanTram' (ví dụ tăng 20%) hoặc 'TienMat' (cộng thẳng 50k)
+    `gia_tri_phu_phi` DECIMAL(12,2) NOT NULL,            -- Lưu số thực (vd: 20.00 hoặc 50000.00)
+
+    `trang_thai` BOOLEAN DEFAULT TRUE,
     `mo_ta` VARCHAR(255) NULL
 );
 
@@ -328,8 +334,9 @@ CREATE TABLE `CaLamViec` (
     `don_hang_id` INT NOT NULL,
     `nhan_vien_id` INT NULL,
 
-    `ten_dich_vu` VARCHAR(255) NOT NULL, -- Thêm thẳng vào đây để NV xem nhanh ko cần JOIN
-    `chi_tiet_dich_vu_them` JSON NULL, 
+    `dich_vu_id` INT NOT NULL,
+    `chi_tiet_dich_vu_them` JSON NULL,
+
     `ngay_lam` DATE NOT NULL,
     `gio_bat_dau` TIME NOT NULL,
     `thoi_gian_lam_phut` INT NOT NULL,
