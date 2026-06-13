@@ -377,6 +377,25 @@ const VOUCHERS = [
   { id: 'BUSINESS10', code: 'BUSINESS10', title: 'Giảm 10% Dọn văn phòng', desc: 'Áp dụng cho Doanh nghiệp', groupIds: ['business'], discountPercent: 10, discountAmount: null },
 ];
 
+const REPLACEMENT_OPTIONS = [
+  {
+    id: 'favorite',
+    label: 'Tìm nhân viên yêu thích thay thế',
+    desc: 'Ưu tiên tìm nhân viên bạn đã đánh dấu yêu thích.',
+  },
+  {
+    id: 'standard',
+    label: 'Tìm nhân viên tiêu chuẩn thay thế',
+    desc: 'Phân bổ nhân viên khác phù hợp nhất.',
+  },
+  {
+    id: 'none',
+    label: 'Không tìm thay thế – Hủy ca nếu không xác nhận',
+    desc: 'Ca sẽ tự động bị hủy nếu nhân viên không xác nhận trong 24h.',
+    isDestructive: true,
+  },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmt = n => n.toLocaleString('vi-VN') + 'đ';
@@ -387,19 +406,19 @@ const sortWeekDays = (ids) => {
   return [...ids].sort((a, b) => order.indexOf(a) - order.indexOf(b));
 };
 
-const getNext7Days = () => {
+const getNext7Days = (startOffset = 0, includeLabels = true) => {
   const days = [];
   const today = new Date();
   const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
-    d.setDate(today.getDate() + i);
+    d.setDate(today.getDate() + startOffset + i);
     days.push({
-      label: i === 0 ? 'Hôm nay' : dayNames[d.getDay()],
+      label: includeLabels ? (i === 0 && startOffset === 0 ? 'Hôm nay' : dayNames[d.getDay()]) : '',
       dateNum: d.getDate(),
       month: d.getMonth(),
       year: d.getFullYear(),
-      isToday: i === 0,
+      isToday: i === 0 && startOffset === 0,
       dateObj: d,
     });
   }
@@ -1009,11 +1028,12 @@ const Schedule247 = ({
   setDuration247,
   startDate247,
   setStartDate247,
+  next7Days247,
   errors,
   setErrors,
   sectionRefs,
 }) => {
-  const next7Days = getNext7Days();
+  const next7Days = next7Days247 || getNext7Days(7, false);
 
   return (
     <div className="space-y-6">
@@ -1070,7 +1090,7 @@ const Schedule247 = ({
         </SectionTitle>
         <div className="flex items-start gap-3 p-3 rounded-xl bg-tertiary-fixed/40 border border-tertiary-fixed mb-5 text-sm text-on-tertiary-fixed-variant">
           <span className="material-symbols-outlined text-base mt-0.5">info</span>
-          <span>Dịch vụ 24/7 bắt đầu từ ngày bạn chọn và duy trì liên tục theo gói đăng ký.</span>
+          <span>Dịch vụ 24/7 chỉ bắt đầu từ mốc hôm nay + 7 ngày và duy trì liên tục theo gói đăng ký.</span>
         </div>
         <div className="flex gap-3 overflow-x-auto pb-2">
           {next7Days.map((d, idx) => {
@@ -1087,9 +1107,6 @@ const Schedule247 = ({
                     ? 'border-primary bg-primary text-on-primary'
                     : 'border-outline-variant/50 bg-surface-container-lowest hover:border-primary/60'
                 }`}>
-                <span className={`text-sm font-semibold ${isSelected ? 'text-on-primary' : 'text-on-surface-variant'}`}>
-                  {d.label}
-                </span>
                 <span className={`text-2xl font-bold mt-0.5 ${isSelected ? 'text-on-primary' : 'text-on-surface'}`}>
                   {d.dateNum}
                 </span>
@@ -1281,11 +1298,20 @@ const BookingPage = () => {
   const [staffSelfPick, setStaffSelfPick] = useState(false);
   const [premiumStaff, setPremiumStaff] = useState(false);
   const [preselectedStaff, setPreselectedStaff] = useState(location.state?.preselectedStaff || null);
+  const [showReplacementOptions, setShowReplacementOptions] = useState(false);
+  const [replacementOption, setReplacementOption] = useState('favorite');
 
   // Nếu có nhân viên được chọn trước từ trang chi tiết nhân viên, tự bật staffSelfPick
   useEffect(() => {
     if (preselectedStaff) {
       setStaffSelfPick(true);
+    }
+  }, [preselectedStaff]);
+
+  useEffect(() => {
+    if (!preselectedStaff) {
+      setShowReplacementOptions(false);
+      setReplacementOption('favorite');
     }
   }, [preselectedStaff]);
 
@@ -1376,6 +1402,7 @@ const BookingPage = () => {
     : buildAreaOptionsNormal(pkgData.base_price);
   const areaData = areaList.find(a => a.id === selectedArea);
   const next7Days = getNext7Days();
+  const next7Days247 = getNext7Days(7, false);
   const selectedDayObj = selectedDayIdx !== null ? next7Days[selectedDayIdx] : null;
 
   const baseHours = isCare ? (careData?.baseHours || 2) : areaData ? areaData.baseHours : 2;
@@ -1550,7 +1577,7 @@ const BookingPage = () => {
     setSelectedWeekDays([]);
     setMonthlyDuration('1');
     setShift247(null);
-    setStartDate247(null);
+    setStartDate247(id === '247' ? 0 : null);
     setErrors(p => ({ ...p, frequency: null, date: null, time: null }));
   };
 
@@ -1767,7 +1794,7 @@ const BookingPage = () => {
   const renderCostBreakdown = () => {
     if (is247) {
       const shiftData = SHIFT_247_OPTIONS.find(s => s.id === shift247);
-      const startDayObj = startDate247 !== null ? next7Days[startDate247] : null;
+      const startDayObj = startDate247 !== null ? next7Days247[startDate247] : null;
       return (
         <div className="space-y-4 text-sm">
           <div className="p-4 bg-surface rounded-xl border border-outline-variant/30">
@@ -2043,6 +2070,19 @@ const BookingPage = () => {
                   </span>
                 } />
               )}
+              {preselectedStaff && (
+                <Row
+                  label="Phương án thay thế"
+                  value={
+                    replacementOption === 'favorite'
+                      ? 'Tìm nhân viên yêu thích thay thế'
+                      : replacementOption === 'standard'
+                      ? 'Tìm nhân viên tiêu chuẩn thay thế'
+                      : 'Không tìm thay thế – Hủy ca nếu không xác nhận'
+                  }
+                  highlight={replacementOption !== 'none'}
+                />
+              )}
               {premiumFeeTotal > 0 && !is247 && <>
                 {isMonthly && (
                   <Row label={
@@ -2081,8 +2121,8 @@ const BookingPage = () => {
             {/* ── NHÓM 2: Lịch hẹn ── */}
             {step >= 2 && (selectedDayObj || selectedWeekDays.length > 0 || startDate247 !== null) && (
               <AccordionSection sectionKey="schedule" icon="calendar_month" title="Lịch hẹn">
-                {is247 && startDate247 !== null && <>
-                  <Row label="Ngày bắt đầu" value={`${next7Days[startDate247]?.dateNum}/${next7Days[startDate247]?.month + 1}/${next7Days[startDate247]?.year}`} />
+              {is247 && startDate247 !== null && <>
+                  <Row label="Ngày bắt đầu" value={`${next7Days247[startDate247]?.dateNum}/${next7Days247[startDate247]?.month + 1}/${next7Days247[startDate247]?.year}`} />
                   <Row label="Ca" value={SHIFT_247_OPTIONS.find(s => s.id === shift247)?.label || '—'} />
                   <Row label="Thời hạn" value={duration247Data?.label || '—'} />
                 </>}
@@ -2359,7 +2399,7 @@ const BookingPage = () => {
                       </p>
                       <p className="text-sm text-on-surface-variant mt-0.5">Nhân viên đã được chọn · Dịch vụ dọn dẹp nhà</p>
                     </div>
-                    <button onClick={() => { setPreselectedStaff(null); setStaffSelfPick(false); }}
+                    <button onClick={() => { setPreselectedStaff(null); setStaffSelfPick(false); setShowReplacementOptions(false); setReplacementOption('favorite'); }}
                       className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all">
                       <span className="material-symbols-outlined text-xl">close</span>
                     </button>
@@ -2707,6 +2747,7 @@ const BookingPage = () => {
                       setDuration247={setDuration247}
                       startDate247={startDate247}
                       setStartDate247={setStartDate247}
+                      next7Days247={next7Days247}
                       errors={errors}
                       setErrors={setErrors}
                       sectionRefs={sectionRefs}
@@ -3087,6 +3128,8 @@ const BookingPage = () => {
                             onClick={() => {
                               setPreselectedStaff(null);
                               setStaffSelfPick(false);
+                              setShowReplacementOptions(false);
+                              setReplacementOption('favorite');
                             }}
                             className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all"
                             title="Bỏ chọn nhân viên"
@@ -3106,24 +3149,58 @@ const BookingPage = () => {
                       )}
                       <div className="space-y-3">
                         {preselectedStaff ? (
-                          // Chỉ hiện nút "Phương án thay thế" khi đã chọn NV
-                          <div
-                            className="flex items-center justify-between gap-4 p-4 rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40 cursor-pointer transition-all"
-                            onClick={() => {/* TODO */}}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-surface-container">
-                                <span className="material-symbols-outlined text-on-surface-variant">swap_horiz</span>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setShowReplacementOptions(prev => !prev)}
+                              className={`w-full flex items-center justify-between gap-4 p-4 rounded-xl border-2 transition-all text-left ${
+                                showReplacementOptions
+                                  ? 'border-primary bg-primary/5 shadow-sm'
+                                  : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${showReplacementOptions ? 'bg-primary/10 text-primary' : 'bg-surface-container text-on-surface-variant'}`}>
+                                  <span className="material-symbols-outlined">swap_horiz</span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-on-surface text-base">Phương án thay thế</p>
+                                  <p className="text-sm text-on-surface-variant mt-0.5">
+                                    Chọn cách xử lý nếu {preselectedStaff.name} bận lịch
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-semibold text-on-surface text-base">Phương án thay thế</p>
-                                <p className="text-sm text-on-surface-variant mt-0.5">
-                                  Chọn nhân viên dự phòng nếu {preselectedStaff.name} bận lịch
-                                </p>
+                              <span className={`material-symbols-outlined transition-transform ${showReplacementOptions ? 'rotate-90 text-primary' : 'text-on-surface-variant'}`}>
+                                chevron_right
+                              </span>
+                            </button>
+
+                            {showReplacementOptions && (
+                              <div className="space-y-2">
+                                {REPLACEMENT_OPTIONS.map(opt => (
+                                  <label
+                                    key={opt.id}
+                                    onClick={() => setReplacementOption(opt.id)}
+                                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                                      replacementOption === opt.id
+                                        ? opt.isDestructive
+                                          ? 'border-error bg-error/5'
+                                          : 'border-primary bg-primary/5 shadow-sm'
+                                        : 'border-outline-variant/30 hover:bg-surface-container'
+                                    }`}
+                                  >
+                                    <div className={`w-4 h-4 rounded-full border-2 flex shrink-0 mt-0.5 items-center justify-center ${replacementOption === opt.id ? (opt.isDestructive ? 'border-error' : 'border-primary') : 'border-outline-variant'}`}>
+                                      {replacementOption === opt.id && <div className={`w-2 h-2 rounded-full ${opt.isDestructive ? 'bg-error' : 'bg-primary'}`}></div>}
+                                    </div>
+                                    <div className="flex-1">
+                                      <span className={`text-sm font-bold ${opt.isDestructive ? 'text-error' : 'text-on-surface'}`}>{opt.label}</span>
+                                      <p className={`text-xs mt-0.5 leading-relaxed ${opt.isDestructive ? 'text-error/80' : 'text-on-surface-variant'}`}>{opt.desc}</p>
+                                    </div>
+                                  </label>
+                                ))}
                               </div>
-                            </div>
-                            <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-                          </div>
+                            )}
+                          </>
                         ) : (
                           // Giữ nguyên 2 toggle cũ
                           <>
@@ -3644,6 +3721,18 @@ const BookingPage = () => {
                         </div>
                       </div>
                     )}
+                      {preselectedStaff && (
+                        <div className="flex justify-between pt-1 border-t border-outline-variant/10">
+                          <span className="text-sm text-on-surface-variant">Phương án thay thế</span>
+                          <span className={`font-semibold text-right ml-4 ${replacementOption === 'none' ? 'text-error' : 'text-on-surface'}`}>
+                            {replacementOption === 'favorite'
+                              ? 'Tìm nhân viên yêu thích thay thế'
+                              : replacementOption === 'standard'
+                              ? 'Tìm nhân viên tiêu chuẩn thay thế'
+                              : 'Không tìm thay thế – Hủy ca nếu không xác nhận'}
+                          </span>
+                        </div>
+                      )}
                       <button
                         onClick={() => setShowStep5Tasks(true)}
                         className="mt-1 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">
@@ -3657,15 +3746,14 @@ const BookingPage = () => {
                     <span className="material-symbols-outlined text-primary text-2xl mt-0.5">calendar_month</span>
                     <div className="flex-1 space-y-2">
                       <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wide">Lịch hẹn</p>
-                      {is247 && startDate247 !== null && (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-on-surface-variant">Ngày bắt đầu</span>
-                            <span className="font-bold text-on-surface">
-                              {next7Days[startDate247]?.label}{' '}
-                              {next7Days[startDate247]?.dateNum}/{next7Days[startDate247]?.month + 1}/{next7Days[startDate247]?.year}
-                            </span>
-                          </div>
+              {is247 && startDate247 !== null && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-on-surface-variant">Ngày bắt đầu</span>
+                    <span className="font-bold text-on-surface">
+                      {next7Days247[startDate247]?.dateNum}/{next7Days247[startDate247]?.month + 1}/{next7Days247[startDate247]?.year}
+                    </span>
+                  </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-on-surface-variant">Ca</span>
                             <span className="font-semibold text-on-surface">
@@ -3997,6 +4085,8 @@ const BookingPage = () => {
                 setDuration247('7');
                 setStartDate247(null);
                 setCareOptionId(null);
+                setShowReplacementOptions(false);
+                setReplacementOption('favorite');
                 setContactMode('saved');
                 setSelectedSavedContact(0);
                 setNewContact({ name: '', phone: '', email: '' });
@@ -4030,4 +4120,3 @@ const BookingPage = () => {
 };
 
 export default BookingPage;
-//R_code

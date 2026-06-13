@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { getBookingSnapshotById, saveBookingSnapshot } from './BookingUtils';
 
 // ─────────────────────────────────────────────────────────────────────────
 // FAKE "HÔM NAY" DÙNG ĐỂ TEST — vì dữ liệu mock nằm trong năm 2024 nhưng
@@ -25,6 +26,40 @@ const getToday = () => {
   const dt = new Date();
   dt.setHours(0, 0, 0, 0);
   return dt;
+};
+
+const mergeBookingData = (base, override) => {
+  if (!base && !override) return null;
+  if (!base) return override;
+  if (!override) return base;
+
+  return {
+    ...base,
+    ...override,
+    service: {
+      ...(base.service || {}),
+      ...(override.service || {}),
+    },
+    schedule: {
+      ...(base.schedule || {}),
+      ...(override.schedule || {}),
+    },
+    location: {
+      ...(base.location || {}),
+      ...(override.location || {}),
+    },
+    payment: {
+      ...(base.payment || {}),
+      ...(override.payment || {}),
+    },
+    packageInfo: base.packageInfo || override.packageInfo
+      ? {
+          ...(base.packageInfo || {}),
+          ...(override.packageInfo || {}),
+          sessions: override.packageInfo?.sessions || base.packageInfo?.sessions || [],
+        }
+      : undefined,
+  };
 };
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -496,6 +531,33 @@ const getRequestTypeLabel = (session) => {
   return 'yêu cầu';
 };
 
+const addDays = (date, days) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const isMonthlyPackageBooking = (booking) => {
+  if (!booking?.isPackage) return false;
+  const packageText = [
+    booking?.packageInfo?.type,
+    booking?.service?.packageType,
+    booking?.service?.title,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return packageText.includes('tháng') || packageText.includes('24/7');
+};
+
+const getTransferStatusLabel = (label) =>
+  label?.includes('ĐANG THỰC HIỆN')
+    ? label.replace('ĐANG THỰC HIỆN', 'CHỜ XÁC NHẬN')
+    : label
+      ? `${label} • CHỜ XÁC NHẬN`
+      : 'CHỜ XÁC NHẬN';
+
 const StaffSimulator = ({ booking, setBooking }) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -743,6 +805,14 @@ const PackageSessionPanel = ({
   const { startDate, endDate } = booking.packageInfo;
   const [, sm, sy] = startDate.split('/').map(Number);
   const [, em, ey] = endDate.split('/').map(Number);
+  const originalContractEndDate = parseDMY(getOriginalPackageEndDate(booking));
+  const originalContractEndMonth = new Date(
+    originalContractEndDate.getFullYear(),
+    originalContractEndDate.getMonth(),
+    1
+  );
+  const isSessionBeyondOriginalContract = (session) =>
+    parseDMY(getSessionDisplayDate(session)) > originalContractEndDate;
 
   // Tạo danh sách tháng từ startDate → endDate
   const months = [];
@@ -821,9 +891,8 @@ const PackageSessionPanel = ({
           const isCurrent = m.year === currentYear && m.month === currentMonth;
           const isPast = m.year < currentYear || (m.year === currentYear && m.month < currentMonth);
           const stats = getStats(m);
-          const mKey = `${m.year}-${m.month}`;
-
-          const hasExtendedSession = (sessionsByMonth[mKey] || []).some((s) => s.isExtended);
+          const monthDate = new Date(m.year, m.month - 1, 1);
+          const hasExtendedSession = monthDate > originalContractEndMonth;
 
           let badgeText = '';
           let badgeColor = isActive ? 'text-white/80' : 'text-primary';
@@ -877,7 +946,7 @@ const PackageSessionPanel = ({
           <span className="material-symbols-outlined text-primary text-[16px]">calendar_month</span>
           Tháng {activeTab.month}/{activeTab.year}
           {/* Badge "Mở rộng" nếu tháng này có ca extended */}
-          {(sessionsByMonth[tabKey] || []).some((s) => s.isExtended) && (
+          {(new Date(activeTab.year, activeTab.month - 1, 1)) > originalContractEndMonth && (
             <span className="text-[9px] font-black bg-orange-100 text-orange-600 border border-orange-200 px-2 py-0.5 rounded-full uppercase tracking-wide">
               Mở rộng HĐ
             </span>
@@ -904,38 +973,45 @@ const PackageSessionPanel = ({
         </div>
       ) : (
         <div className="space-y-3">
-          {tabSessions.map((session) => (
-            <SessionRow
-              key={session.id}
-              session={session}
-              renderSessionTitle={renderSessionTitle}
-              renderSessionSubInfo={renderSessionSubInfo}
-              onReschedule={() => handleOpenActionModal('reschedule', session.id)}
-              onCancel={() => handleOpenActionModal('cancel', session.id)}
-              onCancelReschedule={() => {
-                setBooking((prev) => {
-                  const newSessions = sortPackageSessions(
-                    prev.packageInfo.sessions.map((s) =>
-                      s.id === session.id
-                        ? session.isAddedExtra
-                          ? { ...s, status: 'cancelled' }
-                          : {
-                              ...s,
-                              status: 'upcoming',
-                              rescheduleDate: undefined,
-                              rescheduleStaffOption: undefined,
-                              isRescheduled: undefined,
-                              rescheduledFromDate: undefined,
-                            }
-                        : s
-                    )
-                  );
-                  const cancelledSessions = newSessions.filter((s) => s.status === 'cancelled').length;
-                  return { ...prev, packageInfo: { ...prev.packageInfo, sessions: newSessions, cancelledSessions } };
-                });
-              }}
-            />
-          ))}
+          {tabSessions.map((session) => {
+            const displaySession = {
+              ...session,
+              isExtended: isSessionBeyondOriginalContract(session),
+            };
+
+            return (
+              <SessionRow
+                key={displaySession.id}
+                session={displaySession}
+                renderSessionTitle={renderSessionTitle}
+                renderSessionSubInfo={renderSessionSubInfo}
+                onReschedule={() => handleOpenActionModal('reschedule', displaySession.id)}
+                onCancel={() => handleOpenActionModal('cancel', displaySession.id)}
+                onCancelReschedule={() => {
+                  setBooking((prev) => {
+                    const newSessions = sortPackageSessions(
+                      prev.packageInfo.sessions.map((s) =>
+                        s.id === displaySession.id
+                          ? displaySession.isAddedExtra
+                            ? { ...s, status: 'cancelled' }
+                            : {
+                                ...s,
+                                status: 'upcoming',
+                                rescheduleDate: undefined,
+                                rescheduleStaffOption: undefined,
+                                isRescheduled: undefined,
+                                rescheduledFromDate: undefined,
+                              }
+                          : s
+                      )
+                    );
+                    const cancelledSessions = newSessions.filter((s) => s.status === 'cancelled').length;
+                    return { ...prev, packageInfo: { ...prev.packageInfo, sessions: newSessions, cancelledSessions } };
+                  });
+                }}
+              />
+            );
+          })}
         </div>
       )}
     </>
@@ -954,7 +1030,7 @@ const SessionRow = ({ session, renderSessionTitle, renderSessionSubInfo, onResch
         : session.isExtended ? 'bg-orange-50/60 border-orange-200 hover:border-orange-300'
         : 'bg-surface hover:border-primary/30 border-outline-variant/20 hover:shadow-md'}`}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-4 flex-1 min-w-0">
         <div
           className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm mt-0.5
             ${session.status === 'completed' ? 'bg-primary text-white shadow-primary/20'
@@ -973,14 +1049,14 @@ const SessionRow = ({ session, renderSessionTitle, renderSessionSubInfo, onResch
             : 'event'}
           </span>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {renderSessionTitle(session)}
           {renderSessionSubInfo(session)}
         </div>
       </div>
 
       {session.status === 'upcoming' && (
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto shrink-0 sm:self-center">
           <button
             onClick={onReschedule}
             className="flex-1 sm:flex-none px-4 py-2 bg-white border border-outline-variant/30 text-primary text-sm font-bold rounded-xl hover:bg-primary/5 active:scale-95 transition-all shadow-sm"
@@ -997,7 +1073,7 @@ const SessionRow = ({ session, renderSessionTitle, renderSessionSubInfo, onResch
       )}
 
       {session.status === 'awaiting_confirm' && (
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto shrink-0 sm:self-center">
           <button
             onClick={onCancelReschedule}
             className="flex-1 sm:flex-none px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold rounded-xl hover:bg-amber-100 active:scale-95 transition-all shadow-sm"
@@ -1042,9 +1118,16 @@ const BookingDetailPage = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const data = MOCK_BOOKINGS[id] || MOCK_BOOKINGS['1'];
-    setBooking(data);
+    const baseData = MOCK_BOOKINGS[id] || MOCK_BOOKINGS['1'];
+    const snapshotData = getBookingSnapshotById(id);
+    setBooking(mergeBookingData(baseData, snapshotData));
   }, [id]);
+
+  useEffect(() => {
+    if (booking) {
+      saveBookingSnapshot(booking);
+    }
+  }, [booking]);
 
   useEffect(() => {
     if (isChatOpen) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1064,6 +1147,8 @@ const BookingDetailPage = () => {
   const isActive = booking.status === 'active';
   const isCompleted = booking.status === 'completed';
   const isCancelled = booking.status === 'cancelled';
+  const isStaffTransferRequested = !!booking.staffTransfer?.isRequested;
+  const isTransferEligible = isMonthlyPackageBooking(booking);
 
   const handleOpenCancelPackage = () => {
     if (booking.isPackage) {
@@ -1340,6 +1425,9 @@ const BookingDetailPage = () => {
     if (type === 'reschedule') {
       const [y, mo, d] = data.split('-');
       const rescheduleDateFormatted = d + '/' + mo + '/' + y;
+      const selectedDate = new Date(parseInt(y), parseInt(mo) - 1, parseInt(d));
+      const contractEnd = parseDMY(getOriginalPackageEndDate(booking));
+      const isOutOfContract = selectedDate > contractEnd;
 
       setBooking((prev) => {
         const newSessions = sortPackageSessions(
@@ -1350,11 +1438,21 @@ const BookingDetailPage = () => {
                   status: 'awaiting_confirm',
                   rescheduleDate: rescheduleDateFormatted,
                   rescheduleStaffOption: staffOption,
+                  isExtended: isOutOfContract || s.isExtended || undefined,
                 }
               : s
           )
         );
-        return { ...prev, packageInfo: { ...prev.packageInfo, sessions: newSessions } };
+        const nextPackageInfo = {
+          ...prev.packageInfo,
+          sessions: newSessions,
+        };
+
+        if (isOutOfContract) {
+          nextPackageInfo.endDate = formatDMY(getMonthEndDate(selectedDate));
+        }
+
+        return { ...prev, packageInfo: nextPackageInfo };
       });
     } else if (type === 'cancel') {
       setBooking((prev) => {
@@ -1407,6 +1505,33 @@ const BookingDetailPage = () => {
           },
         };
       });
+    } else if (type === 'transfer_staff') {
+      setBooking((prev) => {
+        const requestedAt = formatDMY(getToday());
+        const broadcastAllAt = formatDMY(addDays(getToday(), 2));
+        const minReadyAt = formatDMY(addDays(getToday(), 3));
+        const transferTitle = prev.title?.includes('CHỜ XÁC NHẬN')
+          ? prev.title
+          : `${prev.title || prev.service?.title || 'Gói dịch vụ'} • CHỜ XÁC NHẬN`;
+
+        return {
+          ...prev,
+          title: transferTitle,
+          statusLabel: getTransferStatusLabel(prev.statusLabel),
+          statusColor: 'text-primary bg-primary/10 border-primary/20 shadow-md shadow-primary/10',
+          staff: null,
+          assignee: 'Đang phân bổ nhân viên',
+          assigneeIcon: 'person_search',
+          staffTransfer: {
+            isRequested: true,
+            requestedAt,
+            broadcastAllAt,
+            minReadyAt,
+            priorityFlow: 'premium-first',
+          },
+        };
+      });
+      setIsChatOpen(false);
     }
 
     setActionModal({ isOpen: false, type: null, sessionId: null, data: null, staffOption: 'favorite' });
@@ -1474,9 +1599,17 @@ const BookingDetailPage = () => {
         <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md uppercase font-black tracking-wide animate-pulse">Đang thực hiện</span>
       )}
       {session.status === 'upcoming' && (
-        <span className={session.isExtended ? "text-[10px] px-2 py-0.5 rounded-md uppercase font-black tracking-wide bg-orange-100 text-orange-700 border border-orange-200" : "text-[10px] px-2 py-0.5 rounded-md uppercase font-black tracking-wide bg-slate-100 text-slate-700"}>
-          {session.isExtended ? "Mở rộng HĐ" : "Sắp tới"}
-        </span>
+        <>
+          {isStaffTransferRequested && (
+            <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md uppercase font-black tracking-wide flex items-center gap-1">
+              <span className="material-symbols-outlined text-[12px]">swap_horiz</span>
+              Đang đổi nhân viên
+            </span>
+          )}
+          <span className={session.isExtended ? "text-[10px] px-2 py-0.5 rounded-md uppercase font-black tracking-wide bg-orange-100 text-orange-700 border border-orange-200" : "text-[10px] px-2 py-0.5 rounded-md uppercase font-black tracking-wide bg-slate-100 text-slate-700"}>
+            {session.isExtended ? "Mở rộng HĐ" : "Sắp tới"}
+          </span>
+        </>
       )}
       {session.status === 'awaiting_confirm' && (
         <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md uppercase font-black tracking-wide flex items-center gap-1">
@@ -1520,8 +1653,19 @@ const BookingDetailPage = () => {
       );
     }
 
+    const isTransferInProgress = isStaffTransferRequested && session.status === 'upcoming';
+    const displayStaffLabel = isTransferInProgress
+      ? 'Đang tìm nhân viên (được phân bổ lại)'
+      : session.staff;
+
     return (
       <div className="mt-1.5 space-y-1">
+        {isTransferInProgress && (
+          <div className="text-xs text-amber-700 flex items-center gap-1.5 font-semibold">
+            <span className="material-symbols-outlined text-[13px]">swap_horiz</span>
+            Đang đổi nhân viên cho ca tương lai
+          </div>
+        )}
         {(session.isRescheduled || session.isAddedExtra) && (
           <div className="text-xs text-orange-700 flex items-center gap-1.5 font-semibold">
             <span className="material-symbols-outlined text-[13px]">auto_awesome</span>
@@ -1536,7 +1680,7 @@ const BookingDetailPage = () => {
         )}
         <div className="text-sm text-on-surface-variant mt-0.5 flex items-center gap-1.5">
           <span className="material-symbols-outlined text-[14px]">person</span>
-          {session.staff}
+          {displayStaffLabel}
         </div>
       </div>
     );
@@ -1563,7 +1707,7 @@ const BookingDetailPage = () => {
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className={`font-h1 text-xl md:text-2xl px-4 py-1.5 rounded-2xl font-black border w-fit uppercase flex items-center gap-2 ${booking.statusColor}`}>
               <span className="material-symbols-outlined text-[22px] md:text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                {getStatusIcon(booking.status)}
+                {isStaffTransferRequested ? 'person_search' : getStatusIcon(booking.status)}
               </span>
               {booking.statusLabel}
             </h1>
@@ -1575,6 +1719,19 @@ const BookingDetailPage = () => {
             Đặt lúc <span className="font-medium text-on-surface">{booking.createdAt}</span>
           </p>
         </div>
+
+        {isStaffTransferRequested && (
+          <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 flex items-start gap-3 shadow-sm">
+            <span className="material-symbols-outlined text-amber-700 mt-0.5">swap_horiz</span>
+            <div className="text-sm leading-relaxed">
+              <p className="font-bold text-amber-900">Đơn này đang đổi nhân viên</p>
+              <p className="text-amber-800/90">
+                CleanTrust đang ưu tiên nhân viên cao cấp trong 2 ngày đầu, sau đó sẽ mở sang toàn bộ nhân viên.
+                Khách sẽ chờ tối thiểu 3 ngày để hệ thống phân bổ xong.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -1764,6 +1921,17 @@ const BookingDetailPage = () => {
                   <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>badge</span>
                   Nhân viên phụ trách
                 </h3>
+                {isStaffTransferRequested && (
+                  <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+                    <p className="font-bold text-sm">Đã gửi yêu cầu đổi nhân viên</p>
+                    <p className="text-xs mt-1 leading-relaxed text-amber-800">
+                      CleanTrust đang ưu tiên nhân viên cao cấp trước, sau 2 ngày sẽ tự mở sang tất cả nhân viên nếu chưa ai nhận.
+                    </p>
+                    <p className="text-[11px] mt-1.5 font-bold uppercase tracking-wide text-amber-700">
+                      Khách cần chờ tối thiểu 3 ngày
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center gap-4 p-4 bg-surface rounded-xl border border-outline-variant/20 mb-4">
                   <img src={booking.staff.avatar} alt={booking.staff.name} className="w-16 h-16 rounded-xl object-cover border-2 border-surface-container shadow" />
                   <div className="flex-1">
@@ -1788,6 +1956,15 @@ const BookingDetailPage = () => {
                     <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>chat</span> Nhắn tin
                   </button>
                 </div>
+                {isTransferEligible && !isStaffTransferRequested && (
+                  <button
+                    onClick={() => handleOpenActionModal('transfer_staff')}
+                    className="w-full mt-3 py-3 bg-amber-500/10 text-amber-900 font-bold rounded-xl border border-amber-200 hover:bg-amber-500/15 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm"
+                  >
+                    <span className="material-symbols-outlined text-base">swap_horiz</span>
+                    Đổi nhân viên
+                  </button>
+                )}
               </div>
             ) : (
               <div className="glass-card bg-surface-container-lowest p-6 rounded-2xl shadow-xl border border-outline-variant/30">
@@ -1804,6 +1981,28 @@ const BookingDetailPage = () => {
                     <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">CleanTrust đang chọn nhân viên tối ưu và gần vị trí của bạn nhất.</p>
                   </div>
                 </div>
+                {isStaffTransferRequested && (
+                  <div className="mt-4 space-y-3">
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                      <p className="font-bold mb-1">Đơn đang đổi nhân viên</p>
+                      <p>Ưu tiên đăng cho nhân viên cao cấp trong 2 ngày đầu. Nếu chưa ai nhận, hệ thống sẽ mở sang toàn bộ nhân viên.</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 text-xs text-on-surface-variant">
+                      <div className="p-3 rounded-xl bg-surface border border-outline-variant/20">
+                        <span className="font-bold text-on-surface block mb-1">Đã gửi lúc</span>
+                        {booking.staffTransfer?.requestedAt || 'Hôm nay'}
+                      </div>
+                      <div className="p-3 rounded-xl bg-surface border border-outline-variant/20">
+                        <span className="font-bold text-on-surface block mb-1">Mở toàn bộ sau</span>
+                        {booking.staffTransfer?.broadcastAllAt || 'Sau 2 ngày'}
+                      </div>
+                      <div className="p-3 rounded-xl bg-surface border border-outline-variant/20">
+                        <span className="font-bold text-on-surface block mb-1">Xác nhận tối thiểu</span>
+                        {booking.staffTransfer?.minReadyAt || 'Sau 3 ngày'}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2039,8 +2238,50 @@ const BookingDetailPage = () => {
               </>
             )}
 
-            {/* Modal thêm ca */}
-            {actionModal.type === 'add' && (
+            {/* Modal đổi nhân viên */}
+            {actionModal.type === 'transfer_staff' && (
+              <>
+                <div className="p-6 bg-primary/10 flex items-center gap-3 border-b border-primary/20">
+                  <div className="w-10 h-10 bg-white text-primary rounded-full flex items-center justify-center shadow-sm">
+                    <span className="material-symbols-outlined">swap_horiz</span>
+                  </div>
+                  <h3 className="font-h3 text-lg text-primary font-bold leading-tight">Xác nhận đổi nhân viên</h3>
+                </div>
+                <div className="p-6 overflow-y-auto max-h-[70vh] text-sm text-on-surface-variant leading-relaxed">
+                  <p>
+                    Bạn chắc chắn muốn đổi nhân viên cho gói tháng này không? CleanTrust sẽ ưu tiên đăng lịch cho nhân viên cao cấp
+                    trước, nếu sau 2 ngày chưa ai nhận thì sẽ mở sang toàn bộ nhân viên.
+                  </p>
+
+                  <div className="mt-4 space-y-2">
+                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
+                      <p className="font-bold text-on-surface">Bước 1</p>
+                      <p className="text-xs mt-1">Đẩy lịch tới nhóm nhân viên cao cấp và gần vị trí của bạn nhất.</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
+                      <p className="font-bold text-on-surface">Bước 2</p>
+                      <p className="text-xs mt-1">Sau 48 giờ, hệ thống chuyển sang đăng cho toàn bộ nhân viên.</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
+                      <p className="font-bold text-on-surface">Bước 3</p>
+                      <p className="text-xs mt-1">Khách sẽ ở trạng thái chờ xác nhận ít nhất 3 ngày.</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs text-on-surface-variant leading-relaxed">
+                    Tiêu đề của gói sẽ đổi sang trạng thái <strong className="text-primary">CHỜ XÁC NHẬN</strong> để khách dễ nhận biết đơn đang đổi nhân viên.
+                  </div>
+                </div>
+                <div className="p-6 pt-0 flex gap-3">
+                  <button onClick={() => setActionModal({ isOpen: false, type: null, sessionId: null, data: null, staffOption: 'favorite' })} className="flex-1 py-3 bg-surface text-on-surface font-bold rounded-xl border border-outline-variant/30 hover:bg-surface-container active:scale-95 transition-all">
+                    Để tôi xem lại
+                  </button>
+                  <button onClick={handleConfirmAction} className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-container active:scale-95 transition-all shadow-md shadow-primary/30">
+                    Xác nhận đổi
+                  </button>
+                </div>
+              </>
+            )}            {actionModal.type === 'add' && (
               <>
                 <div className="p-6 bg-primary/10 flex items-center gap-3 border-b border-primary/20">
                   <div className="w-10 h-10 bg-white text-primary rounded-full flex items-center justify-center shadow-sm">

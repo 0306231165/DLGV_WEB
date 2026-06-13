@@ -1,15 +1,17 @@
 import React from 'react';
-import { BookingTabs, BookingCard, BOOKINGS } from './BookingUtils';
+import { BookingTabs, BookingCard, getBookingsSnapshot } from './BookingUtils';
 
 const CompletedBookingsPage = () => {
+  const bookings = getBookingsSnapshot();
+
   return (
     <>
       <BookingTabs />
-      {BOOKINGS.completed.length === 0 ? (
+      {bookings.completed.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
-          {BOOKINGS.completed.map((booking) => (
+          {bookings.completed.map((booking) => (
             <BookingCard key={booking.id} booking={booking} />
           ))}
         </div>

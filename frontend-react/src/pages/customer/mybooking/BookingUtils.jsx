@@ -46,6 +46,39 @@ export const BookingTabs = () => {
 };
 
 // ─── Booking Card ──────────────────────────────────────────────────────────────
+const BOOKING_OVERRIDES = {};
+
+const cloneBooking = (booking) => {
+  if (!booking) return booking;
+  if (typeof structuredClone === 'function') return structuredClone(booking);
+  return JSON.parse(JSON.stringify(booking));
+};
+
+export const saveBookingSnapshot = (booking) => {
+  if (!booking?.id) return;
+  BOOKING_OVERRIDES[String(booking.id)] = cloneBooking(booking);
+};
+
+export const getBookingSnapshotById = (id) => {
+  const key = String(id);
+  return BOOKING_OVERRIDES[key] || BOOKINGS.all.find((booking) => String(booking.id) === key) || null;
+};
+
+export const getBookingsSnapshot = () => {
+  const mergeList = (list = []) => list.map((booking) => BOOKING_OVERRIDES[String(booking.id)] || booking);
+
+  const upcoming = mergeList(BOOKINGS.upcoming);
+  const active = mergeList(BOOKINGS.active);
+  const completed = mergeList(BOOKINGS.completed);
+
+  return {
+    upcoming,
+    active,
+    completed,
+    all: [...upcoming, ...active, ...completed],
+  };
+};
+
 export const BookingCard = ({ booking }) => {
   const {
     title,
