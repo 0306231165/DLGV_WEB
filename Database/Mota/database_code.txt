@@ -200,28 +200,43 @@ CREATE TABLE `NhanVien_DichVu` (
 -- MODULE 3: LỊCH RẢNH, XIN NGHỈ ĐỘT XUẤT VÀ LOG LỊCH (ĐÃ CHUẨN HÓA)
 -- -------------------------------------------------------------------------
 
--- Đã đổi tên chuẩn thành LichRanh, lưu cấu hình chạy dài hạn theo tuần
-CREATE TABLE `LichRanh` (
+CREATE TABLE `LichNghi` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `nhan_vien_id` INT NOT NULL,
-    `ngay_bat_dau` DATE NOT NULL, 
-    `ngay_ket_thuc` DATE NOT NULL, 
-    `thu_trong_tuan` INT NOT NULL, -- 2, 3, 4, 5, 6, 7, 8 (Chủ Nhật)
-    `gio_bat_dau` TIME NOT NULL,
-    `gio_ket_thuc` TIME NOT NULL,
-    `trang_thai` VARCHAR(50) DEFAULT 'DangHoatDong',
-    FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`) ON DELETE CASCADE
-);
 
--- Xử lý ngày bận đột xuất/nghỉ ốm đè lên lịch rảnh mặc định
-CREATE TABLE `NgayNghiNhanVien` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `nhan_vien_id` INT NOT NULL,
-    `ngay_nghi` DATE NOT NULL,
-    `gio_bat_dau_nghi` TIME NULL, -- NULL tức là nghỉ cả ngày
-    `gio_ket_thuc_nghi` TIME NULL,
-    `ly_do` VARCHAR(255) NOT NULL,
+    -- 1. PHÂN LOẠI QUY TẮC
+    -- 'DinhKy' (Lặp lại theo tuần) hoặc 'DotXuat' (Bận 1 ngày cụ thể)
+    `loai_nghi` VARCHAR(50) NOT NULL, 
+
+    -- 2. DÀNH CHO NGHỈ ĐỊNH KỲ (Ví dụ: Nghỉ cố định Thứ 3, hoặc chặn giờ nghỉ trưa)
+    -- Quy định: 2, 3, 4, 5, 6, 7, 8 (Chủ nhật). 
+    -- Nếu để NULL: Nghĩa là ngày nào trong tuần cũng áp dụng.
+    `thu_trong_tuan` INT NULL, 
+
+    -- 3. DÀNH CHO NGHỈ ĐỘT XUẤT (Ví dụ: Tai nạn, ốm ngày 15/08/2026)
+    -- Nếu để NULL: Nghĩa là đây là quy tắc định kỳ, không phải nghỉ 1 ngày.
+    `ngay_nghi` DATE NULL, 
+
+    -- 4. KHUNG GIỜ NGHỈ (Xử lý việc phân ca lắt nhắt 7h-11h, 13h-17h...)
+    -- Nếu cả 2 đều NULL: Nghĩa là nghỉ trọn nguyên một ngày hôm đó.
+    `gio_bat_dau_nghi` TIME NULL, 
+    `gio_ket_thuc_nghi` TIME NULL, 
+
+    -- 5. THỜI HẠN ÁP DỤNG (Chìa khóa xử lý "Cam kết 4 tháng, 6 tháng")
+    -- Quá thời hạn này, quy tắc chặn lịch tự động vô hiệu hóa, nhân viên lại "Rảnh 24/7" hoặc áp dụng quy tắc mới.
+    `ngay_bat_dau_ap_dung` DATE NULL, 
+    `ngay_ket_thuc_ap_dung` DATE NULL, 
+
+    -- 6. THÔNG TIN QUẢN LÝ
+    `ly_do` VARCHAR(255) NULL,
+    -- 'ChoDuyet' (nhân viên xin), 'DaDuyet' (hệ thống chặn lịch), 'TuChoi'
     `trang_thai_duyet` VARCHAR(50) DEFAULT 'DaDuyet', 
+
+    -- 7. TỐI ƯU HIỆU NĂNG (INDEX) & KHOÁ NGOẠI
+    -- Giúp Backend quét siêu tốc xem ngày hôm nay nhân viên có dính quy tắc chặn nào không
+    INDEX `idx_thoigian_ap_dung` (`nhan_vien_id`, `ngay_bat_dau_ap_dung`, `ngay_ket_thuc_ap_dung`),
+    INDEX `idx_ngay_dot_xuat` (`nhan_vien_id`, `ngay_nghi`),
+    
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`) ON DELETE CASCADE
 );
 
