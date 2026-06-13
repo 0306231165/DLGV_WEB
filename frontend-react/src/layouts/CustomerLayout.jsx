@@ -17,11 +17,10 @@ const CustomerLayout = () => {
     return () => clearTimeout(timeout);
   }, [location.pathname, location.key]); // ← cả hai: pathname để detect đổi trang, key để detect click cùng link
 
-  // Kiểm tra xem có phải trang Login hoặc Register không
-  const isAuthPage = ['/login', '/register', '/messages'].includes(location.pathname);
+  // Kiểm tra xem có phải các trang 'không cần layout' không?
+  const isMinimalLayoutPage = ['/login', '/register', '/messages'].includes(location.pathname);
 
-  // Nếu là trang Auth, trả về giao diện trống hoàn toàn (Không Header, Footer, Padding)
-  if (isAuthPage) {
+  if (isMinimalLayoutPage) {
     return (
       <main className="min-h-screen">
         <Outlet />

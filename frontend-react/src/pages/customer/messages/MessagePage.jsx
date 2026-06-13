@@ -12,10 +12,12 @@ const MOCK_CONVERSATIONS = [
     status: 'confirmed',
     statusLabel: 'Đã xác nhận',
     staff: {
+      id: 'staff_ha', // Thêm ID để định danh nhân viên
       name: 'Nguyễn Thu Hà',
       avatar: 'https://i.pravatar.cc/150?u=ha',
       isOnline: true,
-      role: 'Nhân viên phụ trách đơn'
+      role: 'Nhân viên phụ trách đơn',
+      phone: '0901234567' // Thêm số điện thoại để phục vụ tính năng gọi điện
     },
     lastMessage: 'Em sẽ đến đúng giờ như trong lịch đặt nhé.',
     lastMessageTime: '14:32',
@@ -38,10 +40,12 @@ const MOCK_CONVERSATIONS = [
     status: 'active',
     statusLabel: 'Đang thực hiện',
     staff: {
+      id: 'staff_team04',
       name: 'Đội CleanTrust Team 04',
       avatar: 'https://i.pravatar.cc/150?u=team04',
       isOnline: true,
-      role: 'Đội ngũ thực hiện'
+      role: 'Đội ngũ thực hiện',
+      phone: '0907654321'
     },
     lastMessage: 'Dạ em đã nhận được thông tin/hình ảnh của mình rồi ạ!',
     lastMessageTime: 'Hôm qua',
@@ -58,12 +62,13 @@ const MOCK_CONVERSATIONS = [
   // === TAB 2: CHAT VỚI NHÂN VIÊN (STAFF TRỰC TIẾP/YÊU THÍCH) ===
   {
     id: 'chat_staff_1',
-    type: 'direct', // Loại chat trực tiếp, không có mã đơn
+    type: 'direct', 
     bookingCode: null,
     serviceTitle: 'Nhân viên yêu thích của bạn',
     status: 'direct',
     statusLabel: 'Trò chuyện',
     staff: {
+      id: 'staff_mai',
       name: 'Trần Thị Mai',
       avatar: 'https://i.pravatar.cc/150?u=mai',
       isOnline: true,
@@ -92,6 +97,7 @@ const MOCK_CONVERSATIONS = [
     status: 'direct',
     statusLabel: 'Tư vấn viên',
     staff: {
+      id: 'staff_cskh',
       name: 'Tổng đài viên Minh Thư',
       avatar: 'https://i.pravatar.cc/150?u=thu',
       isOnline: false,
@@ -118,6 +124,7 @@ const MOCK_CONVERSATIONS = [
     status: 'completed',
     statusLabel: 'Đã hoàn thành',
     staff: {
+      id: 'staff_hong',
       name: 'Lê Thị Hồng',
       avatar: 'https://i.pravatar.cc/150?u=hong',
       isOnline: false,
@@ -142,8 +149,11 @@ const MessagePage = () => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [previewImageModal, setPreviewImageModal] = useState(null);
   
-  // Quản lý 3 tab: 'active' (Đơn đang chạy), 'staff' (Nhân viên trực tiếp), 'history' (Đơn cũ)
+  // Quản lý 3 tab: 'active' (Theo đơn đặt), 'staff' (Nhân viên), 'history' (Đơn cũ)
   const [currentTab, setCurrentTab] = useState('active');
+
+  // State lưu danh sách ID nhân viên đã được khách hàng thả tim/yêu thích
+  const [favoriteStaffIds, setFavoriteStaffIds] = useState(['staff_mai']);
 
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -203,14 +213,21 @@ const MessagePage = () => {
     }
   };
 
+  // Hàm xử lý bật/tắt yêu thích nhân viên
+  const toggleFavoriteStaff = (staffId) => {
+    if (!staffId) return;
+    setFavoriteStaffIds(prev => 
+      prev.includes(staffId) 
+        ? prev.filter(id => id !== staffId) 
+        : [...prev, staffId]
+    );
+  };
+
   return (
-    /* Dùng mẹo CSS bứt phá âm viền để ép trang chat phải phủ kín full màn hình máy tính cho dù bị bọc bởi Layout bóp nghẹt */
     <div className="h-screen w-screen max-w-[100vw] -mx-[calc((100vw-100%)/2)] bg-slate-50 flex overflow-hidden border-t border-slate-200">
       
       {/* ─── CỘT TRÁI: DANH SÁCH CHAT TRỰC QUAN (360px) ─── */}
       <div className="w-full md:w-[360px] border-r border-slate-200 flex flex-col bg-white shrink-0">
-        
-        {/* Tiêu đề & Nút Điều hướng nhanh */}
         <div className="p-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-base font-black text-slate-800 flex items-center gap-2">
@@ -226,13 +243,12 @@ const MessagePage = () => {
             </button>
           </div>
 
-          {/* HỆ THỐNG 3 TAB PHÂN LOẠI TIN NHẮN THÔNG MINH */}
           <div className="flex bg-slate-100 p-1 rounded-xl text-[11px] font-bold gap-0.5">
             <button 
               onClick={() => setCurrentTab('active')}
               className={`flex-1 py-1.5 rounded-lg transition-all text-center ${currentTab === 'active' ? 'bg-white text-[#1a368d] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
             >
-              Đang chạy
+              Theo đơn đặt
             </button>
             <button 
               onClick={() => setCurrentTab('staff')}
@@ -249,7 +265,6 @@ const MessagePage = () => {
           </div>
         </div>
 
-        {/* Danh sách phòng chat sau lọc */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {filteredConversations.length === 0 ? (
             <div className="text-center py-12 text-xs text-slate-400 font-medium">
@@ -258,6 +273,8 @@ const MessagePage = () => {
           ) : (
             filteredConversations.map((chat) => {
               const isActive = chat.id === activeChatId;
+              const isFavorite = favoriteStaffIds.includes(chat.staff.id);
+
               return (
                 <button
                   key={chat.id}
@@ -277,8 +294,21 @@ const MessagePage = () => {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-0.5">
-                      <p className="font-bold text-xs text-slate-800 truncate">{chat.staff.name}</p>
+                    <div className="flex justify-between items-center mb-0.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="font-bold text-xs text-slate-800 truncate">{chat.staff.name}</p>
+                        {isFavorite && (
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            fill="currentColor" 
+                            viewBox="0 0 24 24" 
+                            className="w-3.5 h-3.5 text-rose-500 shrink-0 animate-in zoom-in duration-200"
+                            title="Nhân viên yêu thích"
+                          >
+                            <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                          </svg>
+                        )}
+                      </div>
                       <span className="text-[10px] text-slate-400 whitespace-nowrap">{chat.lastMessageTime}</span>
                     </div>
                     {chat.bookingCode ? (
@@ -313,7 +343,7 @@ const MessagePage = () => {
                       activeChat.status === 'confirmed' ? 'bg-blue-50 border-blue-200 text-blue-700' :
                       activeChat.status === 'direct' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
                       'bg-slate-100 border-slate-200 text-slate-500'
-                    }`}>
+                    }`} >
                       {activeChat.statusLabel}
                     </span>
                   </div>
@@ -321,6 +351,48 @@ const MessagePage = () => {
                     {activeChat.staff.role} {activeChat.bookingCode && `· Mã đơn: ${activeChat.bookingCode}`}
                   </p>
                 </div>
+              </div>
+
+              {/* KHU VỰC CÁC NÚT THAO TÁC Ở HEADER CHAT */}
+              <div className="flex items-center gap-2">
+                {/* 👉 ĐÃ SỬA: Chỉ hiển thị nút gọi điện thoại khi ở tab "Theo đơn đặt" và đơn chưa bị khóa */}
+                {currentTab === 'active' && !activeChat.isLocked && activeChat.staff.phone && (
+                  <a
+                    href={`tel:${activeChat.staff.phone}`}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-200 active:scale-95"
+                    title={`Gọi điện cho ${activeChat.staff.name}`}
+                  >
+                    <span className="material-symbols-outlined text-base">call</span>
+                    <span>Gọi điện</span>
+                  </a>
+                )}
+
+                {/* Nút bấm Chọn nhân viên yêu thích (Hình Trái Tim) */}
+                {activeChat.staff.id && activeChat.staff.id !== 'staff_cskh' && (
+                  <button
+                    onClick={() => toggleFavoriteStaff(activeChat.staff.id)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 transform active:scale-95 border ${
+                      favoriteStaffIds.includes(activeChat.staff.id)
+                        ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-sm shadow-rose-100'
+                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100'
+                    }`}
+                    title={favoriteStaffIds.includes(activeChat.staff.id) ? "Xóa khỏi danh sách yêu thích" : "Thêm vào nhân viên yêu thích"}
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      fill={favoriteStaffIds.includes(activeChat.staff.id) ? "currentColor" : "none"} 
+                      viewBox="0 0 24 24" 
+                      strokeWidth={1.8} 
+                      stroke="currentColor" 
+                      className={`w-4 h-4 transition-transform duration-300 ${favoriteStaffIds.includes(activeChat.staff.id) ? 'scale-110' : ''}`}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    </svg>
+                    <span>
+                      {favoriteStaffIds.includes(activeChat.staff.id) ? 'Đã yêu thích' : 'Yêu thích nhân viên'}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -359,7 +431,7 @@ const MessagePage = () => {
               <div ref={chatEndRef} />
             </div>
 
-            {/* ─── CHÂN TRANG ĐÃ ĐƯỢC ĐỒNG BỘ HOÀN HẢO THEO FILE ĐƠN LỊCH CHI TIẾT ─── */}
+            {/* CHÂN TRANG GỬI TIN NHẮN */}
             <div className="bg-white border-t border-slate-200/80 flex flex-col shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
               {activeChat.isLocked ? (
                 <div className="p-4 bg-slate-50 text-slate-500 text-xs font-bold text-center flex items-center justify-center gap-2 border-b border-slate-100">
@@ -368,7 +440,6 @@ const MessagePage = () => {
                 </div>
               ) : (
                 <>
-                  {/* THANH XEM TRƯỚC ẢNH SẮP GỬI (Hiệu ứng mượt mà & Nét đứt tinh tế) */}
                   {selectedImages.length > 0 && (
                     <div className="p-4 bg-slate-50/80 border-b border-dashed border-slate-200/60 flex gap-3 overflow-x-auto items-center animate-in fade-in slide-in-from-bottom-2 duration-200">
                       {selectedImages.map((img) => (
@@ -394,7 +465,6 @@ const MessagePage = () => {
                     </div>
                   )}
 
-                  {/* FORM NHẬP NỘI DUNG TRÒ CHUYỆN */}
                   <form onSubmit={handleSendMessage} className="p-3 flex items-end gap-2 bg-white">
                     <input 
                       type="file" 
@@ -463,13 +533,13 @@ const MessagePage = () => {
         )}
       </div>
 
-      {/* Modal Phóng to xem ảnh (Lightbox cực mượt) */}
+      {/* Modal Lightbox */}
       {previewImageModal && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-fade-in" onClick={() => setPreviewImageModal(null)}>
           <button className="absolute top-4 right-4 text-white bg-black/40 hover:bg-black/60 w-10 h-10 rounded-full flex items-center justify-center transition-colors" onClick={() => setPreviewImageModal(null)}>
             <span className="material-symbols-outlined">close</span>
           </button>
-          <img src={previewImageModal} alt="Enlarged full screen view" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl transition-transform" onClick={(e) => e.stopPropagation()} />
+          <img src={previewImageModal} alt="Enlarged view" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl transition-transform" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>

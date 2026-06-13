@@ -20,8 +20,11 @@ import BookingPage    from '../pages/customer/BookingPage';
 import VoucherPage    from '../pages/customer/voucher/VoucherPage';
 import ContactPage    from '../pages/customer/contact/ContactPage';
 import WalletPage     from '../pages/customer/wallet/WalletPage';
+
+// -- Pages — Staff (Liên quan đến Nhân viên như 'xem thông tin, nhân viên yêu thích, ...)
 import StaffListPage   from '../pages/customer/staff/StaffListPage';
 import StaffDetailPage from '../pages/customer/staff/StaffDetailPage';
+import SavedStaffPage from '../pages/customer/staff/SavedStaffPage';
 
 // -- Pages — Account
 import ProfilePage    from '../pages/customer/account/ProfilePage';
@@ -37,6 +40,9 @@ import CompletedBookingsPage from '../pages/customer/mybooking/CompletedBookings
 import BookingHistoryPage from '../pages/customer/mybooking/BookingHistoryPage';
 import BookingDetailPage  from '../pages/customer/mybooking/BookingDetailPage';
 
+// -- Pages — Notification
+import NotificationPage from '../pages/customer/notifications/NotificationPage';
+
 // -- Pages — Message
 import MessagePage from '../pages/customer/messages/MessagePage';
 
@@ -46,9 +52,18 @@ import RegisterPage from '../pages/customer/auth/RegisterPage';
 //------------------------------------------------------------------------------------------
 
 // =========================================================
-// 3. IMPORT PAGES — NHÂN VIÊN (STAFF / NHANVIEN)
+// 3. IMPORT PAGES — NHÂN VIÊN (PARTNER / NHANVIEN)
 // =========================================================
-//import...
+import PartnerLayout from '../layouts/PartnerLayout';
+import PartnerDashboard from '../pages/partner/dashboard/PartnerDashboard';
+import ScheduleManager from '../pages/partner/schedule/ScheduleManager';
+import PartnerWallet from '../pages/partner/wallet/PartnerWallet';
+import PartnerReviews from '../pages/partner/reviews/PartnerReviews';
+import PartnerProfile from '../pages/partner/profile/PartnerProfile';
+import SkillsRegistration from '../pages/partner/skills/SkillsRegistration';
+import PartnerNotifications from '../pages/partner/notifications/PartnerNotifications';
+import PartnerMessagePage from '../pages/partner/messages/PartnerMessagePage';
+
 //------------------------------------------------------------------------------------------
 
 // =========================================================
@@ -75,8 +90,12 @@ const AppRouter = () => {
           <Route path="promotions" element={<VoucherPage />} />
           <Route path="contact"    element={<ContactPage />} />
           <Route path="wallet"     element={<WalletPage />} />
+          <Route path="notifications" element={<NotificationPage />} />
+          
           <Route path="staff"      element={<StaffListPage />} />
           <Route path="staff/:id"  element={<StaffDetailPage />} />
+
+          <Route path="/saved-staffs" element={<SavedStaffPage />} />
 
           {/* Các trang có Layout riêng của Khách hàng (Được ẩn Layout trong file CustomerLayout.jsx) */}
           <Route path="login" element={<LoginPage />} />
@@ -114,13 +133,22 @@ const AppRouter = () => {
         {/* ========================================================= */}
         {/* TOÀN BỘ PHÂN VÙNG NHÂN VIÊN                               */}
         {/* ========================================================= */}
-        <Route path="/staff">
-          {/* <Route index element={<NhanVienDashboard />} /> */}
-          {/* <Route path="profile" element={<RegisterProfile />} /> */}
+        <Route path="/partner" element={<PartnerLayout />}>
+          <Route index element={<Navigate to="/partner/dashboard" replace />} />
+          
+          <Route path="dashboard" element={<PartnerDashboard />} />
+          <Route path="schedule" element={<ScheduleManager />} />
+          <Route path="wallet" element={<PartnerWallet />} />
+          <Route path="reviews" element={<PartnerReviews />} />
+          <Route path="profile" element={<PartnerProfile />} />
+          <Route path="notifications" element={<PartnerNotifications />} />
+          <Route path="messages" element={<PartnerMessagePage />} />
+
+          <Route path="skills-registration" element={<SkillsRegistration />} />
 
           {/* Cơ chế 2: Nhân viên gõ sai URL trong phân vùng của mình */}
           {/* Ví dụ: /nhanvien/sai-chinh-ta -> đá về trang chủ nhân viên /nhanvien */}
-          <Route path="*" element={<Navigate to="/staff" replace />} />
+          <Route path="/partner/*" element={<Navigate to="/partner/dashboard" replace />} />
         </Route>
 
 
