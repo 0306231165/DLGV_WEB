@@ -73,6 +73,10 @@ import AdminLayout from '../layouts/AdminLayout';
 import AdminDashboard from '../pages/admin/dashboard/AdminDashboard';
 import AdminAccount from '../pages/admin/account/AdminAccount';
 import AdminApprovals from '../pages/admin/approvals/AdminApprovals';
+import AdminServices from '../pages/admin/services/AdminServices';
+import AdminBookings from '../pages/admin/bookings/AdminBookings';
+import AdminReports from '../pages/admin/reports/AdminReports';
+import AdminComplain from '../pages/admin/complain/AdminComplain';
 //------------------------------------------------------------------------------------------
 
 
@@ -165,6 +169,11 @@ const AppRouter = () => {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminAccount />} />
           <Route path="approvals" element={<AdminApprovals />} />
+          <Route path="services" element={<AdminServices />} />
+          <Route path="bookings" element={<AdminBookings />} />
+          <Route path="reports" element={<AdminReports />} />
+          <Route path="complain" element={<AdminComplain />} />
+
 
           {/* Cơ chế 3: Admin gõ sai URL trong phân vùng quản trị */}
           {/* Ví dụ: /admin/chuc-nang-linh-tinh -> đá về /admin */}
