@@ -80,6 +80,7 @@ import AdminServices from '../pages/admin/services/AdminServices';
 import AdminBookings from '../pages/admin/bookings/AdminBookings';
 import AdminReports from '../pages/admin/reports/AdminReports';
 import AdminComplain from '../pages/admin/complain/AdminComplain';
+import AdminLogin from '../pages/admin/login/AdminLogin';
 //------------------------------------------------------------------------------------------
 
 
@@ -168,10 +169,12 @@ const AppRouter = () => {
         {/* ========================================================= */}
         {/* TOÀN BỘ PHÂN VÙNG ADMIN                                  */}
         {/* ========================================================= */}
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          <Route index element={<Navigate to="/admin/login" replace />} />
           
           {/* SỬA CHÍNH XÁC DÒNG NÀY: GỌI COMPONENT AdminDashboard VÀO ĐÂY */}
+  
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminAccount />} />
           <Route path="approvals" element={<AdminApprovals />} />
@@ -183,7 +186,7 @@ const AppRouter = () => {
 
           {/* Cơ chế 3: Admin gõ sai URL trong phân vùng quản trị */}
           {/* Ví dụ: /admin/chuc-nang-linh-tinh -> đá về /admin */}
-          <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
 
       </Routes>

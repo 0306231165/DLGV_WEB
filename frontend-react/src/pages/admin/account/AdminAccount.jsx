@@ -32,6 +32,10 @@ const AdminAccount = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 6;
 
+  // State Modal Thêm Tài Khoản
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ name: '', role: 'Khách hàng', date: '' });
+
   // 3. LOGIC LỌC DỮ LIỆU
   const filteredUsers = usersData.filter(user => {
     const matchSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -42,8 +46,6 @@ const AdminAccount = () => {
     return matchSearch && matchRole && matchStatus;
   });
 
-  // ================= CẬP NHẬT Ở ĐÂY: GIỮ CỐ ĐỊNH NÚT PHÂN TRANG =================
-  // Luôn luôn tính tổng số trang dựa trên mảng GỐC (20 người), nên sẽ luôn có 4 trang hiển thị.
   const staticTotalPages = Math.ceil(usersData.length / usersPerPage); 
   
   const indexOfLastUser = currentPage * usersPerPage;
@@ -53,26 +55,37 @@ const AdminAccount = () => {
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
   const prevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
   const nextPage = () => setCurrentPage((prev) => Math.min(prev + 1, staticTotalPages));
-  // ==============================================================================
 
-  // 5. CÁC HÀM XỬ LÝ SỰ KIỆN NÚT BẤM
-  const handleAddUser = () => {
-    const newName = window.prompt('Nhập tên người dùng mới:');
-    if (newName) {
-      const newUser = {
+  // 5. CÁC HÀM XỬ LÝ SỰ KIỆN THÊM TÀI KHOẢN TỪ MODAL
+  const getRoleIcon = (role) => {
+    switch(role) {
+      case 'Nhân viên vệ sinh': return 'cleaning_services';
+      case 'Quản lý khu vực': return 'manage_accounts';
+      case 'Quản trị viên': return 'admin_panel_settings';
+      default: return 'person';
+    }
+  };
+
+  const handleAddNewUserSubmit = (e) => {
+    e.preventDefault();
+    if (newUser.name.trim() && newUser.date) {
+      const addedUser = {
         id: usersData.length + 1,
-        name: newName,
-        email: `${newName.replace(/\s/g, '').toLowerCase()}@example.com`,
-        role: 'Khách hàng',
-        roleIcon: 'person',
-        date: 'Hôm nay',
+        name: newUser.name,
+        email: `${newUser.name.replace(/\s/g, '').toLowerCase()}@example.com`,
+        role: newUser.role,
+        roleIcon: getRoleIcon(newUser.role),
+        date: newUser.date,
         status: 'Hoạt động',
         statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100',
         dotColor: 'bg-emerald-500',
         avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`
       };
-      setUsersData([newUser, ...usersData]);
-      alert(`Đã thêm thành công: ${newName}`);
+      
+      setUsersData([addedUser, ...usersData]);
+      setIsModalOpen(false); // Đóng modal
+      setNewUser({ name: '', role: 'Khách hàng', date: '' }); // Reset form
+      alert(`Đã thêm thành công: ${newUser.name}`);
     }
   };
 
@@ -94,7 +107,71 @@ const AdminAccount = () => {
   const lockedUsersCount = usersData.filter(u => u.status === 'Đã khóa').length;
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full relative">
+      
+      {/* ================= MODAL THÊM TÀI KHOẢN MỚI ================= */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h2 className="text-lg font-black text-slate-800">Thêm tài khoản mới</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddNewUserSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Họ và tên</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                  placeholder="Nhập tên người dùng..." 
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Vai trò</label>
+                <select 
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none cursor-pointer"
+                >
+                  <option value="Khách hàng">Khách hàng</option>
+                  <option value="Nhân viên vệ sinh">Nhân viên vệ sinh</option>
+                  <option value="Quản lý khu vực">Quản lý khu vực</option>
+                  <option value="Quản trị viên">Quản trị viên</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Ngày tham gia</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newUser.date}
+                  onChange={(e) => setNewUser({...newUser, date: e.target.value})}
+                  placeholder="VD: 15 Th08, 2024" 
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors">
+                  Hủy
+                </button>
+                <button type="submit" className="flex-1 px-4 py-2.5 rounded-xl bg-[#0f2857] text-white font-bold hover:bg-[#1a3873] transition-colors shadow-sm">
+                  Lưu tài khoản
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* KHU VỰC TIÊU ĐỀ & NÚT THÊM */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
@@ -102,7 +179,7 @@ const AdminAccount = () => {
           <p className="text-sm text-slate-500 mt-1">Quản lý và theo dõi hoạt động của nhân viên và khách hàng.</p>
         </div>
         <button 
-          onClick={handleAddUser}
+          onClick={() => setIsModalOpen(true)}
           className="bg-[#0f2857] hover:bg-[#1a3873] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm text-sm"
         >
           <span className="material-symbols-outlined text-[20px]">person_add</span>
@@ -150,7 +227,6 @@ const AdminAccount = () => {
 
       {/* BẢNG DANH SÁCH NGƯỜI DÙNG */}
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden mb-6 flex-1 flex flex-col">
-        {/* Min-height cố định để bảng không bị thụt khi có ít dòng */}
         <div className="overflow-x-auto flex-1 min-h-[460px]">
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
@@ -218,7 +294,7 @@ const AdminAccount = () => {
           </table>
         </div>
 
-        {/* GIAO DIỆN PHÂN TRANG (CỐ ĐỊNH HIỂN THỊ TẤT CẢ CÁC TRANG) */}
+        {/* GIAO DIỆN PHÂN TRANG */}
         <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 bg-white">
           <span className="font-medium">
             Hiển thị <strong className="text-slate-800">{filteredUsers.length === 0 ? 0 : indexOfFirstUser + 1}</strong> - <strong className="text-slate-800">{Math.min(indexOfLastUser, filteredUsers.length)}</strong> trên <strong className="text-slate-800">{filteredUsers.length}</strong> tài khoản
