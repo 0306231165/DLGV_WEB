@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function ContactPage() {
+  const navigate = useNavigate();
   // State quản lý dữ liệu Form (Thêm trường customSubject)
   const [formData, setFormData] = useState({
     fullName: '',
@@ -260,7 +262,9 @@ export default function ContactPage() {
               </p>
               
               <div className="flex flex-wrap gap-4">
-                <button className="bg-surface-container-lowest text-primary px-8 py-4 rounded-full font-label-sm hover:bg-surface-container-high transition-all flex items-center gap-2 shadow-md">
+                <button 
+                  onClick={() => navigate('/partner/register')}
+                  className="bg-surface-container-lowest text-primary px-8 py-4 rounded-full font-label-sm hover:bg-surface-container-high transition-all flex items-center gap-2 shadow-md">
                   Ứng tuyển ngay 
                   <svg xmlns="http://www.w3.org/2000/xl" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />

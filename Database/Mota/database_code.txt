@@ -88,6 +88,9 @@ CREATE TABLE `KhuyenMai` (
     `tong_luot_dung_toi_da_toan_san` INT NOT NULL, 
     `so_luong_da_dung` INT DEFAULT 0,        
     `trang_thai` BOOLEAN DEFAULT TRUE,
+
+    INDEX `idx_khuyenmai_hieuluc` (`trang_thai`, `ngay_bat_dau`, `ngay_ket_thuc`),
+
     FOREIGN KEY (`dich_vu_id_ap_dung`) REFERENCES `DichVu`(`id`)
 );
 
@@ -295,6 +298,9 @@ CREATE TABLE `DonHang` (
     `ma_giao_dich_online` VARCHAR(255) NULL,
     `trang_thai_don` VARCHAR(50) NOT NULL, 
     `ngay_tao` DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX `idx_donhang_khach_trangthai` (`khach_hang_id`, `trang_thai_don`),
+    INDEX `idx_donhang_ngaytao` (`ngay_tao`),
     
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`),
     FOREIGN KEY (`dich_vu_loai_goi_id`) REFERENCES `DichVu_LoaiGoi`(`id`),
@@ -467,6 +473,10 @@ CREATE TABLE `GiaoDichVi` (
     `trang_thai` VARCHAR(50) NOT NULL DEFAULT 'ThanhCong', -- 'ThanhCong', 'DangXuLy' (cho lệnh rút), 'TuChoi'
     
     `thoi_gian` DATETIME DEFAULT CURRENT_TIMESTAMP, -- Chỉ cần 1 mốc thời gian hoàn tất GD
+
+    -- Tối ưu: Xem lịch sử ví (mới nhất xếp trước), Admin đối soát theo loại giao dịch
+    INDEX `idx_giaodich_vitien_thoigian` (`vi_tien_id`, `thoi_gian` DESC),
+    INDEX `idx_giaodich_loai` (`loai_giao_dich`, `trang_thai`),
     
     FOREIGN KEY (`vi_tien_id`) REFERENCES `ViTien`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`vi_he_thong_id`) REFERENCES `ViHeThong`(`id`)
@@ -536,6 +546,10 @@ CREATE TABLE `PhongChat` (
     `don_hang_id` INT NULL,
     `thoi_gian_nhan_tin_cuoi` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `trang_thai_phong` VARCHAR(50) DEFAULT 'DangHoatDong', 
+
+    -- Tối ưu: Sắp xếp danh sách phòng chat theo tin nhắn mới nhất
+    INDEX `idx_phongchat_thoigiancuoi` (`thoi_gian_nhan_tin_cuoi` DESC),
+
     FOREIGN KEY (`khach_hang_id`) REFERENCES `KhachHang`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`nhan_vien_id`) REFERENCES `NhanVien`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`don_hang_id`) REFERENCES `DonHang`(`id`) ON DELETE SET NULL
@@ -550,6 +564,9 @@ CREATE TABLE `TinNhan` (
     `is_bi_chan` BOOLEAN DEFAULT FALSE,
     `trang_thai_doc` BOOLEAN DEFAULT FALSE,
     `thoi_gian_gui` DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX `idx_tinnhan_phong_thoigian` (`phong_chat_id`, `thoi_gian_gui` DESC),
+
     FOREIGN KEY (`phong_chat_id`) REFERENCES `PhongChat`(`id`) ON DELETE CASCADE
 );
 

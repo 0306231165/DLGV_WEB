@@ -7,7 +7,7 @@ const PartnerLayout = () => {
   
   // 2. CHÈN ĐOẠN LẤY PATHNAME VÀ ĐỊNH NGHĨA BIẾN TẠI ĐÂY
   const location = useLocation();
-  const isMinimalLayoutPage = ['/login', '/register', '/partner/messages'].includes(location.pathname);
+  const isMinimalLayoutPage = ['/partner/login', '/partner/register', '/partner/messages'].includes(location.pathname);
 
   // Quản lý trạng thái số lượng của các mục khác
   const [newJobsCount] = useState(3);

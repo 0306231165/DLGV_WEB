@@ -64,6 +64,9 @@ import SkillsRegistration from '../pages/partner/skills/SkillsRegistration';
 import PartnerNotifications from '../pages/partner/notifications/PartnerNotifications';
 import PartnerMessagePage from '../pages/partner/messages/PartnerMessagePage';
 
+import PartnerLogin from '../pages/partner/auth/PartnerLogin';
+import PartnerRegister from '../pages/partner/auth/PartnerRegister';
+
 //------------------------------------------------------------------------------------------
 
 // =========================================================
@@ -143,6 +146,9 @@ const AppRouter = () => {
         <Route path="/partner" element={<PartnerLayout />}>
           <Route index element={<Navigate to="/partner/dashboard" replace />} />
           
+          <Route path="login" element={<PartnerLogin />} />
+          <Route path="register" element={<PartnerRegister />} />
+
           <Route path="dashboard" element={<PartnerDashboard />} />
           <Route path="schedule" element={<ScheduleManager />} />
           <Route path="wallet" element={<PartnerWallet />} />
