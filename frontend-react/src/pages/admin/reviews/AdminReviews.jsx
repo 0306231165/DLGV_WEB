@@ -3,22 +3,25 @@ import React, { useState, useEffect } from 'react';
 const AdminReviews = () => {
   // ================= 1. LẤY DỮ LIỆU TỪ LOCAL STORAGE (DÙNG CHUNG VỚI KHIẾU NẠI) =================
   const [reviews, setReviews] = useState(() => {
-    const savedData = localStorage.getItem('cleantrust_feedbacks');
+    // ĐỔI TÊN KEY ĐỂ RESET BỘ NHỚ TRÌNH DUYỆT
+    const savedData = localStorage.getItem('cleantrust_data_v2'); 
     if (savedData) {
       return JSON.parse(savedData);
     }
-    // Dữ liệu mặc định nếu bộ nhớ trống
+    // DỮ LIỆU ĐỒNG NHẤT 100% VỚI TRANG KHIẾU NẠI
     return [
       { id: '#FB-1029', customer: 'Nguyễn Văn A', phone: '0901234567', service: 'Vệ sinh nhà ở', date: '14/06/2026', type: 'Thái độ nhân viên', desc: 'Nhân viên đến trễ 45 phút mà không gọi báo trước, thái độ lúc làm việc rất khó chịu.', status: 'Chờ xử lý', adminNote: '', rating: 1, isVisible: true },
       { id: '#FB-1028', customer: 'Trần Thị B', phone: '0987654321', service: 'Vệ sinh máy lạnh', date: '13/06/2026', type: 'Chất lượng dịch vụ', desc: 'Máy lạnh rửa xong vẫn bị chảy nước ròng ròng, yêu cầu cho người qua kiểm tra lại gấp!', status: 'Đang xử lý', adminNote: 'Đã gọi xin lỗi khách. Chiều nay cử thợ kỹ thuật qua fix lại.', rating: 2, isVisible: true },
-      { id: '#FB-1015', customer: 'Lê Hoàng C', phone: '0911222333', service: 'Giặt Sofa', date: '10/06/2026', type: 'Hư hỏng tài sản', desc: 'Bọn lừa đảo, làm ăn như sh**t, đồ đạc nhà tao bị mất một đống đéo hiểu kiểu gì luôn bực mình!!!', status: 'Đã giải quyết', adminNote: 'Đã đền bù 30% giá trị. Khách đồng ý.', rating: 1, isVisible: false },
-      { id: '#FB-0992', customer: 'Hoàng Quang Huy', phone: '0933444555', service: 'App/Hệ thống', date: '08/06/2026', type: 'Lỗi hệ thống', desc: 'Dịch vụ vệ sinh tốt, thợ làm kỹ nhưng app bị lỗi thanh toán hơi phiền.', status: 'Chờ xử lý', adminNote: '', rating: 4, isVisible: true },
+      { id: '#FB-1015', customer: 'Lê Hoàng C', phone: '0911222333', service: 'Giặt Sofa', date: '10/06/2026', type: 'Hư hỏng tài sản', desc: 'Hóa chất tẩy rửa làm phai màu bộ sofa da thật của nhà tôi.', status: 'Đã giải quyết', adminNote: 'Đã đền bù 30% giá trị dịch vụ và tặng voucher miễn phí lần sau. Khách đã đồng ý.', rating: 3, isVisible: true },
+      { id: '#FB-0992', customer: 'Phạm Mai Anh', phone: '0933444555', service: 'App/Hệ thống', date: '08/06/2026', type: 'Lỗi hệ thống', desc: 'App bị lỗi không thanh toán được qua VNPay, trừ tiền rồi nhưng app báo lỗi.', status: 'Chờ xử lý', adminNote: '', rating: 4, isVisible: true },
+      // Thêm 1 bình luận Toxic ẩn danh để test chức năng ẩn (hiển thị màu đỏ)
+      { id: '#FB-0888', customer: 'Khách Ẩn Danh', phone: '0999999999', service: 'Dọn dẹp cơ bản', date: '01/06/2026', type: 'Thái độ nhân viên', desc: 'Bọn lừa đảo, làm ăn như sh**t, đồ đạc nhà tao bị mất một đống đéo hiểu kiểu gì luôn bực mình!!!', status: 'Chờ xử lý', adminNote: '', rating: 1, isVisible: false }
     ];
   });
 
   // TỰ ĐỘNG LƯU VÀO LOCAL STORAGE MỖI KHI CÓ THAY ĐỔI
   useEffect(() => {
-    localStorage.setItem('cleantrust_feedbacks', JSON.stringify(reviews));
+    localStorage.setItem('cleantrust_data_v2', JSON.stringify(reviews));
   }, [reviews]);
 
   // ================= 2. STATE UI MANAGEMENT =================
@@ -42,13 +45,12 @@ const AdminReviews = () => {
 
   const handleOpenReplyModal = (review) => {
     setSelectedReview(review);
-    setReplyText(review.adminNote || ''); // Lấy Note từ Khiếu nại làm Reply
+    setReplyText(review.adminNote || ''); 
   };
 
   const handleSaveReply = (e) => {
     e.preventDefault();
     setReviews(reviews.map(r => 
-      // Khi phản hồi, tự động cập nhật status thành "Đã giải quyết" cho bên trang Khiếu nại
       r.id === selectedReview.id ? { ...r, adminNote: replyText, status: 'Đã giải quyết' } : r
     ));
     setSelectedReview(null);
@@ -60,10 +62,10 @@ const AdminReviews = () => {
     const matchSearch = r.customer.toLowerCase().includes(searchTerm.toLowerCase()) || 
                         r.desc.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const itemRating = r.rating || 1; // Mặc định 1 sao nếu khách không chấm
+    const itemRating = r.rating || 1; 
     const matchRating = filterRating === 'Tất cả sao' || itemRating === parseInt(filterRating);
     
-    const itemVisible = r.isVisible !== false; // Mặc định là true
+    const itemVisible = r.isVisible !== false; 
     let matchVisibility = true;
     if (filterVisibility === 'Đang hiển thị') matchVisibility = itemVisible === true;
     if (filterVisibility === 'Đã ẩn') matchVisibility = itemVisible === false;
