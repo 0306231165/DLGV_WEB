@@ -16,7 +16,7 @@ const AdminApprovals = () => {
       skills: [
         { title: 'Dọn dẹp nhà ở (5 năm)', desc: 'Kinh nghiệm làm việc tại Vinhomes Central Park.' },
         { title: 'Nấu ăn gia đình', desc: 'Có khả năng nấu đa dạng các món miền Nam.' },
-        { title: 'Sử dụng máy hút bụi công nghiệp', desc: 'Thành thạo các thiết bị vệ sinh hiện đại.' }
+        { title: 'Sử dụng máy hút bụi', desc: 'Thành thạo các thiết bị vệ sinh hiện đại.' }
       ]
     },
     {
@@ -31,7 +31,7 @@ const AdminApprovals = () => {
       phone: '093 456 7890',
       age: '28 tuổi',
       skills: [
-        { title: 'Vệ sinh công nghiệp (3 năm)', desc: 'Đã từng làm cho công ty vệ sinh Hoàn Mỹ.' },
+        { title: 'Vệ sinh công nghiệp', desc: 'Đã từng làm cho công ty vệ sinh Hoàn Mỹ trong 3 năm.' },
         { title: 'Làm sạch sofa, rèm', desc: 'Biết sử dụng hóa chất chuyên dụng an toàn.' }
       ]
     },
@@ -46,7 +46,7 @@ const AdminApprovals = () => {
       phone: '098 765 4321',
       age: '21 tuổi',
       skills: [
-        { title: 'Dọn dẹp cơ bản', desc: 'Nhanh nhẹn, biết lắng nghe ý kiến khách hàng.' }
+        { title: 'Dọn dẹp cơ bản', desc: 'Nhanh nhẹn, cẩn thận, biết lắng nghe ý kiến khách hàng.' }
       ]
     },
     {
@@ -61,7 +61,7 @@ const AdminApprovals = () => {
       phone: '091 234 5678',
       age: '35 tuổi',
       skills: [
-        { title: 'Dọn dẹp nhà ở (2 năm)', desc: 'Quen thuộc với các căn hộ chung cư.' },
+        { title: 'Dọn dẹp nhà ở', desc: 'Quen thuộc với các căn hộ chung cư cao cấp.' },
         { title: 'Chăm sóc trẻ em', desc: 'Yêu trẻ, có kỹ năng chơi đùa và cho bé ăn.' }
       ]
     }
@@ -221,9 +221,6 @@ const AdminApprovals = () => {
                       {selectedCandidate.initials}
                     </div>
                   )}
-                  <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                    <span className="material-symbols-outlined text-white text-[14px] font-bold">check</span>
-                  </div>
                 </div>
 
                 <div className="flex-1 w-full">
@@ -247,72 +244,43 @@ const AdminApprovals = () => {
               </div>
             </div>
 
-            {/* Box 2 & 3: Kỹ năng và Xác minh */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-              <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 flex flex-col">
-                <h3 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-blue-600">assignment_turned_in</span>
-                  Kinh nghiệm & Kỹ năng
-                </h3>
-                <div className="space-y-4 flex-1">
-                  {selectedCandidate.skills.map((skill, index) => (
-                    <div key={index} className="flex gap-3">
-                      <span className="material-symbols-outlined text-blue-500 text-[20px] shrink-0 mt-0.5">check_circle</span>
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800">{skill.title}</h4>
-                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{skill.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 flex flex-col">
-                <h3 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-emerald-600">admin_panel_settings</span>
-                  Xác minh danh tính
-                </h3>
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Mặt trước CCCD</p>
-                    <div className="bg-slate-100 rounded-lg aspect-[3/2] flex flex-col items-center justify-center text-slate-400 border border-slate-200 border-dashed">
-                       <span className="material-symbols-outlined text-2xl opacity-50 mb-1">badge</span>
-                       <span className="text-[10px] font-medium">Đã tải lên</span>
+            {/* Box 2: Kinh nghiệm và Kỹ năng (Mở rộng toàn bộ chiều ngang) */}
+            <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 flex flex-col flex-1">
+              <h3 className="text-lg font-black text-slate-800 mb-5 flex items-center gap-2">
+                <span className="material-symbols-outlined text-blue-600">assignment_turned_in</span>
+                Kinh nghiệm & Kỹ năng chuyên môn
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1 bg-slate-50/50 p-5 rounded-xl border border-slate-100">
+                {selectedCandidate.skills.map((skill, index) => (
+                  <div key={index} className="flex gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <span className="material-symbols-outlined text-blue-500 text-[24px] shrink-0">check_circle</span>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800">{skill.title}</h4>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">{skill.desc}</p>
                     </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Mặt sau CCCD</p>
-                    <div className="bg-slate-100 rounded-lg aspect-[3/2] flex flex-col items-center justify-center text-slate-400 border border-slate-200 border-dashed">
-                       <span className="material-symbols-outlined text-2xl opacity-50 mb-1">qr_code_scanner</span>
-                       <span className="text-[10px] font-medium">Đã tải lên</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex gap-3 mt-auto">
-                  <span className="material-symbols-outlined text-emerald-500 shrink-0">check_circle</span>
-                  <div>
-                    <h4 className="text-sm font-bold text-emerald-700">CCCD Hợp lệ</h4>
-                    <p className="text-xs text-emerald-600/80 mt-0.5">Đã đối soát với cơ sở dữ liệu quốc gia.</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* ================= 4. KHU VỰC NÚT HÀNH ĐỘNG ================= */}
-            <div className="flex flex-wrap items-center justify-end gap-3 mt-2">
+            {/* ================= 4. KHU VỰC NÚT HÀNH ĐỘNG MỚI ================= */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-4 mt-2">
               {/* NÚT TỪ CHỐI HỒ SƠ */}
               <button 
                 onClick={handleReject}
-                className="px-5 py-2.5 rounded-xl font-bold text-sm text-rose-600 border border-rose-200 bg-white hover:bg-rose-50 transition-colors"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all duration-300 shadow-sm"
               >
+                <span className="material-symbols-outlined text-[20px]">cancel</span>
                 Từ chối hồ sơ
               </button>
               
               {/* NÚT PHÊ DUYỆT ĐỐI TÁC */}
               <button 
                 onClick={handleApprove}
-                className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-[#0f2857] hover:bg-[#1a3873] shadow-sm transition-colors"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-bold text-sm text-white bg-[#0f2857] hover:bg-[#1a3873] border border-[#0f2857] transition-all duration-300 shadow-[0_4px_12px_rgba(15,40,87,0.25)] hover:shadow-[0_6px_16px_rgba(15,40,87,0.35)] hover:-translate-y-0.5"
               >
+                <span className="material-symbols-outlined text-[20px]">verified</span>
                 Phê duyệt đối tác
               </button>
             </div>
@@ -321,7 +289,7 @@ const AdminApprovals = () => {
         ) : (
           // MÀN HÌNH TRỐNG KHI ĐÃ DUYỆT HẾT
           <div className="lg:col-span-8 bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col items-center justify-center text-center p-12">
-            <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-6">
+            <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-6 shadow-sm border border-emerald-100">
               <span className="material-symbols-outlined text-[48px]">task_alt</span>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-2">Tuyệt vời!</h2>
