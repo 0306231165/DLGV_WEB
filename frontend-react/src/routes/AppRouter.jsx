@@ -81,6 +81,7 @@ import AdminBookings from '../pages/admin/bookings/AdminBookings';
 import AdminReports from '../pages/admin/reports/AdminReports';
 import AdminComplain from '../pages/admin/complain/AdminComplain';
 import AdminLogin from '../pages/admin/login/AdminLogin';
+import AdminReviews from '../pages/admin/reviews/AdminReviews';
 //------------------------------------------------------------------------------------------
 
 
@@ -182,6 +183,7 @@ const AppRouter = () => {
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="complain" element={<AdminComplain />} />
+          <Route path="reviews" element={<AdminReviews />} />
 
 
           {/* Cơ chế 3: Admin gõ sai URL trong phân vùng quản trị */}

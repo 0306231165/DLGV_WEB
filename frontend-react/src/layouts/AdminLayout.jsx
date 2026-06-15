@@ -20,6 +20,7 @@ const AdminLayout = () => {
     { path: '/admin/bookings', icon: 'calendar_month', label: 'Điều phối Đơn hàng' },
     { path: '/admin/reports', icon: 'bar_chart', label: 'Doanh thu & Thống kê' },
     { path: '/admin/complain', icon: 'feedback', label: 'Khiếu nại & Phản hồi' },
+     { path: '/admin/reviews', icon: 'star', label: 'Đánh giá & Nhận xét' },
   ];
 
   if (isMinimalLayoutPage) {
