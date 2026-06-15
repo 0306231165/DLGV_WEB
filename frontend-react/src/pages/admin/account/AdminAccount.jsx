@@ -34,7 +34,7 @@ const AdminAccount = () => {
 
   // State Modal Thêm Tài Khoản
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', role: 'Khách hàng', date: '' });
+  const [newUser, setNewUser] = useState({ name: '', role: 'Khách hàng', date: '', email: '', password: '' });
 
   // 3. LOGIC LỌC DỮ LIỆU
   const filteredUsers = usersData.filter(user => {
@@ -68,11 +68,25 @@ const AdminAccount = () => {
 
   const handleAddNewUserSubmit = (e) => {
     e.preventDefault();
+
+    // Bắt buộc nhập email và password nếu là Quản lý khu vực
+    if (newUser.role === 'Quản lý khu vực') {
+      if (!newUser.email.trim() || !newUser.password.trim()) {
+        alert("❌ Vui lòng nhập đầy đủ Email và Mật khẩu cho tài khoản Quản lý khu vực!");
+        return;
+      }
+    }
+
     if (newUser.name.trim() && newUser.date) {
+      // Nếu là Quản lý khu vực thì dùng email vừa nhập, ngược lại tự động tạo email giả lập
+      const finalEmail = newUser.role === 'Quản lý khu vực' 
+        ? newUser.email 
+        : `${newUser.name.replace(/\s/g, '').toLowerCase()}@example.com`;
+
       const addedUser = {
         id: usersData.length + 1,
         name: newUser.name,
-        email: `${newUser.name.replace(/\s/g, '').toLowerCase()}@example.com`,
+        email: finalEmail,
         role: newUser.role,
         roleIcon: getRoleIcon(newUser.role),
         date: newUser.date,
@@ -84,8 +98,8 @@ const AdminAccount = () => {
       
       setUsersData([addedUser, ...usersData]);
       setIsModalOpen(false); // Đóng modal
-      setNewUser({ name: '', role: 'Khách hàng', date: '' }); // Reset form
-      alert(`Đã thêm thành công: ${newUser.name}`);
+      setNewUser({ name: '', role: 'Khách hàng', date: '', email: '', password: '' }); // Reset form
+      alert(`✅ Đã thêm tài khoản "${newUser.name}" thành công!`);
     }
   };
 
@@ -129,7 +143,7 @@ const AdminAccount = () => {
                   value={newUser.name}
                   onChange={(e) => setNewUser({...newUser, name: e.target.value})}
                   placeholder="Nhập tên người dùng..." 
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none transition-colors"
                 />
               </div>
 
@@ -138,14 +152,46 @@ const AdminAccount = () => {
                 <select 
                   value={newUser.role}
                   onChange={(e) => setNewUser({...newUser, role: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none cursor-pointer"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none cursor-pointer transition-colors"
                 >
                   <option value="Khách hàng">Khách hàng</option>
                   <option value="Nhân viên vệ sinh">Nhân viên vệ sinh</option>
                   <option value="Quản lý khu vực">Quản lý khu vực</option>
-                  <option value="Quản trị viên">Quản trị viên</option>
+                  {/* Đã gỡ bỏ lựa chọn Quản trị viên khỏi danh sách */}
                 </select>
               </div>
+
+              {/* KHU VỰC HIỂN THỊ ĐỘNG CHO QUẢN LÝ KHU VỰC */}
+              {newUser.role === 'Quản lý khu vực' && (
+                <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl space-y-4 animate-fade-in">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-blue-600 text-[18px]">manage_accounts</span>
+                    <span className="text-xs font-black text-blue-800 uppercase tracking-wider">Thiết lập bảo mật Quản lý</span>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-blue-900 mb-1">Email đăng nhập</label>
+                    <input 
+                      type="email" 
+                      required={newUser.role === 'Quản lý khu vực'}
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                      placeholder="manager@cleantrust.com" 
+                      className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-lg text-sm font-medium focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-blue-900 mb-1">Mật khẩu cấp quyền</label>
+                    <input 
+                      type="password" 
+                      required={newUser.role === 'Quản lý khu vực'}
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                      placeholder="••••••••" 
+                      className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-lg text-sm font-medium focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Ngày tham gia</label>
@@ -155,7 +201,7 @@ const AdminAccount = () => {
                   value={newUser.date}
                   onChange={(e) => setNewUser({...newUser, date: e.target.value})}
                   placeholder="VD: 15 Th08, 2024" 
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none transition-colors"
                 />
               </div>
 
