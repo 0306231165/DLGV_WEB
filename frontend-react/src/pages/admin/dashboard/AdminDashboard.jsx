@@ -31,8 +31,8 @@ const AdminDashboard = () => {
                 <th className="py-4 pl-4">Mã Đơn</th>
                 <th className="py-4">Khách Hàng</th>
                 <th className="py-4">Ngày Đặt</th>
-                <th className="py-4 text-center">Trạng Thái</th>
-                <th className="py-4 pr-4 text-center">Hành Động</th>
+                {/* Cột Trạng Thái được thêm pr-4 để căn lề phải cho đẹp khi là cột cuối cùng */}
+                <th className="py-4 pr-4 text-center">Trạng Thái</th>
               </tr>
             </thead>
             <tbody className="text-sm text-slate-600 font-medium">
@@ -41,23 +41,10 @@ const AdminDashboard = () => {
                   <td className="py-4 pl-4 font-bold text-slate-800">{order.id}</td>
                   <td className="py-4">{order.customer}</td>
                   <td className="py-4 text-slate-500">{order.date}</td>
-                  <td className="py-4 text-center">
+                  <td className="py-4 pr-4 text-center">
                     <span className={`${order.statusColor} text-white px-3 py-1 rounded-full text-[10px] font-black shadow-sm tracking-wide`}>
                       {order.status}
                     </span>
-                  </td>
-                  <td className="py-4 pr-4">
-                    <div className="flex items-center justify-center gap-4 text-slate-400">
-                      <button className="hover:text-blue-500 transition-colors tooltip" title="Chỉnh sửa">
-                        <span className="material-symbols-outlined text-[18px]">edit</span>
-                      </button>
-                      <button className="hover:text-blue-500 transition-colors tooltip" title="Chia sẻ">
-                        <span className="material-symbols-outlined text-[18px]">share</span>
-                      </button>
-                      <button className="hover:text-rose-500 transition-colors tooltip" title="Xóa">
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))}
