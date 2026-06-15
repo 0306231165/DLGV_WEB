@@ -11,6 +11,22 @@ const AdminLayout = () => {
   // Quản lý trạng thái số lượng cần xử lý hiển thị ở Menu bên trái
   const [pendingApprovalsCount] = useState(12); // Hồ sơ chờ duyệt
 
+  // ================= HÀM XỬ LÝ ĐĂNG XUẤT =================
+  const handleLogout = (e) => {
+    e.preventDefault();
+    
+    // Bật hộp thoại hỏi xác nhận
+    const isConfirm = window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?");
+    
+    if (isConfirm) {
+      // Nếu sau này bạn có dùng token đăng nhập, có thể xóa ở đây:
+      // localStorage.removeItem('admin_token'); 
+      
+      // Chuyển hướng về trang Login
+      navigate('/admin/login');
+    }
+  };
+
   // ================= DANH MỤC MENU DÀNH CHO ADMIN =================
   const menuItems = [
     { path: '/admin/dashboard', icon: 'dashboard', label: 'Tổng quan hệ thống' },
@@ -20,7 +36,7 @@ const AdminLayout = () => {
     { path: '/admin/bookings', icon: 'calendar_month', label: 'Điều phối Đơn hàng' },
     { path: '/admin/reports', icon: 'bar_chart', label: 'Doanh thu & Thống kê' },
     { path: '/admin/complain', icon: 'feedback', label: 'Khiếu nại & Phản hồi' },
-     { path: '/admin/reviews', icon: 'star', label: 'Đánh giá & Nhận xét' },
+    { path: '/admin/reviews', icon: 'star', label: 'Đánh giá & Nhận xét' },
   ];
 
   if (isMinimalLayoutPage) {
@@ -124,8 +140,9 @@ const AdminLayout = () => {
 
                   <div className="border-t border-slate-100 my-1.5"></div>
                   
+                  {/* NÚT ĐĂNG XUẤT ĐÃ ĐƯỢC GẮN SỰ KIỆN HANDLELOGOUT */}
                   <button 
-                    onClick={() => navigate('/admin/logout')} 
+                    onClick={handleLogout} 
                     className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 font-semibold flex items-center gap-3 transition-colors"
                   >
                     <span className="material-symbols-outlined text-rose-500 text-base">logout</span> Đăng xuất
