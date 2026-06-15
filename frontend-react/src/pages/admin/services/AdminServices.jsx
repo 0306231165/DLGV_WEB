@@ -39,7 +39,7 @@ const AdminServices = () => {
     { 
       id: 1, 
       code: 'HAPPY_CLEAN_24', 
-      desc: 'Giảm 10% đơn đầu tiên. Còn 45 lượt.', 
+      desc: 'Giảm 10%. Còn 45 lượt. HSD: 31/12/2026', 
       status: 'ĐANG CHẠY', 
       icon: 'percent', 
       bgIcon: 'bg-[#0f2857] text-white', 
@@ -48,9 +48,9 @@ const AdminServices = () => {
     { 
       id: 2, 
       code: 'WEEKEND_SALE', 
-      desc: 'Miễn phí phụ phí T7. Hết hạn.', 
+      desc: 'Giảm 50.000đ. Không giới hạn. HSD: Đã hết hạn', 
       status: 'HẾT HẠN', 
-      icon: 'schedule', 
+      icon: 'payments', 
       bgIcon: 'bg-slate-200 text-slate-500', 
       badgeColor: 'text-slate-500 bg-slate-100 border-slate-200' 
     }
@@ -79,21 +79,7 @@ const AdminServices = () => {
     setEditingId(null); 
   };
 
-  // ================= 4. CÁC HÀM XỬ LÝ LOGIC DỊCH VỤ & CẤU HÌNH =================
   const filteredServices = services.filter(svc => svc.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  const handleAddService = () => {
-    const newName = window.prompt("Nhập tên dịch vụ mới:");
-    if (newName) {
-      const newSvc = {
-        id: Date.now(), type: 'NEW', typeColor: 'text-emerald-600 bg-emerald-50',
-        name: newName, desc: 'Chưa có mô tả', price: '0', unit: 'lần',
-        surchargeMode: 'default', customSurcharge: null,
-        img: 'https://images.unsplash.com/photo-1527515637-640a3e8e2ea5?q=80&w=200&auto=format&fit=crop'
-      };
-      setServices([newSvc, ...services]);
-    }
-  };
 
   const handleDeleteService = (id, name) => {
     if(window.confirm(`Xóa dịch vụ "${name}" khỏi hệ thống?`)) {
@@ -101,42 +87,48 @@ const AdminServices = () => {
     }
   };
 
-  const handleSaveDefault = () => {
-    alert(`✅ Đã lưu Cấu hình!\n(Các dịch vụ gán nhãn [MẶC ĐỊNH] sẽ tự động áp dụng phụ phí T7/CN là ${defaultSurcharge}%)`);
-  };
+  const handleSaveDefault = () => alert(`✅ Đã lưu Cấu hình Mặc định!`);
+  const handleSaveNight = () => alert(`✅ Đã lưu Phụ phí ca tối!`);
 
-  const handleSaveNight = () => {
-    alert(`✅ Đã lưu Phụ phí ca tối!\n(Mức phụ phí ca tối mới được áp dụng là ${nightSurcharge}đ)`);
-  };
+  // ================= 4. CÁC HÀM XỬ LÝ KHUYẾN MÃI (MODAL) =================
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [promoForm, setPromoForm] = useState({
+    code: '', discountType: 'percent', discountValue: '', limit: '', expiryDate: ''
+  });
 
-  // ================= 5. CÁC HÀM XỬ LÝ KHUYẾN MÃI =================
-  
-  const handleAddPromotion = () => {
-    const code = window.prompt("Nhập Mã Khuyến Mãi mới (Ví dụ: SUMMER_SALE):");
-    if (code) {
-      const discount = window.prompt("Nhập mức ưu đãi/mô tả (Ví dụ: Giảm 15% cho đơn đặt phòng khách):");
-      const newPromo = {
-        id: Date.now(),
-        code: code.toUpperCase().replace(/\s/g, '_'), 
-        desc: discount || 'Chưa có mô tả chi tiết.',
-        status: 'ĐANG CHẠY',
-        icon: 'percent',
-        bgIcon: 'bg-[#0f2857] text-white',
-        badgeColor: 'text-emerald-700 bg-emerald-50 border-emerald-100'
-      };
-      setPromotions([...promotions, newPromo]);
-      alert(`✅ Đã thêm mã khuyến mãi ${code.toUpperCase()} thành công!`);
+  const handleSubmitPromo = (e) => {
+    e.preventDefault();
+    const isPercent = promoForm.discountType === 'percent';
+    const discountText = isPercent ? `Giảm ${promoForm.discountValue}%` : `Giảm ${promoForm.discountValue}đ`;
+    const limitText = promoForm.limit ? `Còn ${promoForm.limit} lượt.` : 'Không giới hạn.';
+    let expiryText = 'HSD: Không thời hạn';
+    if (promoForm.expiryDate) {
+      const dateObj = new Date(promoForm.expiryDate);
+      expiryText = `HSD: ${dateObj.toLocaleDateString('vi-VN')}`;
     }
+    
+    const newPromo = {
+      id: Date.now(),
+      code: promoForm.code.toUpperCase().replace(/\s/g, '_'), 
+      desc: `${discountText} ${limitText} ${expiryText}`,
+      status: 'ĐANG CHẠY',
+      icon: isPercent ? 'percent' : 'payments',
+      bgIcon: 'bg-[#0f2857] text-white',
+      badgeColor: 'text-emerald-700 bg-emerald-50 border-emerald-100'
+    };
+
+    setPromotions([newPromo, ...promotions]);
+    setShowPromoModal(false);
+    setPromoForm({ code: '', discountType: 'percent', discountValue: '', limit: '', expiryDate: '' }); 
+    alert(`✅ Đã thêm mã khuyến mãi ${newPromo.code} thành công!`);
   };
 
   const handleTogglePromoStatus = (id, currentStatus) => {
     const nextStatus = currentStatus === 'ĐANG CHẠY' ? 'HẾT HẠN' : 'ĐANG CHẠY';
-    
     setPromotions(promotions.map(promo => {
       if (promo.id === id) {
         return {
-          ...promo,
-          status: nextStatus,
+          ...promo, status: nextStatus,
           bgIcon: nextStatus === 'ĐANG CHẠY' ? 'bg-[#0f2857] text-white' : 'bg-slate-200 text-slate-500',
           badgeColor: nextStatus === 'ĐANG CHẠY' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-slate-500 bg-slate-100 border-slate-200'
         };
@@ -153,17 +145,193 @@ const AdminServices = () => {
 
   const activePromosCount = promotions.filter(p => p.status === 'ĐANG CHẠY').length;
 
+  // ================= 5. HÀM XỬ LÝ THÊM DỊCH VỤ MỚI (MODAL) =================
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [serviceForm, setServiceForm] = useState({
+    name: '', type: 'STANDARD', desc: '', price: '', unit: 'lần'
+  });
+
+  const handleSubmitService = (e) => {
+    e.preventDefault();
+    
+    // Gán màu sắc Badge dựa trên loại dịch vụ
+    let typeColor = 'text-blue-600 bg-blue-50';
+    if(serviceForm.type === 'PREMIUM') typeColor = 'text-purple-600 bg-purple-50';
+    if(serviceForm.type === 'TECHNICAL') typeColor = 'text-slate-600 bg-slate-100';
+
+    const newSvc = {
+      id: Date.now(), 
+      type: serviceForm.type, 
+      typeColor: typeColor,
+      name: serviceForm.name, 
+      desc: serviceForm.desc || 'Không có mô tả chi tiết.', 
+      price: serviceForm.price, 
+      unit: serviceForm.unit,
+      surchargeMode: 'default', 
+      customSurcharge: null,
+      img: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=200&auto=format&fit=crop' // Hình ảnh mặc định
+    };
+    
+    setServices([newSvc, ...services]);
+    setShowServiceModal(false);
+    // Reset Form
+    setServiceForm({ name: '', type: 'STANDARD', desc: '', price: '', unit: 'lần' });
+    alert(`✅ Đã thêm dịch vụ mới: ${newSvc.name} thành công!`);
+  };
+
   return (
-    <div className="flex flex-col min-h-full">
-      {/* KHU VỰC TIÊU ĐỀ */}
+    <div className="flex flex-col min-h-full relative">
+      
+      {/* ================= MODAL THÊM DỊCH VỤ MỚI ================= */}
+      {showServiceModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h2 className="text-lg font-black text-slate-800">Thêm Dịch vụ Mới</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Mở rộng danh mục dịch vụ vệ sinh</p>
+              </div>
+              <button onClick={() => setShowServiceModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors shadow-sm">
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmitService} className="p-6 space-y-4 bg-white">
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Tên dịch vụ</label>
+                  <input 
+                    type="text" required placeholder="VD: Dọn dẹp nhà sau xây dựng"
+                    value={serviceForm.name} onChange={(e) => setServiceForm({...serviceForm, name: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Phân loại</label>
+                  <select 
+                    value={serviceForm.type} onChange={(e) => setServiceForm({...serviceForm, type: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    <option value="STANDARD">Cơ bản</option>
+                    <option value="PREMIUM">Cao cấp</option>
+                    <option value="TECHNICAL">Kỹ thuật</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Mô tả chi tiết</label>
+                <textarea 
+                  required placeholder="VD: Hút bụi, lau kính, dọn rác công nghiệp..." rows="3"
+                  value={serviceForm.desc} onChange={(e) => setServiceForm({...serviceForm, desc: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:border-blue-500 resize-none"
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Mức giá cơ bản</label>
+                  <div className="relative">
+                    <input 
+                      type="text" required placeholder="VD: 500.000"
+                      value={serviceForm.price} onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})}
+                      className="w-full pl-4 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-800 focus:outline-none focus:border-blue-500"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">đ</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Đơn vị tính</label>
+                  <input 
+                    type="text" required placeholder="VD: giờ, bộ, lần, m2..."
+                    value={serviceForm.unit} onChange={(e) => setServiceForm({...serviceForm, unit: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-3 border-t border-slate-100 mt-2">
+                <button type="button" onClick={() => setShowServiceModal(false)} className="flex-1 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors">
+                  Hủy bỏ
+                </button>
+                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-[#0f2857] hover:bg-[#1a3873] text-white font-bold shadow-sm transition-colors flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">add_task</span>
+                  Đăng dịch vụ
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL THÊM KHUYẾN MÃI ================= */}
+      {showPromoModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h2 className="text-lg font-black text-slate-800">Tạo mã Khuyến mãi</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Thiết lập ưu đãi cho khách hàng</p>
+              </div>
+              <button onClick={() => setShowPromoModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors shadow-sm">
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmitPromo} className="p-6 space-y-5 bg-white">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Mã Code (Tự động in hoa)</label>
+                <input type="text" required placeholder="VD: SUMMER_SALE" value={promoForm.code} onChange={(e) => setPromoForm({...promoForm, code: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-800 focus:outline-none focus:border-blue-500 uppercase" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Loại ưu đãi</label>
+                  <select value={promoForm.discountType} onChange={(e) => setPromoForm({...promoForm, discountType: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer" >
+                    <option value="percent">Giảm Phần trăm (%)</option>
+                    <option value="cash">Giảm Tiền mặt (đ)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Giá trị</label>
+                  <div className="relative">
+                    <input type="number" required placeholder={promoForm.discountType === 'percent' ? "VD: 10" : "VD: 50000"} value={promoForm.discountValue} onChange={(e) => setPromoForm({...promoForm, discountValue: e.target.value})} className="w-full pl-4 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-800 focus:outline-none focus:border-blue-500" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">{promoForm.discountType === 'percent' ? '%' : 'đ'}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Giới hạn (Lượt)</label>
+                  <input type="number" placeholder="Không giới hạn" value={promoForm.limit} onChange={(e) => setPromoForm({...promoForm, limit: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Ngày hết hạn</label>
+                  <input type="date" value={promoForm.expiryDate} onChange={(e) => setPromoForm({...promoForm, expiryDate: e.target.value})} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500 cursor-pointer" />
+                </div>
+              </div>
+              <div className="pt-4 flex gap-3 border-t border-slate-100">
+                <button type="button" onClick={() => setShowPromoModal(false)} className="flex-1 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors">Hủy bỏ</button>
+                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-[#0f2857] hover:bg-[#1a3873] text-white font-bold shadow-sm transition-colors flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                  Tạo mã
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= GIAO DIỆN CHÍNH ================= */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight">Dịch vụ & Bảng giá</h1>
           <p className="text-sm text-slate-500 mt-1">Cấu hình chi phí, phụ phí và các chương trình khuyến mãi cho khách hàng.</p>
         </div>
         <div className="flex gap-3">
+          {/* NÚT THÊM DỊCH VỤ - Gọi Modal Show */}
           <button 
-            onClick={handleAddService}
+            onClick={() => setShowServiceModal(true)}
             className="bg-[#0f2857] hover:bg-[#1a3873] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm text-sm"
           >
             <span className="material-symbols-outlined text-[20px]">add_circle</span>
@@ -172,7 +340,6 @@ const AdminServices = () => {
         </div>
       </div>
 
-      {/* KHU VỰC CHÍNH (CHIA 2 CỘT) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1">
         
         {/* === CỘT TRÁI (COL-8): DANH SÁCH DỊCH VỤ & KHUYẾN MÃI === */}
@@ -288,39 +455,39 @@ const AdminServices = () => {
             </div>
           </div>
 
-          {/* ================= BOX 2: KHUYẾN MÃI & MÃ GIẢM GIÁ ================= */}
+          {/* BOX 2: KHUYẾN MÃI & MÃ GIẢM GIÁ */}
           <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <span className="material-symbols-outlined text-blue-600">redeem</span>
                 Khuyến mãi & Mã giảm giá
               </h2>
+              {/* Nút bật Modal tạo mã */}
               <button 
-                onClick={handleAddPromotion}
-                className="text-sm font-black text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                onClick={() => setShowPromoModal(true)}
+                className="text-sm font-black text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 border border-blue-100 shadow-sm"
               >
-                <span className="material-symbols-outlined text-sm">add</span>
-                Thêm mã mới
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                Tạo mã
               </button>
             </div>
 
             {promotions.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {promotions.map((promo) => (
-                  <div key={promo.id} className="border border-slate-200 rounded-xl p-4 flex items-center gap-4 hover:shadow-sm transition-shadow bg-white group">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-300 ${promo.bgIcon}`}>
+                  <div key={promo.id} className="border border-slate-200 rounded-xl p-4 flex items-center gap-4 hover:shadow-sm hover:border-blue-200 transition-all bg-white group">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-300 shadow-sm ${promo.bgIcon}`}>
                       <span className="material-symbols-outlined text-[24px]">{promo.icon}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-black text-slate-800 truncate">{promo.code}</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5 truncate font-medium">{promo.desc}</p>
+                      <h4 className="text-sm font-black text-slate-800 truncate tracking-wide">{promo.code}</h4>
+                      <p className="text-[11px] text-slate-500 mt-1 truncate font-medium">{promo.desc}</p>
                     </div>
                     
-                    {/* CỤM NÚT TRẠNG THÁI VÀ XÓA */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 border-l border-slate-100 pl-3">
                       <button 
                         onClick={() => handleTogglePromoStatus(promo.id, promo.status)}
-                        className={`px-2 py-1 rounded text-[10px] font-black tracking-wide border cursor-pointer select-none transition-all duration-300 hover:scale-105 active:scale-95 ${promo.badgeColor}`}
+                        className={`w-24 py-1.5 rounded text-[10px] font-black tracking-wide border cursor-pointer select-none transition-all duration-300 hover:shadow-sm ${promo.badgeColor}`}
                         title="Bấm để đổi trạng thái"
                       >
                         {promo.status}
@@ -328,8 +495,8 @@ const AdminServices = () => {
                       
                       <button 
                         onClick={() => handleDeletePromotion(promo.id, promo.code)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors opacity-60 group-hover:opacity-100"
-                        title="Xóa mã khuyến mãi này"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-100"
+                        title="Xóa mã"
                       >
                         <span className="material-symbols-outlined text-[18px]">delete</span>
                       </button>
@@ -338,7 +505,6 @@ const AdminServices = () => {
                 ))}
               </div>
             ) : (
-              // Màn hình trống nếu đã xóa hết Khuyến mãi
               <div className="py-8 text-center text-slate-400 border border-slate-100 border-dashed rounded-xl bg-slate-50/50">
                 <span className="material-symbols-outlined text-4xl mb-2 opacity-40">loyalty</span>
                 <p className="text-sm font-medium">Chưa có mã khuyến mãi nào trong hệ thống.</p>
@@ -351,7 +517,6 @@ const AdminServices = () => {
         {/* === CỘT PHẢI (COL-4): CẤU HÌNH & TÓM TẮT === */}
         <div className="xl:col-span-4 flex flex-col gap-6">
           
-          {/* BOX CẤU HÌNH CHUNG */}
           <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Cấu hình chung</h3>
 
@@ -393,7 +558,6 @@ const AdminServices = () => {
             </div>
           </div>
 
-          {/* BOX TÓM TẮT DỊCH VỤ */}
           <div className="bg-[#0f2857] rounded-2xl shadow-md p-6 text-white relative overflow-hidden mt-auto">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl -translate-y-10 translate-x-10 pointer-events-none"></div>
             <h3 className="text-xs font-bold text-blue-200 uppercase tracking-wider mb-5">Tóm tắt dịch vụ</h3>
