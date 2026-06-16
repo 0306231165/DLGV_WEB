@@ -18,7 +18,7 @@ class MasterDataSeeder extends Seeder
         // 1. NhomDichVu — Nhóm dịch vụ (mapping từ PACKAGE_GROUPS frontend)
         // ══════════════════════════════════════════════════════════════════
         DB::table('NhomDichVu')->insert([
-            ['id' => 1, 'ma_nhom' => 'popular',  'ten_nhom' => 'Phổ biến',                       'icon' => 'star',              'thu_tu_hien_thi' => 1, 'trang_thai' => true],
+            ['id' => 1, 'ma_nhom' => 'home_cleaning',  'ten_nhom' => 'Dọn dẹp nhà',                       'icon' => 'home',              'thu_tu_hien_thi' => 1, 'trang_thai' => true],
             ['id' => 2, 'ma_nhom' => 'family',   'ten_nhom' => 'Chăm sóc gia đình',              'icon' => 'volunteer_activism', 'thu_tu_hien_thi' => 2, 'trang_thai' => true],
             ['id' => 3, 'ma_nhom' => 'deep',     'ten_nhom' => 'Chuyên sâu',                     'icon' => 'flare',             'thu_tu_hien_thi' => 3, 'trang_thai' => true],
             ['id' => 4, 'ma_nhom' => 'care',     'ten_nhom' => 'Chăm sóc & Làm sạch nội thất',   'icon' => 'auto_fix_high',     'thu_tu_hien_thi' => 4, 'trang_thai' => true],
