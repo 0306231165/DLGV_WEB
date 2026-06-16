@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Sanctum\HasApiTokens;
 
 class TaiKhoan extends Model
 {
+    use HasApiTokens;
     protected $table = 'TaiKhoan';
     public $timestamps = false;
     protected $guarded = ['id'];
