@@ -77,7 +77,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('nhan_vien_id')->constrained('NhanVien')->cascadeOnDelete();
             $table->foreignId('dich_vu_id')->constrained('DichVu')->cascadeOnDelete();
-            $table->string('trang_thai_duyet', 50)->default('ChoDuyet');
+            // CHUYỂN SANG ENUM: Trạng thái phê duyệt kỹ năng phục vụ của NV
+            $table->enum('trang_thai_duyet', ['ChoDuyet', 'DaDuyet', 'TuChoi'])->default('ChoDuyet');
             $table->dateTime('ngay_dang_ky')->useCurrent();
             $table->dateTime('ngay_duyet')->nullable();
             $table->unique(['nhan_vien_id', 'dich_vu_id'], 'unique_nhanvien_dichvu');
@@ -87,7 +88,8 @@ return new class extends Migration
         Schema::create('LichNghi', function (Blueprint $table) {
             $table->id();
             $table->foreignId('nhan_vien_id')->constrained('NhanVien')->cascadeOnDelete();
-            $table->string('loai_nghi', 50);
+            // CHUYỂN SANG ENUM: Bản chất ngày nghỉ (Định kỳ hàng tuần hay phát sinh đột xuất)
+            $table->enum('loai_nghi', ['DinhKy', 'DotXuat']);
             $table->integer('thu_trong_tuan')->nullable();
             $table->date('ngay_nghi')->nullable();
             $table->time('gio_bat_dau_nghi')->nullable();
@@ -95,7 +97,9 @@ return new class extends Migration
             $table->date('ngay_bat_dau_ap_dung')->nullable();
             $table->date('ngay_ket_thuc_ap_dung')->nullable();
             $table->string('ly_do', 255)->nullable();
-            $table->string('trang_thai_duyet', 50)->default('DaDuyet');
+            // CHUYỂN SANG ENUM: Trạng thái chốt đơn xin nghỉ
+            $table->enum('trang_thai_duyet', ['ChoDuyet', 'DaDuyet', 'TuChoi'])->default('DaDuyet');
+            
             $table->index(['nhan_vien_id', 'ngay_bat_dau_ap_dung', 'ngay_ket_thuc_ap_dung'], 'idx_thoigian_ap_dung');
             $table->index(['nhan_vien_id', 'ngay_nghi'], 'idx_ngay_dot_xuat');
         });
@@ -104,7 +108,8 @@ return new class extends Migration
         Schema::create('LogThayDoiLich', function (Blueprint $table) {
             $table->id();
             $table->foreignId('nhan_vien_id')->constrained('NhanVien')->cascadeOnDelete();
-            $table->string('loai_thay_doi', 50);
+            // CHUYỂN SANG ENUM: Hành động tác động lịch làm việc
+            $table->enum('loai_thay_doi', ['ThemLich', 'SuaLich', 'XinNghi', 'HuyNghi']);
             $table->text('noi_dung_thay_doi');
             $table->dateTime('thoi_gian_tao')->useCurrent();
         });

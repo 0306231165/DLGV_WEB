@@ -16,11 +16,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('nhom_dich_vu_id')->constrained('NhomDichVu');
             $table->string('ten_dich_vu', 255);
-            $table->string('cap_do_dich_vu', 50);
+            // CHUYỂN SANG ENUM: Phân hạng dịch vụ cung cấp
+            $table->enum('cap_do_dich_vu', ['TieuChuan', 'CaoCap']);
             $table->boolean('is_noi_bat')->default(false);
             $table->boolean('co_bien_the');
             $table->decimal('don_gia_co_ban', 12, 2)->nullable();
-            $table->integer('thoi_gian_chuan_co_ban')->nullable();
+            $table->integer('thoi_gian_chuan_co_ban')->nullable(); // Tính bằng phút
             $table->string('mo_ta', 500)->nullable();
             $table->longText('noi_dung_chi_tiet')->nullable();
             $table->boolean('trang_thai')->default(true);
@@ -35,7 +36,8 @@ return new class extends Migration
             $table->text('mo_ta')->nullable();
             $table->foreignId('dich_vu_id_ap_dung')->nullable()->constrained('DichVu');
             $table->decimal('gia_tri_don_toi_thieu', 12, 2)->default(0);
-            $table->string('loai_giam_gia', 50);
+            // CHUYỂN SANG ENUM: Cách thức giảm trừ hóa đơn
+            $table->enum('loai_giam_gia', ['PhanTram', 'TienMat']);
             $table->decimal('gia_tri_giam', 12, 2);
             $table->decimal('giam_toi_da', 12, 2)->nullable();
             $table->dateTime('ngay_bat_dau');
@@ -46,6 +48,7 @@ return new class extends Migration
             $table->integer('tong_luot_dung_toi_da_toan_san');
             $table->integer('so_luong_da_dung')->default(0);
             $table->boolean('trang_thai')->default(true);
+            
             $table->index(['trang_thai', 'ngay_bat_dau', 'ngay_ket_thuc'], 'idx_khuyenmai_hieuluc');
         });
 

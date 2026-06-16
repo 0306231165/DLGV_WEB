@@ -51,10 +51,13 @@ return new class extends Migration
             $table->decimal('tong_tien_cuoi_cung', 12, 2);
             $table->decimal('tien_giam_giu', 12, 2)->default(0.00);
             
-            $table->string('phuong_thuc_tt', 50);
-            $table->string('trang_thai_thanh_toan', 50)->default('ChuaThanhToan');
+            // CHUYỂN SANG ENUM: Hình thức thanh toán đơn hàng
+            $table->enum('phuong_thuc_tt', ['ViTien', 'ChuyenKhoan', 'Online', 'TienMat']);
+            // CHUYỂN SANG ENUM: Tiến độ dòng tiền thanh toán đơn hàng
+            $table->enum('trang_thai_thanh_toan', ['ChuaThanhToan', 'DaThanhToan', 'HoanTien'])->default('ChuaThanhToan');
             $table->string('ma_giao_dich_online', 255)->nullable();
-            $table->string('trang_thai_don', 50);
+            // CHUYỂN SANG ENUM: Tiến độ hoàn thành của tổng đơn
+            $table->enum('trang_thai_don', ['ChoXuLy', 'DangThucHien', 'DaHoanThanh', 'DaHuy']);
             $table->dateTime('ngay_tao')->useCurrent();
 
             $table->index(['khach_hang_id', 'trang_thai_don'], 'idx_donhang_khach_trangthai');
@@ -70,7 +73,7 @@ return new class extends Migration
             $table->primary(['don_hang_id', 'dich_vu_dich_vu_them_id']);
         });
 
-        // 26. CaLamViec
+        // 26. CaLamViec (Bảng lõi vận hành)
         Schema::create('CaLamViec', function (Blueprint $table) {
             $table->id();
             $table->foreignId('don_hang_id')->constrained('DonHang');
@@ -82,16 +85,29 @@ return new class extends Migration
             $table->date('ngay_lam');
             $table->time('gio_bat_dau');
             $table->integer('thoi_gian_lam_phut');
-            $table->string('loai_goi_ca_lam', 50);
+            // CHUYỂN SANG ENUM: Nhóm ca làm việc tương ứng loại gói dịch vụ
+            $table->enum('loai_goi_ca_lam', ['CaLe', 'GoiThang', 'Goi247']);
             $table->string('dia_chi_lam_viec', 255);
             
             $table->decimal('gia_ca_nay', 12, 2);
             $table->decimal('hoa_hong_app', 12, 2);
             $table->decimal('thuc_nhan_nv', 12, 2);
             
-            $table->string('trang_thai_ca', 50)->default('ChoNhanVienTuDoNhan');
+            // CHUYỂN SANG ENUM: Trạng thái chi tiết phục vụ cho cả FE & BE kiểm soát nghiệp vụ nút bấm
+            $table->enum('trang_thai_ca', [
+                'ChoXacNhan', 
+                'ChoNhanVienChiDinhXacNhan', 
+                'ChoNhanVienTuDoNhan', 
+                'DaNhan', 
+                'NhanVienHuy', 
+                'KhachHuy', 
+                'NhanVienKhongDenLam', 
+                'DaHoanThanh'
+            ])->default('ChoNhanVienTuDoNhan');
+            
             $table->dateTime('thoi_gian_day_len_cho')->nullable();
-            $table->string('loai_ghep', 50)->default('TuDong');
+            // CHUYỂN SANG ENUM: Phương thức ghép nối nhân viên vào ca lẻ này
+            $table->enum('loai_ghep', ['TuDong', 'ThuCong'])->default('TuDong');
             
             $table->dateTime('thoi_gian_checkin')->nullable();
             $table->dateTime('thoi_gian_checkout')->nullable();
@@ -105,17 +121,21 @@ return new class extends Migration
             $table->index(['nhan_vien_id', 'ngay_lam'], 'idx_nhanvien_ngaylam');
         });
 
-        // 27. YeuCauXuLy
+        // 27. YeuCauXuLy (Khiếu nại/Đổi lịch/Huỷ ngang đơn hàng)
         Schema::create('YeuCauXuLy', function (Blueprint $table) {
             $table->id();
-            $table->string('loai_cap_do_yeu_cau', 50);
+            // CHUYỂN SANG ENUM: Phạm vi tác động của yêu cầu xử lý
+            $table->enum('loai_cap_do_yeu_cau', ['DonHang', 'CaLam']);
             $table->foreignId('don_hang_id')->nullable()->constrained('DonHang')->cascadeOnDelete();
             $table->foreignId('ca_lam_viec_id')->nullable()->constrained('CaLamViec')->cascadeOnDelete();
-            $table->string('nguoi_yeu_cau_loai', 50);
+            // CHUYỂN SANG ENUM: Đối tượng thực hiện gửi yêu cầu lên hệ thống
+            $table->enum('nguoi_yeu_cau_loai', ['KhachHang', 'NhanVien']);
             $table->integer('nguoi_yeu_cau_id');
-            $table->string('loai_yeu_cau', 50);
+            // CHUYỂN SANG ENUM: Loại hình hành động nghiệp vụ cần can thiệp
+            $table->enum('loai_yeu_cau', ['HuyDonToanGoi', 'HuyCaLe', 'DoiLich', 'DoiNhanVien']);
             $table->text('ly_do');
-            $table->string('trang_thai_duyet', 50)->default('ChoXuLy');
+            // CHUYỂN SANG ENUM
+            $table->enum('trang_thai_duyet', ['ChoXuLy', 'DaDuyet', 'TuChoi', 'TuDongDuyet'])->default('DaDuyet');
             $table->decimal('so_tien_hoan_tra', 12, 2)->default(0.00);
             $table->decimal('so_tien_phat', 12, 2)->default(0.00);
             $table->dateTime('thoi_gian')->useCurrent();
@@ -127,13 +147,16 @@ return new class extends Migration
             $table->foreignId('vi_tien_id')->nullable()->constrained('ViTien')->cascadeOnDelete();
             $table->foreignId('vi_he_thong_id')->nullable()->constrained('ViHeThong');
             $table->string('ma_giao_dich', 100)->unique();
-            $table->string('loai_giao_dich', 50);
-            $table->string('loai_bien_dong', 10);
+            // CHUYỂN SANG ENUM: Mục đích dòng tiền di chuyển
+            $table->enum('loai_giao_dich', ['NapTien', 'RutTien', 'ThanhToanDonHang', 'HoanTien', 'NhanLuongCaLam', 'PhatHuyDon']);
+            // CHUYỂN SANG ENUM: Hướng đi của dòng tiền đối với ví đích
+            $table->enum('loai_bien_dong', ['Tang', 'Giam']);
             $table->decimal('so_tien', 12, 2);
             $table->decimal('so_du_sau_giao_dich', 12, 2);
             $table->unsignedBigInteger('ma_tham_chieu_he_thong')->nullable();
             $table->string('noi_dung', 255);
-            $table->string('trang_thai', 50)->default('ThanhCong');
+            // CHUYỂN SANG ENUM: Trạng thái lệnh thanh toán/rút nạp
+            $table->enum('trang_thai', ['ThanhCong', 'DangXuLy', 'TuChoi'])->default('ThanhCong');
             $table->dateTime('thoi_gian')->useCurrent();
 
             $table->index(['vi_tien_id', 'thoi_gian'], 'idx_giaodich_vitien_thoigian');
@@ -144,11 +167,12 @@ return new class extends Migration
         Schema::create('LogThanhToanOnline', function (Blueprint $table) {
             $table->id();
             $table->foreignId('don_hang_id')->constrained('DonHang');
-            $table->string('nha_cung_cap_tt', 50);
+            $table->string('nha_cung_cap_tt', 50); // MoMo, VNPAY, v.v.
             $table->string('ma_giao_dich_noi_bo', 100)->unique();
             $table->string('ma_giao_dich_doi_tac', 255)->nullable();
             $table->decimal('so_tien_giao_dich', 12, 2);
-            $table->string('trang_thai_giao_dich', 50)->default('DangXuLy');
+            // CHUYỂN SANG ENUM: Trạng thái webhook trả về từ cổng thanh toán gateway
+            $table->enum('trang_thai_giao_dich', ['DangXuLy', 'ThanhCong', 'ThatBai'])->default('DangXuLy');
             $table->string('ma_loi_api', 50)->nullable();
             $table->string('tin_nhan_loi', 255)->nullable();
             $table->text('du_lieu_gui_di_json')->nullable();
