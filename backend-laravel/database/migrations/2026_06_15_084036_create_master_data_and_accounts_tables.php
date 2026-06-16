@@ -24,7 +24,7 @@ return new class extends Migration
         // 2. LoaiGoiDichVu
         Schema::create('LoaiGoiDichVu', function (Blueprint $table) {
             $table->id();
-            $table->string('ten_loai_goi', 100);
+            $table->string('ten_loai_goi', 100); // 'Ca lẻ', 'Gói tháng', 'Gói 24/7'
             $table->string('mo_ta', 255)->nullable();
             $table->boolean('trang_thai')->default(true);
         });
@@ -51,13 +51,14 @@ return new class extends Migration
             $table->id();
             $table->string('ma_phu_phi', 50)->unique();
             $table->string('ten_phu_phi', 150);
-            $table->string('loai_phu_phi', 50)->default('PhanTram');
+            // CHUYỂN SANG ENUM: Phân loại hình thức phụ phí
+            $table->enum('loai_phu_phi', ['PhanTram', 'TienMat'])->default('PhanTram');
             $table->decimal('gia_tri_phu_phi', 12, 2);
             $table->boolean('trang_thai')->default(true);
             $table->string('mo_ta', 255)->nullable();
         });
 
-        // 6. TaiKhoan (Gốc)
+        // 6. TaiKhoan (Gốc dùng chung cho Khách và Nhân viên)
         Schema::create('TaiKhoan', function (Blueprint $table) {
             $table->id();
             $table->string('so_dien_thoai', 15)->unique();
@@ -67,9 +68,11 @@ return new class extends Migration
             $table->string('avatar', 255)->nullable();
             $table->date('ngay_sinh')->nullable();
             $table->string('gioi_tinh', 10)->nullable();
-            $table->string('loai_tai_khoan', 50);
+            // CHUYỂN SANG ENUM: Vai trò tài khoản trong hệ thống
+            $table->enum('loai_tai_khoan', ['KhachHang', 'NhanVien']);
             $table->dateTime('ngay_tao')->useCurrent();
-            $table->string('trang_thai', 50)->default('HoatDong');
+            // CHUYỂN SANG ENUM: Tình trạng vận hành của tài khoản
+            $table->enum('trang_thai', ['HoatDong', 'BiKhoa', 'ChoXacMinh'])->default('HoatDong');
         });
 
         // 7. TaiKhoanAdmin
@@ -78,14 +81,16 @@ return new class extends Migration
             $table->string('ten_dang_nhap', 50)->unique();
             $table->string('mat_khau', 255);
             $table->string('ho_ten', 150);
-            $table->string('quyen_han', 50);
+            // CHUYỂN SANG ENUM: Phân quyền quản trị nội bộ
+            $table->enum('quyen_han', ['Admin', 'Manager', 'CSKH']);
             $table->boolean('trang_thai')->default(true);
         });
 
         // 8. ViHeThong
         Schema::create('ViHeThong', function (Blueprint $table) {
             $table->id();
-            $table->string('loai_vi', 50)->unique();
+            // CHUYỂN SANG ENUM: Phân loại tài khoản tổng của sàn
+            $table->enum('loai_vi', ['ViTamGiu', 'ViDoanhThu'])->unique();
             $table->decimal('tong_so_du', 15, 2)->default(0.00);
             $table->dateTime('ngay_cap_nhat')->useCurrent()->useCurrentOnUpdate();
         });

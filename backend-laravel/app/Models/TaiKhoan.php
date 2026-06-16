@@ -9,13 +9,13 @@ class TaiKhoan extends Model
 {
     use HasFactory;
 
-    // 1. Chỉ định chính xác tên bảng
-    protected $table = 'taikhoan';
+    // Lưu ý: Kiểm tra lại tên bảng chính xác trong DB của bạn là 'taikhoan' hay 'TaiKhoan' nhé
+    protected $table = 'TaiKhoan';
 
-    // 2. Tắt tính năng tự động cập nhật created_at và updated_at của Laravel vì bạn dùng ngay_tao
+    // Tắt tính năng tự động cập nhật created_at và updated_at
     public $timestamps = false;
 
-    // 3. Khai báo các cột có trong DB dựa theo ảnh
+    // Khai báo các cột cho phép điền dữ liệu (Mass Assignment)
     protected $fillable = [
         'so_dien_thoai',
         'mat_khau',
@@ -28,4 +28,25 @@ class TaiKhoan extends Model
         'ngay_tao',
         'trang_thai',
     ];
+
+    // Mối quan hệ giữa các bảng
+    public function khachHang()
+    {
+        return $this->hasOne(KhachHang::class, 'tai_khoan_id');
+    }
+
+    public function nhanVien()
+    {
+        return $this->hasOne(NhanVien::class, 'tai_khoan_id');
+    }
+
+    public function viTien()
+    {
+        return $this->hasOne(ViTien::class, 'tai_khoan_id');
+    }
+
+    public function thongTinNganHang()
+    {
+        return $this->hasMany(ThongTinNganHang::class, 'tai_khoan_id');
+    }
 }

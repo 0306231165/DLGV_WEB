@@ -58,8 +58,8 @@ class MasterDataSeeder extends Seeder
         // 5. QuyDinhPhuPhi — Phụ phí hệ thống (từ constants BookingPage)
         // ══════════════════════════════════════════════════════════════════
         DB::table('QuyDinhPhuPhi')->insert([
-            ['id' => 1, 'ma_phu_phi' => 'DAT_GAP',        'ten_phu_phi' => 'Phụ phí đặt gấp',              'loai_phu_phi' => 'CoDinh',    'gia_tri_phu_phi' => 50000,  'trang_thai' => true, 'mo_ta' => 'Áp dụng khi đặt lịch trong vòng 1.5 giờ tới.'],
-            ['id' => 2, 'ma_phu_phi' => 'CHON_NV',        'ten_phu_phi' => 'Phụ phí chọn nhân viên',       'loai_phu_phi' => 'CoDinh',    'gia_tri_phu_phi' => 20000,  'trang_thai' => true, 'mo_ta' => 'Phí chỉ định nhân viên cụ thể cho ca làm.'],
+            ['id' => 1, 'ma_phu_phi' => 'DAT_GAP',        'ten_phu_phi' => 'Phụ phí đặt gấp',              'loai_phu_phi' => 'TienMat',    'gia_tri_phu_phi' => 50000,  'trang_thai' => true, 'mo_ta' => 'Áp dụng khi đặt lịch trong vòng 1.5 giờ tới.'],
+            ['id' => 2, 'ma_phu_phi' => 'CHON_NV',        'ten_phu_phi' => 'Phụ phí chọn nhân viên',       'loai_phu_phi' => 'TienMat',    'gia_tri_phu_phi' => 20000,  'trang_thai' => true, 'mo_ta' => 'Phí chỉ định nhân viên cụ thể cho ca làm.'],
             ['id' => 3, 'ma_phu_phi' => 'CAO_CAP',        'ten_phu_phi' => 'Phụ phí dịch vụ cao cấp',      'loai_phu_phi' => 'PhanTram',  'gia_tri_phu_phi' => 25.00,  'trang_thai' => true, 'mo_ta' => 'Cộng thêm 25% khi chọn gói dịch vụ cao cấp.'],
             ['id' => 4, 'ma_phu_phi' => 'RUT_TIEN',       'ten_phu_phi' => 'Phí rút tiền về ngân hàng',    'loai_phu_phi' => 'PhanTram',  'gia_tri_phu_phi' => 20.00,  'trang_thai' => true, 'mo_ta' => 'Khấu trừ 20% khi rút tiền từ ví về tài khoản ngân hàng.'],
             ['id' => 5, 'ma_phu_phi' => 'GIAM_VI',        'ten_phu_phi' => 'Giảm giá thanh toán bằng ví',  'loai_phu_phi' => 'PhanTram',  'gia_tri_phu_phi' => 2.00,   'trang_thai' => true, 'mo_ta' => 'Giảm 2% khi thanh toán trực tiếp bằng Ví CleanTrust.'],
@@ -124,18 +124,17 @@ class MasterDataSeeder extends Seeder
         // 7. TaiKhoanAdmin — Admin hệ thống
         // ══════════════════════════════════════════════════════════════════
         DB::table('TaiKhoanAdmin')->insert([
-            ['id' => 1, 'ten_dang_nhap' => 'admin',       'mat_khau' => $password, 'ho_ten' => 'Admin CleanTrust',    'quyen_han' => 'SuperAdmin', 'trang_thai' => true],
-            ['id' => 2, 'ten_dang_nhap' => 'moderator01', 'mat_khau' => $password, 'ho_ten' => 'Nguyễn Thị Hồng',    'quyen_han' => 'Moderator',  'trang_thai' => true],
-            ['id' => 3, 'ten_dang_nhap' => 'support01',   'mat_khau' => $password, 'ho_ten' => 'Trần Văn Phúc',      'quyen_han' => 'Support',    'trang_thai' => true],
+            ['id' => 1, 'ten_dang_nhap' => 'admin',       'mat_khau' => $password, 'ho_ten' => 'Admin CleanTrust',    'quyen_han' => 'Admin', 'trang_thai' => true],
+            ['id' => 2, 'ten_dang_nhap' => 'moderator01', 'mat_khau' => $password, 'ho_ten' => 'Nguyễn Thị Hồng',    'quyen_han' => 'Manager',  'trang_thai' => true],
+            ['id' => 3, 'ten_dang_nhap' => 'support01',   'mat_khau' => $password, 'ho_ten' => 'Trần Văn Phúc',      'quyen_han' => 'CSKH',    'trang_thai' => true],
         ]);
 
         // ══════════════════════════════════════════════════════════════════
         // 8. ViHeThong — Ví hệ thống
         // ══════════════════════════════════════════════════════════════════
         DB::table('ViHeThong')->insert([
-            ['id' => 1, 'loai_vi' => 'DoanhThuSan',   'tong_so_du' => 15250000.00, 'ngay_cap_nhat' => $now],
-            ['id' => 2, 'loai_vi' => 'HoaHongNV',     'tong_so_du' => 8750000.00,  'ngay_cap_nhat' => $now],
-            ['id' => 3, 'loai_vi' => 'HoanTraKhach',   'tong_so_du' => 1200000.00,  'ngay_cap_nhat' => $now],
+            ['id' => 1, 'loai_vi' => 'ViTamGiu',   'tong_so_du' => 15250000.00, 'ngay_cap_nhat' => $now],
+            ['id' => 2, 'loai_vi' => 'ViDoanhThu',     'tong_so_du' => 8750000.00,  'ngay_cap_nhat' => $now],
         ]);
     }
 
