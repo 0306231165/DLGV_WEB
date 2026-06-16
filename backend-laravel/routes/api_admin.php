@@ -13,6 +13,7 @@ Route::prefix('admin')->group(function () {
     Route::patch('/users/{id}/status', [AdminAccountController::class, 'updateStatus']);
     Route::post('/users', [AdminAccountController::class, 'store']);
     Route::get('/recent-orders', [AdminDashboardController::class, 'recentOrders']);
+    Route::delete('/users/{id}', [AdminAccountController::class, 'destroy']);
 });
 
 // --- CÁC ROUTE CẦN ĐĂNG NHẬP MỚI ĐƯỢC XEM (Để trong này) ---

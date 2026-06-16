@@ -2,13 +2,17 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Models\Service; 
 
-//sử dụng controller của admin
-use App\Http\Controllers\AdminAccountController;
-use App\Http\Controllers\AdminDashboardController;
+// Import AuthController vào đây
+use App\Http\Controllers\AuthController; 
 
-require __DIR__ . '/api_auth.php';         // Cổng đăng nhập
-require __DIR__ . '/api_khach_hang.php';   // Route của Khách
-require __DIR__ . '/api_nhan_vien.php';    // Route của Nhân viên
-require __DIR__ . '/api_admin.php';        // Route của Admin
+// ========================================================
+// ĐƯA TRỰC TIẾP ROUTE ĐĂNG NHẬP RA ĐÂY ĐỂ ĐẢM BẢO CHẠY 100%
+// ========================================================
+Route::post('/admin/dang-nhap', [AuthController::class, 'loginAdmin']);
+
+
+// Các file require khác vẫn giữ nguyên
+require __DIR__ . '/api_khach_hang.php';
+require __DIR__ . '/api_nhan_vien.php';
+require __DIR__ . '/api_admin.php';

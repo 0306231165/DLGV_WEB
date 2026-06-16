@@ -63,19 +63,74 @@ class AdminAccountController extends Controller
     // ==========================================
     // 3. HÀM XỬ LÝ THÊM TÀI KHOẢN MỚI
     // ==========================================
-    public function store(Request $request)
+public function store(Request $request)
     {
-        $taiKhoanMoi = new TaiKhoan();
-        $taiKhoanMoi->ho_ten = $request->ho_ten;
-        $taiKhoanMoi->so_dien_thoai = $request->so_dien_thoai;
-        $taiKhoanMoi->email = $request->email;
-        $taiKhoanMoi->mat_khau = bcrypt($request->mat_khau); 
-        $taiKhoanMoi->loai_tai_khoan = $request->loai_tai_khoan;
-        $taiKhoanMoi->trang_thai = 'HoatDong'; 
-        $taiKhoanMoi->ngay_tao = now(); 
-        
-        $taiKhoanMoi->save();
+        // Dùng Transaction: Nếu có lỗi ở bất kỳ bước nào, sẽ hoàn tác lại từ đầu
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // Bước 1: Tạo tài khoản gốc
+            $taiKhoanMoi = new TaiKhoan();
+            $taiKhoanMoi->ho_ten = $request->ho_ten;
+            $taiKhoanMoi->so_dien_thoai = $request->so_dien_thoai;
+            $taiKhoanMoi->email = $request->email;
+            $taiKhoanMoi->mat_khau = bcrypt($request->mat_khau); 
+            $taiKhoanMoi->loai_tai_khoan = $request->loai_tai_khoan;
+            $taiKhoanMoi->trang_thai = 'HoatDong'; 
+            $taiKhoanMoi->ngay_tao = now(); 
+            $taiKhoanMoi->save();
 
-        return response()->json(['message' => 'Thêm tài khoản thành công', 'user' => $taiKhoanMoi]);
+            // Bước 2: Tạo hồ sơ tương ứng dựa trên loại tài khoản
+            if ($request->loai_tai_khoan === 'KhachHang') {
+                \App\Models\KhachHang::create(['tai_khoan_id' => $taiKhoanMoi->id]);
+            } elseif ($request->loai_tai_khoan === 'NhanVien') {
+                \App\Models\NhanVien::create(['tai_khoan_id' => $taiKhoanMoi->id]);
+            }
+
+            // Bước 3: Tự động cấp cho họ một cái Ví tiền (Số dư = 0)
+            \App\Models\ViTien::create([
+                'tai_khoan_id' => $taiKhoanMoi->id,
+                'so_du' => 0
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit(); // Xác nhận lưu toàn bộ
+            return response()->json(['message' => 'Thêm tài khoản thành công', 'user' => $taiKhoanMoi]);
+            
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack(); // Lỗi thì hủy bỏ
+            return response()->json(['message' => 'Lỗi khi thêm dữ liệu: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+    // ==========================================
+    // HÀM 4: XÓA TÀI KHOẢN (Đã Fix)
+    // ==========================================
+    public function destroy($id)
+    {
+        $taiKhoan = TaiKhoan::find($id);
+
+        if (!$taiKhoan) {
+            return response()->json(['message' => 'Không tìm thấy tài khoản'], 404);
+        }
+
+        try {
+            // 1. Xóa tất cả "Đứa con" (Đơn hàng) của người này trước
+            // Dựa vào ảnh database của bạn, cột tên là 'khach_hang_id'
+            \Illuminate\Support\Facades\DB::table('donhang')->where('khach_hang_id', $taiKhoan->id)->delete();
+
+            // 2. Xóa các hồ sơ liên quan (Ví tiền, Khách hàng, Nhân viên, Ngân hàng)
+            $taiKhoan->khachHang()->delete();
+            $taiKhoan->nhanVien()->delete();
+            $taiKhoan->viTien()->delete();
+            $taiKhoan->thongTinNganHang()->delete();
+
+            // 3. Cuối cùng, mới xóa "Người mẹ" (Tài khoản)
+            $taiKhoan->delete();
+
+            return response()->json(['message' => 'Đã xóa tài khoản thành công!']);
+            
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Không thể xóa: ' . $e->getMessage()], 500);
+        }
     }
 }
