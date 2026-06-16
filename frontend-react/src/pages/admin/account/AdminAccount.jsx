@@ -1,53 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axiosClient from '../../../api/axiosClient'; 
 
 const AdminAccount = () => {
-  // 1. DATA NGƯỜI DÙNG (20 Người)
-  const [usersData, setUsersData] = useState([
-    { id: 1, name: 'Nguyễn Văn An', email: 'an.nguyen@example.com', role: 'Nhân viên vệ sinh', roleIcon: 'cleaning_services', date: '12 Th04, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=11' },
-    { id: 2, name: 'Trần Thị Bích', email: 'bich.tran@example.com', role: 'Khách hàng', roleIcon: 'person', date: '08 Th04, 2024', status: 'Đã khóa', statusColor: 'text-rose-700 bg-rose-50 border-rose-100', dotColor: 'bg-rose-500', avatar: 'https://i.pravatar.cc/150?img=5' },
-    { id: 3, name: 'Lê Hoàng Nam', email: 'nam.le@example.com', role: 'Quản lý khu vực', roleIcon: 'manage_accounts', date: '01 Th04, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=12' },
-    { id: 4, name: 'Phạm Thị Mai', email: 'mai.pham@example.com', role: 'Khách hàng', roleIcon: 'person', date: '20 Th05, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=44' },
-    { id: 5, name: 'Trần Tuấn Kiệt', email: 'kiet.tran@example.com', role: 'Nhân viên vệ sinh', roleIcon: 'cleaning_services', date: '05 Th01, 2024', status: 'Đã khóa', statusColor: 'text-rose-700 bg-rose-50 border-rose-100', dotColor: 'bg-rose-500', avatar: 'https://i.pravatar.cc/150?img=53' },
-    { id: 6, name: 'Lê Thị Hoa', email: 'hoa.le@example.com', role: 'Nhân viên vệ sinh', roleIcon: 'cleaning_services', date: '18 Th02, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=32' },
-    { id: 7, name: 'Hoàng Quang Huy', email: 'huy.hoang@example.com', role: 'Khách hàng', roleIcon: 'person', date: '10 Th06, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=15' },
-    { id: 8, name: 'Đỗ Mỹ Linh', email: 'linh.do@example.com', role: 'Quản lý khu vực', roleIcon: 'manage_accounts', date: '22 Th11, 2023', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=20' },
-    { id: 9, name: 'Vũ Văn Đức', email: 'duc.vu@example.com', role: 'Khách hàng', roleIcon: 'person', date: '02 Th05, 2024', status: 'Đã khóa', statusColor: 'text-rose-700 bg-rose-50 border-rose-100', dotColor: 'bg-rose-500', avatar: 'https://i.pravatar.cc/150?img=60' },
-    { id: 10, name: 'Bùi Thanh Trúc', email: 'truc.bui@example.com', role: 'Nhân viên vệ sinh', roleIcon: 'cleaning_services', date: '14 Th03, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=47' },
-    { id: 11, name: 'Phan Văn Tài', email: 'tai.phan@example.com', role: 'Nhân viên vệ sinh', roleIcon: 'cleaning_services', date: '11 Th04, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=33' },
-    { id: 12, name: 'Ngô Thu Thảo', email: 'thao.ngo@example.com', role: 'Khách hàng', roleIcon: 'person', date: '25 Th04, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=24' },
-    { id: 13, name: 'Lý Quốc Bảo', email: 'bao.ly@example.com', role: 'Quản trị viên', roleIcon: 'admin_panel_settings', date: '10 Th01, 2024', status: 'Đã khóa', statusColor: 'text-rose-700 bg-rose-50 border-rose-100', dotColor: 'bg-rose-500', avatar: 'https://i.pravatar.cc/150?img=59' },
-    { id: 14, name: 'Đinh Phương Nam', email: 'nam.dinh@example.com', role: 'Nhân viên vệ sinh', roleIcon: 'cleaning_services', date: '28 Th05, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=13' },
-    { id: 15, name: 'Vũ Thanh Hằng', email: 'hang.vu@example.com', role: 'Khách hàng', roleIcon: 'person', date: '15 Th06, 2024', status: 'Đã khóa', statusColor: 'text-rose-700 bg-rose-50 border-rose-100', dotColor: 'bg-rose-500', avatar: 'https://i.pravatar.cc/150?img=34' },
-    { id: 16, name: 'Bùi Gia Khiêm', email: 'khiem.bui@example.com', role: 'Nhân viên vệ sinh', roleIcon: 'cleaning_services', date: '03 Th03, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=51' },
-    { id: 17, name: 'Hồ Bích Ngọc', email: 'ngoc.ho@example.com', role: 'Khách hàng', roleIcon: 'person', date: '19 Th05, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=42' },
-    { id: 18, name: 'Lê Minh Triết', email: 'triet.le@example.com', role: 'Nhân viên vệ sinh', roleIcon: 'cleaning_services', date: '11 Th02, 2024', status: 'Đã khóa', statusColor: 'text-rose-700 bg-rose-50 border-rose-100', dotColor: 'bg-rose-500', avatar: 'https://i.pravatar.cc/150?img=61' },
-    { id: 19, name: 'Lâm Bích Hữu', email: 'huu.lam@example.com', role: 'Khách hàng', roleIcon: 'person', date: '21 Th04, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=41' },
-    { id: 20, name: 'Tạ Đình Phong', email: 'phong.ta@example.com', role: 'Quản lý khu vực', roleIcon: 'manage_accounts', date: '09 Th01, 2024', status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500', avatar: 'https://i.pravatar.cc/150?img=68' },
-  ]);
+  // 1. STATE DỮ LIỆU THẬT & LOADING
+  const [usersData, setUsersData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 2. STATE QUẢN LÝ LỌC VÀ TÌM KIẾM
+  // 2. STATE LỌC VÀ PHÂN TRANG
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('Tất cả Vai trò');
   const [filterStatus, setFilterStatus] = useState('Tất cả Trạng thái');
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 6;
+  const usersPerPage = 6; // Số người trên 1 trang
 
-  // State Modal Thêm Tài Khoản
+  // 3. STATE MODAL THÊM TÀI KHOẢN
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', role: 'Khách hàng', date: '', email: '', password: '' });
+  // Khớp với các cột trong DB của bạn
+  const [newUser, setNewUser] = useState({ ho_ten: '', loai_tai_khoan: 'KhachHang', email: '', mat_khau: '', so_dien_thoai: '' });
 
-  // 3. LOGIC LỌC DỮ LIỆU
+  // ================= CÁC HÀM GỌI API LARAVEL =================
+
+  // Hàm lấy danh sách
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axiosClient.get('/admin/users'); 
+      setUsersData(response); 
+    } catch (error) {
+      console.error("Lỗi khi lấy dữ liệu:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Hàm Thêm tài khoản mới
+  const handleAddNewUserSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // Gọi API POST sang Laravel
+      await axiosClient.post('/admin/users', newUser);
+      alert(`✅ Đã thêm tài khoản "${newUser.ho_ten}" thành công!`);
+      setIsModalOpen(false);
+      setNewUser({ ho_ten: '', loai_tai_khoan: 'KhachHang', email: '', mat_khau: '', so_dien_thoai: '' }); // Reset form
+      fetchUsers(); // Tải lại danh sách
+    } catch (error) {
+      console.error("Lỗi khi thêm người dùng:", error);
+      alert("❌ Có lỗi xảy ra khi thêm tài khoản (Vui lòng kiểm tra Laravel)!");
+    }
+  };
+
+  // Hàm Khóa / Mở khóa tài khoản
+  const handleToggleStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === 'Hoạt động' ? 'DaKhoa' : 'HoatDong';
+    const confirmMsg = currentStatus === 'Hoạt động' ? 'Bạn có chắc muốn KHÓA tài khoản này?' : 'Bạn có muốn MỞ KHÓA tài khoản này?';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      // Gọi API PATCH sang Laravel để đổi trạng thái
+      await axiosClient.patch(`/admin/users/${id}/status`, { trang_thai: newStatus });
+      fetchUsers(); // Tải lại bảng sau khi đổi
+    } catch (error) {
+      console.error("Lỗi khi cập nhật trạng thái:", error);
+      alert("❌ Cập nhật thất bại!");
+    }
+  };
+
+  // ================= HELPER & LOGIC =================
+  const getRoleIcon = (role) => {
+    switch(role) {
+      case 'Nhân viên vệ sinh': return 'cleaning_services';
+      case 'Quản trị viên': return 'admin_panel_settings';
+      default: return 'person';
+    }
+  };
+
+  const getStatusStyle = (status) => {
+    return status === 'Hoạt động' 
+      ? { color: 'text-emerald-700 bg-emerald-50 border-emerald-100', dot: 'bg-emerald-500' }
+      : { color: 'text-rose-700 bg-rose-50 border-rose-100', dot: 'bg-rose-500' };
+  };
+
+  // Lọc dữ liệu
   const filteredUsers = usersData.filter(user => {
-    const matchSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchRole = filterRole === 'Tất cả Vai trò' || user.role === filterRole;
     const matchStatus = filterStatus === 'Tất cả Trạng thái' || user.status === filterStatus;
-    
     return matchSearch && matchRole && matchStatus;
   });
 
-  const staticTotalPages = Math.ceil(usersData.length / usersPerPage); 
-  
+  // Logic Phân trang (Cắt lát mảng dữ liệu)
+  const staticTotalPages = Math.ceil(filteredUsers.length / usersPerPage) || 1; 
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
   const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
@@ -56,80 +104,17 @@ const AdminAccount = () => {
   const prevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
   const nextPage = () => setCurrentPage((prev) => Math.min(prev + 1, staticTotalPages));
 
-  // 5. CÁC HÀM XỬ LÝ SỰ KIỆN THÊM TÀI KHOẢN TỪ MODAL
-  const getRoleIcon = (role) => {
-    switch(role) {
-      case 'Nhân viên vệ sinh': return 'cleaning_services';
-      case 'Quản lý khu vực': return 'manage_accounts';
-      case 'Quản trị viên': return 'admin_panel_settings';
-      default: return 'person';
-    }
-  };
-
-  const handleAddNewUserSubmit = (e) => {
-    e.preventDefault();
-
-    // Bắt buộc nhập email và password nếu là Quản lý khu vực
-    if (newUser.role === 'Quản lý khu vực') {
-      if (!newUser.email.trim() || !newUser.password.trim()) {
-        alert("❌ Vui lòng nhập đầy đủ Email và Mật khẩu cho tài khoản Quản lý khu vực!");
-        return;
-      }
-    }
-
-    if (newUser.name.trim() && newUser.date) {
-      // Nếu là Quản lý khu vực thì dùng email vừa nhập, ngược lại tự động tạo email giả lập
-      const finalEmail = newUser.role === 'Quản lý khu vực' 
-        ? newUser.email 
-        : `${newUser.name.replace(/\s/g, '').toLowerCase()}@example.com`;
-
-      const addedUser = {
-        id: usersData.length + 1,
-        name: newUser.name,
-        email: finalEmail,
-        role: newUser.role,
-        roleIcon: getRoleIcon(newUser.role),
-        date: newUser.date,
-        status: 'Hoạt động',
-        statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100',
-        dotColor: 'bg-emerald-500',
-        avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`
-      };
-      
-      setUsersData([addedUser, ...usersData]);
-      setIsModalOpen(false); // Đóng modal
-      setNewUser({ name: '', role: 'Khách hàng', date: '', email: '', password: '' }); // Reset form
-      alert(`✅ Đã thêm tài khoản "${newUser.name}" thành công!`);
-    }
-  };
-
-  const handleLockAccount = (id) => {
-    setUsersData(prev => prev.map(u => 
-      u.id === id ? { ...u, status: 'Đã khóa', statusColor: 'text-rose-700 bg-rose-50 border-rose-100', dotColor: 'bg-rose-500' } : u
-    ));
-  };
-
-  const handleUnlockAccount = (id) => {
-    setUsersData(prev => prev.map(u => 
-      u.id === id ? { ...u, status: 'Hoạt động', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-100', dotColor: 'bg-emerald-500' } : u
-    ));
-  };
-
-  // 6. THỐNG KÊ DATA ĐỘNG
-  const totalUsersCount = usersData.length;
-  const activeStaffCount = usersData.filter(u => u.role === 'Nhân viên vệ sinh' && u.status === 'Hoạt động').length;
-  const lockedUsersCount = usersData.filter(u => u.status === 'Đã khóa').length;
-
+  // ================= RENDER GIAO DIỆN =================
   return (
-    <div className="flex flex-col min-h-full relative">
+    <div className="flex flex-col min-h-full relative p-6">
       
-      {/* ================= MODAL THÊM TÀI KHOẢN MỚI ================= */}
+      {/* MODAL THÊM TÀI KHOẢN MỚI */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h2 className="text-lg font-black text-slate-800">Thêm tài khoản mới</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -137,133 +122,63 @@ const AdminAccount = () => {
             <form onSubmit={handleAddNewUserSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Họ và tên</label>
-                <input 
-                  type="text" 
-                  required
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                  placeholder="Nhập tên người dùng..." 
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none transition-colors"
-                />
+                <input type="text" required value={newUser.ho_ten} onChange={(e) => setNewUser({...newUser, ho_ten: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm" />
               </div>
-
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Số điện thoại</label>
+                <input type="text" required value={newUser.so_dien_thoai} onChange={(e) => setNewUser({...newUser, so_dien_thoai: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm" />
+              </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Vai trò</label>
-                <select 
-                  value={newUser.role}
-                  onChange={(e) => setNewUser({...newUser, role: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none cursor-pointer transition-colors"
-                >
-                  <option value="Khách hàng">Khách hàng</option>
-                  <option value="Nhân viên vệ sinh">Nhân viên vệ sinh</option>
-                  <option value="Quản lý khu vực">Quản lý khu vực</option>
-                  {/* Đã gỡ bỏ lựa chọn Quản trị viên khỏi danh sách */}
+                <select value={newUser.loai_tai_khoan} onChange={(e) => setNewUser({...newUser, loai_tai_khoan: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm">
+                  <option value="KhachHang">Khách hàng</option>
+                  <option value="NhanVien">Nhân viên vệ sinh</option>
+                  <option value="Admin">Quản trị viên</option>
                 </select>
               </div>
-
-              {/* KHU VỰC HIỂN THỊ ĐỘNG CHO QUẢN LÝ KHU VỰC */}
-              {newUser.role === 'Quản lý khu vực' && (
-                <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl space-y-4 animate-fade-in">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-blue-600 text-[18px]">manage_accounts</span>
-                    <span className="text-xs font-black text-blue-800 uppercase tracking-wider">Thiết lập bảo mật Quản lý</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-blue-900 mb-1">Email đăng nhập</label>
-                    <input 
-                      type="email" 
-                      required={newUser.role === 'Quản lý khu vực'}
-                      value={newUser.email}
-                      onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                      placeholder="manager@cleantrust.com" 
-                      className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-lg text-sm font-medium focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-blue-900 mb-1">Mật khẩu cấp quyền</label>
-                    <input 
-                      type="password" 
-                      required={newUser.role === 'Quản lý khu vực'}
-                      value={newUser.password}
-                      onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                      placeholder="••••••••" 
-                      className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-lg text-sm font-medium focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition-colors"
-                    />
-                  </div>
-                </div>
-              )}
-
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Ngày tham gia</label>
-                <input 
-                  type="text" 
-                  required
-                  value={newUser.date}
-                  onChange={(e) => setNewUser({...newUser, date: e.target.value})}
-                  placeholder="VD: 15 Th08, 2024" 
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 focus:outline-none transition-colors"
-                />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Email đăng nhập</label>
+                <input type="email" required value={newUser.email} onChange={(e) => setNewUser({...newUser, email: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Mật khẩu</label>
+                <input type="password" required value={newUser.mat_khau} onChange={(e) => setNewUser({...newUser, mat_khau: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm" />
               </div>
 
               <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors">
-                  Hủy
-                </button>
-                <button type="submit" className="flex-1 px-4 py-2.5 rounded-xl bg-[#0f2857] text-white font-bold hover:bg-[#1a3873] transition-colors shadow-sm">
-                  Lưu tài khoản
-                </button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 rounded-xl border font-bold text-slate-600 hover:bg-slate-50">Hủy</button>
+                <button type="submit" className="flex-1 px-4 py-2 rounded-xl bg-[#0f2857] text-white font-bold hover:bg-[#1a3873]">Lưu tài khoản</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* KHU VỰC TIÊU ĐỀ & NÚT THÊM */}
+      {/* HEADER VÀ NÚT THÊM */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight">Tài khoản & Người dùng</h1>
           <p className="text-sm text-slate-500 mt-1">Quản lý và theo dõi hoạt động của nhân viên và khách hàng.</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-[#0f2857] hover:bg-[#1a3873] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm text-sm"
-        >
-          <span className="material-symbols-outlined text-[20px]">person_add</span>
-          Thêm tài khoản mới
+        <button onClick={() => setIsModalOpen(true)} className="bg-[#0f2857] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm">
+          <span className="material-symbols-outlined text-[20px]">person_add</span> Thêm tài khoản
         </button>
       </div>
 
-      {/* THANH CÔNG CỤ TÌM KIẾM & LỌC */}
-      <div className="bg-white p-4 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col md:flex-row gap-4 mb-6">
+      {/* THANH BỘ LỌC */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
-          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
-          <input 
-            type="text" 
-            value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-            placeholder="Tìm kiếm theo tên hoặc email..." 
-            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
-          />
+          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+          <input type="text" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Tìm kiếm theo tên hoặc email..." className="w-full pl-11 pr-4 py-2 bg-slate-50 border rounded-xl text-sm" />
         </div>
-        
         <div className="flex gap-3">
-          <select 
-            value={filterRole}
-            onChange={(e) => { setFilterRole(e.target.value); setCurrentPage(1); }}
-            className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 outline-none hover:bg-slate-50 transition-colors cursor-pointer min-w-[150px] appearance-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          >
+          <select value={filterRole} onChange={(e) => { setFilterRole(e.target.value); setCurrentPage(1); }} className="px-4 py-2 border rounded-xl text-sm">
             <option value="Tất cả Vai trò">Tất cả Vai trò</option>
             <option value="Khách hàng">Khách hàng</option>
             <option value="Nhân viên vệ sinh">Nhân viên vệ sinh</option>
-            <option value="Quản lý khu vực">Quản lý khu vực</option>
             <option value="Quản trị viên">Quản trị viên</option>
           </select>
-
-          <select 
-            value={filterStatus}
-            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-            className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 outline-none hover:bg-slate-50 transition-colors cursor-pointer min-w-[160px] appearance-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          >
+          <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }} className="px-4 py-2 border rounded-xl text-sm">
             <option value="Tất cả Trạng thái">Tất cả Trạng thái</option>
             <option value="Hoạt động">Hoạt động</option>
             <option value="Đã khóa">Đã khóa</option>
@@ -271,154 +186,88 @@ const AdminAccount = () => {
         </div>
       </div>
 
-      {/* BẢNG DANH SÁCH NGƯỜI DÙNG */}
-      <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden mb-6 flex-1 flex flex-col">
-        <div className="overflow-x-auto flex-1 min-h-[460px]">
+      {/* BẢNG DỮ LIỆU */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6 flex-1 flex flex-col">
+        <div className="overflow-x-auto min-h-[460px]">
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-4 pl-6 font-semibold">Người dùng</th>
-                <th className="py-4 font-semibold">Vai trò</th>
-                <th className="py-4 font-semibold">Ngày tham gia</th>
-                <th className="py-4 font-semibold">Trạng thái</th>
-                <th className="py-4 pr-6 text-center font-semibold">Thao tác</th>
+              <tr className="border-b bg-slate-50 text-xs font-bold text-slate-500 uppercase">
+                <th className="py-4 pl-6">Người dùng</th>
+                <th className="py-4">Vai trò</th>
+                <th className="py-4">Ngày tham gia</th>
+                <th className="py-4">Trạng thái</th>
+                <th className="py-4 pr-6 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="text-sm">
-              {currentUsers.length > 0 ? (
+              {isLoading ? (
+                <tr><td colSpan="5" className="py-12 text-center font-bold text-blue-500">Đang tải dữ liệu từ MySQL...</td></tr>
+              ) : currentUsers.length > 0 ? (
                 currentUsers.map((user) => (
-                  <tr key={user.id} className="border-b border-slate-50 hover:bg-slate-50/70 transition-colors group">
+                  <tr key={user.id} className="border-b hover:bg-slate-50/70 group">
                     <td className="py-4 pl-6">
                       <div className="flex items-center gap-3">
-                        <img src={user.avatar} alt="avatar" className="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-sm group-hover:scale-105 transition-transform" />
+                        <img src={user.avatar || `https://ui-avatars.com/api/?name=${user.name}`} alt="avatar" className="w-10 h-10 rounded-xl" />
                         <div className="flex flex-col">
                           <span className="font-bold text-slate-800">{user.name}</span>
-                          <span className="text-[11px] text-slate-400 font-medium">{user.email}</span>
+                          <span className="text-[11px] text-slate-400">{user.email}</span>
                         </div>
                       </div>
                     </td>
                     <td className="py-4">
                       <div className="flex items-center gap-2 text-slate-600 font-medium">
-                        <span className="material-symbols-outlined text-[18px] text-slate-400">{user.roleIcon}</span>
+                        <span className="material-symbols-outlined text-[18px]">{getRoleIcon(user.role)}</span>
                         {user.role}
                       </div>
                     </td>
-                    <td className="py-4 text-slate-500 font-medium">{user.date}</td>
+                    <td className="py-4 text-slate-500 font-medium">{user.created_at}</td>
                     <td className="py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${user.statusColor}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${user.dotColor}`}></span>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(user.status).color}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusStyle(user.status).dot}`}></span>
                         {user.status}
                       </span>
                     </td>
                     <td className="py-4 pr-6">
-                      <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => handleLockAccount(user.id)}
-                          className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 font-bold hover:bg-rose-100 border border-rose-100 transition-colors text-xs tracking-wide"
-                        >
-                          Khóa
-                        </button>
-                        <button 
-                          onClick={() => handleUnlockAccount(user.id)}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-bold hover:bg-emerald-100 border border-emerald-100 transition-colors text-xs tracking-wide"
-                        >
-                          Mở khóa
-                        </button>
+                      <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100">
+                        {user.status === 'Hoạt động' ? (
+                           <button onClick={() => handleToggleStatus(user.id, user.status)} className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 font-bold text-xs hover:bg-rose-100">Khóa</button>
+                        ) : (
+                           <button onClick={() => handleToggleStatus(user.id, user.status)} className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-xs hover:bg-emerald-100">Mở khóa</button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr>
-                  <td colSpan="5" className="py-12 text-center text-slate-400">
-                    <span className="material-symbols-outlined text-4xl mb-2 opacity-50">search_off</span>
-                    <p>Không tìm thấy người dùng nào phù hợp với bộ lọc.</p>
-                  </td>
-                </tr>
+                <tr><td colSpan="5" className="py-12 text-center text-slate-400">Không tìm thấy dữ liệu.</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* GIAO DIỆN PHÂN TRANG */}
+        {/* GIAO DIỆN PHÂN TRANG (1 2 3 4...) */}
         <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 bg-white">
           <span className="font-medium">
             Hiển thị <strong className="text-slate-800">{filteredUsers.length === 0 ? 0 : indexOfFirstUser + 1}</strong> - <strong className="text-slate-800">{Math.min(indexOfLastUser, filteredUsers.length)}</strong> trên <strong className="text-slate-800">{filteredUsers.length}</strong> tài khoản
           </span>
-          
           <div className="flex items-center gap-1">
-            <button 
-              onClick={prevPage}
-              disabled={currentPage === 1}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors border border-transparent ${currentPage === 1 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 hover:border-slate-200'}`}
-            >
+            <button onClick={prevPage} disabled={currentPage === 1} className={`w-8 h-8 flex items-center justify-center rounded-lg ${currentPage === 1 ? 'opacity-40' : 'hover:bg-slate-100'}`}>
               <span className="material-symbols-outlined text-[18px]">chevron_left</span>
             </button>
-
             {[...Array(staticTotalPages)].map((_, index) => {
               const pageNumber = index + 1;
               return (
-                <button 
-                  key={pageNumber}
-                  onClick={() => paginate(pageNumber)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg font-semibold transition-colors ${
-                    currentPage === pageNumber 
-                      ? 'bg-[#0f2857] text-white shadow-sm' 
-                      : 'hover:bg-slate-100 text-slate-600'
-                  }`}
-                >
+                <button key={pageNumber} onClick={() => paginate(pageNumber)} className={`w-8 h-8 flex items-center justify-center rounded-lg font-semibold ${currentPage === pageNumber ? 'bg-[#0f2857] text-white' : 'hover:bg-slate-100 text-slate-600'}`}>
                   {pageNumber}
                 </button>
               );
             })}
-
-            <button 
-              onClick={nextPage}
-              disabled={currentPage === staticTotalPages}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors border border-transparent ${currentPage === staticTotalPages ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 hover:border-slate-200'}`}
-            >
+            <button onClick={nextPage} disabled={currentPage === staticTotalPages} className={`w-8 h-8 flex items-center justify-center rounded-lg ${currentPage === staticTotalPages ? 'opacity-40' : 'hover:bg-slate-100'}`}>
               <span className="material-symbols-outlined text-[18px]">chevron_right</span>
             </button>
           </div>
         </div>
       </div>
-
-      {/* KHỐI THỐNG KÊ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-[#e0eafb] p-5 rounded-2xl flex flex-col justify-center border border-blue-100/50 shadow-sm hover:-translate-y-1 transition-transform cursor-default">
-          <div className="flex items-center gap-2 text-blue-700 mb-2">
-            <span className="material-symbols-outlined text-[20px]">groups</span>
-            <span className="text-xs font-black uppercase tracking-wider">Tổng người dùng</span>
-          </div>
-          <h3 className="text-3xl font-black text-slate-800">{totalUsersCount}</h3>
-        </div>
-        
-        <div className="bg-[#e4e4fc] p-5 rounded-2xl flex flex-col justify-center border border-indigo-100/50 shadow-sm hover:-translate-y-1 transition-transform cursor-default">
-          <div className="flex items-center gap-2 text-indigo-700 mb-2">
-            <span className="material-symbols-outlined text-[20px]">cleaning_services</span>
-            <span className="text-xs font-black uppercase tracking-wider">Nhân viên trực tuyến</span>
-          </div>
-          <h3 className="text-3xl font-black text-slate-800">{activeStaffCount}</h3>
-        </div>
-        
-        <div className="bg-[#fce5e5] p-5 rounded-2xl flex flex-col justify-center border border-rose-100/50 shadow-sm hover:-translate-y-1 transition-transform cursor-default">
-          <div className="flex items-center gap-2 text-rose-700 mb-2">
-            <span className="material-symbols-outlined text-[20px]">gpp_bad</span>
-            <span className="text-xs font-black uppercase tracking-wider">Tài khoản bị khóa</span>
-          </div>
-          <h3 className="text-3xl font-black text-rose-600">{lockedUsersCount}</h3>
-        </div>
-      </div>
-
-      {/* FOOTER */}
-      <div className="mt-auto pt-6 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-[13px] text-slate-500 font-medium">
-        <p>© 2024 CleanTrust Management. Bảo mật & Tin cậy.</p>
-        <div className="flex gap-6">
-          <button className="hover:text-blue-600 transition-colors">Hỗ trợ kỹ thuật</button>
-          <button className="hover:text-blue-600 transition-colors">Chính sách bảo mật</button>
-        </div>
-      </div>
-
     </div>
   );
 };
