@@ -13,7 +13,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Đăng xuất gọi chung 1 đường link, ai đang login thì người đó bị văng
     Route::post('/dang-xuat', [AuthController::class, 'logout']);
-
+    Route::get('/me',         [AuthController::class, 'me']);
     // Tương lai bạn viết thêm các API ở đây: Lấy thông tin user, đổi mật khẩu...
     
 });

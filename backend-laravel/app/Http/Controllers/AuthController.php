@@ -1,5 +1,5 @@
 <?php
-
+// app/Http/Controllers/AuthController.php
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -12,46 +12,61 @@ use Illuminate\Support\Facades\DB;
 class AuthController extends Controller
 {
     // ==========================================
-    // 1. ĐĂNG KÝ (Chỉ dành cho Khách hàng)
+    // 1. ĐĂNG KÝ KHÁCH HÀNG
     // ==========================================
     public function registerKhachHang(Request $request)
     {
+        // Migration: TaiKhoan dùng so_dien_thoai là unique login
         $request->validate([
-            'ten_dang_nhap' => 'required|unique:TaiKhoan,ten_dang_nhap',
-            'mat_khau' => 'required|min:6',
-            'ho_ten' => 'required',
-            'so_dien_thoai' => 'required|unique:KhachHang,so_dien_thoai',
+            'so_dien_thoai' => 'required|unique:TaiKhoan,so_dien_thoai|max:15',
+            'mat_khau'      => 'required|min:6|confirmed', // confirmed = cần thêm mat_khau_confirmation
+            'ho_ten'        => 'required|max:150',
+            'email'         => 'nullable|email|max:100',
+        ], [
+            'so_dien_thoai.required' => 'Vui lòng nhập số điện thoại.',
+            'so_dien_thoai.unique'   => 'Số điện thoại này đã được đăng ký.',
+            'mat_khau.min'           => 'Mật khẩu phải có ít nhất 6 ký tự.',
+            'mat_khau.confirmed'     => 'Xác nhận mật khẩu không khớp.',
+            'ho_ten.required'        => 'Vui lòng nhập họ tên.',
         ]);
 
-        // Dùng Transaction để đảm bảo: Nếu tạo Khách Hàng lỗi thì rollback không tạo Tài Khoản luôn
         DB::beginTransaction();
         try {
-            // 1. Tạo tài khoản trước
+            // Bước 1: Tạo TaiKhoan (bảng gốc)
             $taiKhoan = TaiKhoan::create([
-                'ten_dang_nhap' => $request->ten_dang_nhap,
-                'mat_khau' => Hash::make($request->mat_khau), // Mã hóa mật khẩu
-                'loai_tai_khoan' => 'khach_hang', // Giả sử bạn có cột này
-                'trang_thai' => 'hoat_dong'
+                'so_dien_thoai'  => $request->so_dien_thoai,
+                'mat_khau'       => Hash::make($request->mat_khau),
+                'ho_ten'         => $request->ho_ten,
+                'email'          => $request->email,
+                // Enum đúng với migration
+                'loai_tai_khoan' => 'KhachHang',
+                'trang_thai'     => 'HoatDong',
             ]);
 
-            // 2. Tạo Profile Khách hàng gắn với tài khoản trên
-            $khachHang = KhachHang::create([
+            // Bước 2: Tạo bản ghi KhachHang gắn với TaiKhoan
+            // (KhachHang chỉ có tai_khoan_id theo migration của bạn)
+            KhachHang::create([
                 'tai_khoan_id' => $taiKhoan->id,
-                'ho_ten' => $request->ho_ten,
-                'so_dien_thoai' => $request->so_dien_thoai,
-                // Thêm email hoặc các cột khác nếu bạn có
+            ]);
+
+            // Bước 3: Tạo ví tiền tự động khi đăng ký
+            $taiKhoan->viTien()->create([
+                'so_du' => 0.00,
             ]);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Đăng ký tài khoản thành công!',
-                'user' => $khachHang
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Lỗi hệ thống: ' . $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Lỗi hệ thống, vui lòng thử lại.',
+                // Chỉ bật dòng dưới khi dev, tắt khi production
+                // 'debug'   => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -61,22 +76,56 @@ class AuthController extends Controller
     public function loginKhachHang(Request $request)
     {
         $request->validate([
-            'ten_dang_nhap' => 'required',
-            'mat_khau' => 'required',
+            'so_dien_thoai' => 'required',
+            'mat_khau'      => 'required',
+        ], [
+            'so_dien_thoai.required' => 'Vui lòng nhập số điện thoại.',
+            'mat_khau.required'      => 'Vui lòng nhập mật khẩu.',
         ]);
 
-        $taiKhoan = TaiKhoan::where('ten_dang_nhap', $request->ten_dang_nhap)->has('khachHang')->first();
+        // Chỉ lấy tài khoản có quan hệ KhachHang (tránh NhanVien login nhầm vào đây)
+        $taiKhoan = TaiKhoan::with('khachHang')
+            ->where('so_dien_thoai', $request->so_dien_thoai)
+            ->has('khachHang')
+            ->first();
 
+        // Kiểm tra tồn tại + mật khẩu — dùng chung 1 message để tránh lộ thông tin
         if (!$taiKhoan || !Hash::check($request->mat_khau, $taiKhoan->mat_khau)) {
-            return response()->json(['message' => 'Sai tài khoản hoặc mật khẩu'], 401);
+            return response()->json([
+                'message' => 'Số điện thoại hoặc mật khẩu không đúng.',
+            ], 401);
         }
+
+        // Kiểm tra trạng thái tài khoản (đúng enum trong migration)
+        if ($taiKhoan->trang_thai === 'BiKhoa') {
+            return response()->json([
+                'message' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.',
+            ], 403);
+        }
+
+        if ($taiKhoan->trang_thai === 'ChoXacMinh') {
+            return response()->json([
+                'message' => 'Tài khoản chưa được xác minh. Vui lòng kiểm tra SMS/Email.',
+            ], 403);
+        }
+
+        // Xóa token cũ trước khi tạo mới (tránh token rác tích tụ)
+        $taiKhoan->tokens()->delete();
 
         $token = $taiKhoan->createToken('KhachHangToken', ['role:khach-hang'])->plainTextToken;
 
         return response()->json([
-            'message' => 'Đăng nhập thành công',
-            'token' => $token,
-            'user' => $taiKhoan->khachHang
+            'message' => 'Đăng nhập thành công!',
+            'token'   => $token,
+            'role'    => 'khach-hang',
+            'user'    => [
+                'id'             => $taiKhoan->khachHang->id,
+                'tai_khoan_id'   => $taiKhoan->id,
+                'ho_ten'         => $taiKhoan->ho_ten,
+                'so_dien_thoai'  => $taiKhoan->so_dien_thoai,
+                'email'          => $taiKhoan->email,
+                'avatar'         => $taiKhoan->avatar,
+            ],
         ]);
     }
 
@@ -86,22 +135,43 @@ class AuthController extends Controller
     public function loginNhanVien(Request $request)
     {
         $request->validate([
-            'ten_dang_nhap' => 'required',
-            'mat_khau' => 'required',
+            'so_dien_thoai' => 'required',
+            'mat_khau'      => 'required',
         ]);
 
-        $taiKhoan = TaiKhoan::where('ten_dang_nhap', $request->ten_dang_nhap)->has('nhanVien')->first();
+        $taiKhoan = TaiKhoan::with('nhanVien')
+            ->where('so_dien_thoai', $request->so_dien_thoai)
+            ->has('nhanVien')
+            ->first();
 
         if (!$taiKhoan || !Hash::check($request->mat_khau, $taiKhoan->mat_khau)) {
-            return response()->json(['message' => 'Sai tài khoản hoặc mật khẩu'], 401);
+            return response()->json([
+                'message' => 'Số điện thoại hoặc mật khẩu không đúng.',
+            ], 401);
         }
+
+        if ($taiKhoan->trang_thai === 'BiKhoa') {
+            return response()->json([
+                'message' => 'Tài khoản của bạn đã bị khóa.',
+            ], 403);
+        }
+
+        $taiKhoan->tokens()->delete();
 
         $token = $taiKhoan->createToken('NhanVienToken', ['role:nhan-vien'])->plainTextToken;
 
         return response()->json([
-            'message' => 'Đăng nhập thành công',
-            'token' => $token,
-            'user' => $taiKhoan->nhanVien
+            'message' => 'Đăng nhập thành công!',
+            'token'   => $token,
+            'role'    => 'nhan-vien',
+            'user'    => [
+                'id'            => $taiKhoan->nhanVien->id,
+                'tai_khoan_id'  => $taiKhoan->id,
+                'ho_ten'        => $taiKhoan->ho_ten,
+                'so_dien_thoai' => $taiKhoan->so_dien_thoai,
+                'avatar'        => $taiKhoan->avatar,
+                'danh_gia_sao'  => $taiKhoan->nhanVien->danh_gia_sao_trung_binh,
+            ],
         ]);
     }
 
@@ -111,22 +181,39 @@ class AuthController extends Controller
     public function loginAdmin(Request $request)
     {
         $request->validate([
-            'username' => 'required',
-            'password' => 'required',
+            // Migration dùng ten_dang_nhap, không phải username
+            'ten_dang_nhap' => 'required',
+            'mat_khau'      => 'required',
         ]);
 
-        $admin = TaiKhoanAdmin::where('username', $request->username)->first();
+        // TaiKhoanAdmin dùng bảng riêng, không liên quan TaiKhoan
+        $admin = TaiKhoanAdmin::where('ten_dang_nhap', $request->ten_dang_nhap)->first();
 
-        if (!$admin || !Hash::check($request->password, $admin->password)) {
-            return response()->json(['message' => 'Sai tài khoản hoặc mật khẩu'], 401);
+        if (!$admin || !Hash::check($request->mat_khau, $admin->mat_khau)) {
+            return response()->json([
+                'message' => 'Tài khoản hoặc mật khẩu không đúng.',
+            ], 401);
         }
+
+        if (!$admin->trang_thai) {
+            return response()->json([
+                'message' => 'Tài khoản admin đã bị vô hiệu hóa.',
+            ], 403);
+        }
+
+        $admin->tokens()->delete();
 
         $token = $admin->createToken('AdminToken', ['role:admin'])->plainTextToken;
 
         return response()->json([
-            'message' => 'Đăng nhập Admin thành công',
-            'token' => $token,
-            'user' => $admin
+            'message' => 'Đăng nhập thành công!',
+            'token'   => $token,
+            'role'    => 'admin',
+            'user'    => [
+                'id'       => $admin->id,
+                'ho_ten'   => $admin->ho_ten,
+                'quyen_han' => $admin->quyen_han, // Admin / Manager / CSKH
+            ],
         ]);
     }
 
@@ -135,12 +222,56 @@ class AuthController extends Controller
     // ==========================================
     public function logout(Request $request)
     {
-        // Nhờ Sanctum, nó tự biết ai đang gọi API để xóa đúng cái token của người đó.
-        // Chỉ cần 1 dòng này là dọn dẹp sạch sẽ chìa khóa trên server!
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Đăng xuất thành công!'
+            'message' => 'Đăng xuất thành công!',
+        ]);
+    }
+
+    // Thêm vào AuthController.php
+    public function me(Request $request)
+    {
+        $user = $request->user(); // TaiKhoan hoặc TaiKhoanAdmin
+
+        // Phân biệt loại user qua abilities của token
+        $abilities = $user->currentAccessToken()->abilities;
+
+        if (in_array('role:admin', $abilities)) {
+            return response()->json([
+                'role' => 'admin',
+                'user' => [
+                    'id'        => $user->id,
+                    'ho_ten'    => $user->ho_ten,
+                    'quyen_han' => $user->quyen_han,
+                ],
+            ]);
+        }
+
+        if (in_array('role:nhan-vien', $abilities)) {
+            $user->load('nhanVien');
+            return response()->json([
+                'role' => 'nhan-vien',
+                'user' => [
+                    'id'            => $user->nhanVien->id,
+                    'ho_ten'        => $user->ho_ten,
+                    'so_dien_thoai' => $user->so_dien_thoai,
+                    'avatar'        => $user->avatar,
+                ],
+            ]);
+        }
+
+        // Mặc định: khach-hang
+        $user->load('khachHang');
+        return response()->json([
+            'role' => 'khach-hang',
+            'user' => [
+                'id'            => $user->khachHang->id,
+                'ho_ten'        => $user->ho_ten,
+                'so_dien_thoai' => $user->so_dien_thoai,
+                'email'         => $user->email,
+                'avatar'        => $user->avatar,
+            ],
         ]);
     }
 }
