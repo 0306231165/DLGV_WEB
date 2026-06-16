@@ -8,17 +8,11 @@ use Laravel\Sanctum\HasApiTokens;
 
 class TaiKhoan extends Model
 {
-<<<<<<< HEAD
-    use HasFactory;
-=======
-    use HasApiTokens;
-    protected $table = 'TaiKhoan';
-    public $timestamps = false;
-    protected $guarded = ['id'];
->>>>>>> bc959132b4f3ca7340e2370ca1acf33cb45cee8b
+    // Gộp cả 2 thư viện cần thiết vào một dòng
+    use HasApiTokens, HasFactory;
 
-    // Lưu ý: Kiểm tra lại tên bảng chính xác trong DB của bạn là 'taikhoan' hay 'TaiKhoan' nhé
-    protected $table = 'TaiKhoan';
+    // Tên bảng (nên để chữ thường cho an toàn trên mọi hệ điều hành)
+    protected $table = 'taikhoan';
 
     // Tắt tính năng tự động cập nhật created_at và updated_at
     public $timestamps = false;
@@ -37,7 +31,9 @@ class TaiKhoan extends Model
         'trang_thai',
     ];
 
-    // Mối quan hệ giữa các bảng
+    // ==========================================
+    // MỐI QUAN HỆ GIỮA CÁC BẢNG
+    // ==========================================
     public function khachHang()
     {
         return $this->hasOne(KhachHang::class, 'tai_khoan_id');

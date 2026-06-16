@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ELITE_STAFFS } from '../../../data/mockStaffs';
+import nhanVienApi from '../../../api/nhanVienApi'; // Đổi import từ mock data sang nhanVienApi tập trung
 
-// Đánh giá mẫu
+// Đánh giá mẫu giữ nguyên để giao diện trực quan và sinh động
 const MOCK_REVIEWS = [
   { id: 'r1', customer: 'Nguyễn Thị A.', rating: 5, text: 'Rất hài lòng với dịch vụ! Nhân viên cẩn thận, tỉ mỉ và rất lịch sự.', date: '20/05/2026' },
   { id: 'r2', customer: 'Trần Văn B.', rating: 5, text: 'Nhà sạch bong kin kít, vượt mong đợi. Chắc chắn sẽ đặt lại!', date: '15/05/2026' },
@@ -13,22 +13,34 @@ const MOCK_REVIEWS = [
 const StaffDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const staff = ELITE_STAFFS.find(s => s.id === id);
 
-  if (!staff) {
-    return (
-      <main className="pt-32 pb-section-padding px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-screen flex flex-col items-center justify-center text-center">
-        <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">person_off</span>
-        <h2 className="font-h2 text-h2 text-on-surface mb-2">Không tìm thấy nhân viên</h2>
-        <p className="text-on-surface-variant mb-6">Nhân viên này có thể đã ngừng hoạt động hoặc không tồn tại.</p>
-        <Link to="/staff" className="px-6 py-3 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary-container transition-colors">
-          ← Quay lại danh sách
-        </Link>
-      </main>
-    );
-  }
+  // ── State quản lý dữ liệu nhân viên từ API ─────────────────────
+  const [staff, setStaff] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // ── Gọi API lấy chi tiết nhân viên khi id thay đổi ───────────────
+  useEffect(() => {
+    const fetchStaffDetail = async () => {
+      try {
+        setLoading(true);
+        // Gọi hàm getStaffDetail từ nhanVienApi tập trung
+        const data = await nhanVienApi.getStaffDetail(id);
+        setStaff(data);
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin chi tiết nhân viên:", error);
+        setStaff(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchStaffDetail();
+    }
+  }, [id]);
 
   const handleBookWithStaff = () => {
+    if (!staff) return;
     navigate('/booking', {
       state: {
         preselectedStaff: {
@@ -42,8 +54,8 @@ const StaffDetailPage = () => {
   };
 
   const renderStars = (rating) => {
-    const full = Math.floor(rating);
-    const hasHalf = rating % 1 >= 0.5;
+    const full = Math.floor(rating || 0);
+    const hasHalf = (rating || 0) % 1 >= 0.5;
     const stars = [];
     for (let i = 0; i < full; i++) {
       stars.push(
@@ -58,6 +70,54 @@ const StaffDetailPage = () => {
     return stars;
   };
 
+  // ── Hiển thị trạng thái đang tải dữ liệu (Loading) ───────────────
+  if (loading) {
+    return (
+      <main className="pt-32 pb-section-padding flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <svg
+            className="animate-spin h-8 w-8 text-primary"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            ></path>
+          </svg>
+          <p className="text-body-lg text-on-surface-variant">
+            Đang tải thông tin chi tiết nhân viên...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Giao diện khi không tìm thấy nhân viên (Lỗi 404 từ API) ────────
+  if (!staff) {
+    return (
+      <main className="pt-32 pb-section-padding px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-screen flex flex-col items-center justify-center text-center">
+        <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">person_off</span>
+        <h2 className="font-h2 text-h2 text-on-surface mb-2">Không tìm thấy nhân viên</h2>
+        <p className="text-on-surface-variant mb-6">Nhân viên này có thể đã ngừng hoạt động hoặc không tồn tại trên hệ thống.</p>
+        <Link to="/staff" className="px-6 py-3 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary-container transition-colors">
+          ← Quay lại danh sách
+        </Link>
+      </main>
+    );
+  }
+
+  // ── RENDER GIAO DIỆN CHÍNH KHI ĐÃ CÓ DỮ LIỆU THỰC ─────────────────
   return (
     <main className="pt-32 pb-section-padding px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-screen">
       {/* Breadcrumb */}
@@ -73,7 +133,7 @@ const StaffDetailPage = () => {
         {/* ── MAIN CONTENT ── */}
         <div className="lg:col-span-8 space-y-8">
 
-          {/* Hero Card - GIỮ NGUYÊN HOÀN TOÀN THEO YÊU CẦU */}
+          {/* Hero Card */}
           <section className="glass-card bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-lg">
             <div className="flex flex-col sm:flex-row items-start gap-6">
               <img
@@ -101,7 +161,7 @@ const StaffDetailPage = () => {
                   </div>
                   <div className="flex items-center gap-2 text-on-surface-variant">
                     <span className="material-symbols-outlined text-primary text-base">task_alt</span>
-                    <span><strong className="text-on-surface">{staff.completedJobs.toLocaleString('vi-VN')}</strong> công việc hoàn thành</span>
+                    <span><strong className="text-on-surface">{staff.completedJobs?.toLocaleString('vi-VN')}</strong> công việc hoàn thành</span>
                   </div>
                   <div className="flex items-center gap-2 text-on-surface-variant">
                     <span className="material-symbols-outlined text-primary text-base">reviews</span>
@@ -112,7 +172,7 @@ const StaffDetailPage = () => {
             </div>
           </section>
 
-          {/* Kỹ năng & Chuyên môn - ĐÃ ĐẢO MÀU GỐC */}
+          {/* Kỹ năng & Chuyên môn */}
           <section className="glass-card bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/30">
             <h2 className="font-h3 text-h3 text-on-surface mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">insights</span>
@@ -120,7 +180,7 @@ const StaffDetailPage = () => {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { icon: 'task_alt', label: 'Công việc hoàn thành', value: staff.completedJobs.toLocaleString('vi-VN'), color: 'text-primary' },
+                { icon: 'task_alt', label: 'Công việc hoàn thành', value: staff.completedJobs?.toLocaleString('vi-VN'), color: 'text-primary' },
                 { icon: 'reviews', label: 'Đánh giá từ khách', value: staff.reviews, color: 'text-tertiary' },
                 { icon: 'work_history', label: 'Kinh nghiệm', value: staff.experience, color: 'text-secondary' },
               ].map((item, idx) => (
@@ -135,7 +195,7 @@ const StaffDetailPage = () => {
             </div>
           </section>
 
-          {/* Đánh giá - ĐÃ ĐẢO MÀU GỐC */}
+          {/* Đánh giá */}
           <section className="glass-card bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/30">
             <h2 className="font-h3 text-h3 text-on-surface mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">rate_review</span>
@@ -189,7 +249,7 @@ const StaffDetailPage = () => {
           </section>
         </div>
 
-        {/* ── SIDEBAR - ĐÃ ĐẢO MÀU GỐC ── */}
+        {/* ── SIDEBAR ── */}
         <aside className="lg:col-span-4 sticky top-28">
           <div className="glass-card bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant/30 overflow-hidden">
             {/* Header */}
@@ -221,7 +281,7 @@ const StaffDetailPage = () => {
                 {[
                   { icon: 'diamond', label: 'Nhân viên Cao cấp', desc: 'Đánh giá ≥ 4.9 sao' },
                   { icon: 'verified_user', label: 'Uy tín đảm bảo', desc: 'Đã xác minh bởi CleanTrust' },
-                  { icon: 'workspace_premium', label: staff.experience + ' kinh nghiệm', desc: `${staff.completedJobs.toLocaleString('vi-VN')}+ công việc` },
+                  { icon: 'workspace_premium', label: staff.experience + ' kinh nghiệm', desc: `${staff.completedJobs?.toLocaleString('vi-VN')}+ công việc` },
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-start gap-3 text-sm">
                     <span className="material-symbols-outlined text-primary text-lg mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>

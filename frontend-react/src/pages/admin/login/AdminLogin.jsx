@@ -1,46 +1,59 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axiosClient from '../../../api/axiosClient'; // LƯU Ý: Chỉnh lại đường dẫn import này cho khớp với máy bạn (nếu báo lỗi)
 
 const AdminLogin = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Khởi tạo hàm chuyển hướng của React Router
   const navigate = useNavigate();
 
-  // Xử lý khi nhấn nút Đăng nhập
-  const handleLogin = (e) => {
+  // =====================================
+  // HÀM XỬ LÝ ĐĂNG NHẬP THẬT (GỌI API)
+  // =====================================
+  const handleLogin = async (e) => {
     e.preventDefault();
+    
+    if (!credentials.email || !credentials.password) {
+      alert('❌ Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!');
+      return;
+    }
+
     setIsLoading(true);
     
-    // Giả lập thời gian chờ xác thực từ máy chủ (1.5 giây)
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Gọi API sang Laravel (Đã đổi tên thành dang-nhap cho khớp với file api_auth.php của bạn)
+      const response = await axiosClient.post('/admin/dang-nhap', {
+        email: credentials.email, 
+        password: credentials.password 
+      });
+
+      // Nếu thành công -> Lưu Token vào trình duyệt
+      localStorage.setItem('ADMIN_TOKEN', response.token);
+      localStorage.setItem('ADMIN_USER', JSON.stringify(response.user));
+
+      // Đá văng sang trang Dashboard
+      navigate('/admin/dashboard'); 
       
-      // Kiểm tra nếu người dùng đã nhập đủ email và password
-      if (credentials.email && credentials.password) {
-        
-        // CHUYỂN HƯỚNG CHUẨN XÁC VÀO TRANG DASHBOARD THEO ĐÚNG ROUTER CỦA BẠN
-        navigate('/admin/dashboard'); 
-        
-      } else {
-        alert('❌ Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!');
-      }
-    }, 1500);
+    } catch (error) {
+      // Bắt lỗi (Ví dụ: Sai mật khẩu) từ Laravel gửi về
+      const errorMessage = error.response?.data?.message || 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại!';
+      alert('❌ ' + errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex bg-slate-50">
       
-      {/* ================= CỘT TRÁI (BRANDING) - Ẩn trên Mobile ================= */}
+      {/* ================= CỘT TRÁI (BRANDING) ================= */}
       <div className="hidden lg:flex w-1/2 bg-[#0f2857] text-white flex-col justify-center items-center relative overflow-hidden">
-        {/* Vòng tròn trang trí mờ ảo */}
         <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
 
         <div className="relative z-10 flex flex-col items-center text-center px-12">
-          {/* Logo / Icon */}
           <div className="w-20 h-20 bg-white text-[#0f2857] rounded-2xl flex items-center justify-center shadow-2xl mb-8">
             <span className="material-symbols-outlined text-[40px]">shield_person</span>
           </div>
@@ -50,7 +63,6 @@ const AdminLogin = () => {
           </p>
         </div>
         
-        {/* Footer của cột trái */}
         <div className="absolute bottom-8 text-sm text-blue-300 font-medium">
           © {new Date().getFullYear()} CleanTrust Home Services.
         </div>
@@ -58,7 +70,6 @@ const AdminLogin = () => {
 
       {/* ================= CỘT PHẢI (FORM ĐĂNG NHẬP) ================= */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative">
-        {/* Lớp nền mờ giả lập bóng (chỉ hiện rõ trên mobile để tách biệt với nền) */}
         <div className="absolute inset-0 bg-white lg:bg-transparent shadow-[0_0_40px_rgba(0,0,0,0.05)] lg:shadow-none z-0"></div>
 
         <div className="w-full max-w-md relative z-10 bg-white lg:bg-transparent p-8 lg:p-0 rounded-3xl lg:rounded-none shadow-xl lg:shadow-none">
@@ -72,7 +83,7 @@ const AdminLogin = () => {
             
             {/* Input Email / Username */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Tên đăng nhập hoặc Email</label>
+              <label className="text-sm font-bold text-slate-700">Tên đăng nhập</label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
                   <span className="material-symbols-outlined text-[20px]">person</span>
@@ -80,7 +91,7 @@ const AdminLogin = () => {
                 <input 
                   type="text" 
                   required
-                  placeholder="admin@cleantrust.com"
+                  placeholder="Nhập admin..."
                   value={credentials.email}
                   onChange={(e) => setCredentials({...credentials, email: e.target.value})}
                   className="w-full pl-11 pr-4 py-3.5 bg-slate-50 lg:bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
@@ -92,9 +103,6 @@ const AdminLogin = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-slate-700">Mật khẩu</label>
-                <button type="button" className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors">
-                  Quên mật khẩu?
-                </button>
               </div>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
@@ -108,7 +116,6 @@ const AdminLogin = () => {
                   onChange={(e) => setCredentials({...credentials, password: e.target.value})}
                   className="w-full pl-11 pr-12 py-3.5 bg-slate-50 lg:bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
                 />
-                {/* Nút Ẩn/Hiện mật khẩu */}
                 <button 
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -119,18 +126,6 @@ const AdminLogin = () => {
                   </span>
                 </button>
               </div>
-            </div>
-
-            {/* Checkbox Ghi nhớ đăng nhập */}
-            <div className="flex items-center">
-              <input 
-                type="checkbox" 
-                id="remember" 
-                className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
-              />
-              <label htmlFor="remember" className="ml-2 text-sm font-medium text-slate-600 cursor-pointer select-none">
-                Ghi nhớ đăng nhập trên thiết bị này
-              </label>
             </div>
 
             {/* Nút Đăng nhập */}

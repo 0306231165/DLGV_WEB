@@ -9,15 +9,12 @@ class AdminDashboardController extends Controller
 {
     public function recentOrders()
     {
-        // Sử dụng JOIN giữa bảng 'donhang' và 'taikhoan' (vì dữ liệu khách hàng nằm ở bảng taikhoan)
-        // Chú ý: 
-        // 1. Nếu cột liên kết không phải 'khach_hang_id', hãy sửa lại trong join()
-        // 2. Chúng ta lấy 'ho_ten' từ bảng 'taikhoan'
+        // Sử dụng đúng cột 'khach_hang_id' như trong ảnh 3
         $orders = DB::table('donhang')
             ->join('taikhoan', 'donhang.khach_hang_id', '=', 'taikhoan.id') 
             ->select(
                 'donhang.id', 
-                'donhang.trang_thai_don', 
+                'donhang.trang_thai_don', // Sử dụng đúng tên cột như trong ảnh 2
                 'donhang.ngay_tao', 
                 'taikhoan.ho_ten'
             )
@@ -27,20 +24,22 @@ class AdminDashboardController extends Controller
 
         $formattedOrders = $orders->map(function ($order) {
             
-            // Xử lý logic trạng thái đơn hàng
+            // Lấy trạng thái đúng từ ảnh 2
             $status = $order->trang_thai_don; 
             $displayStatus = 'Đang chờ';
             
-            if ($status === 'HoanThanh') {
+            // So sánh chuẩn xác với chữ 'DaHoanThanh' và 'DaHuy'
+            if ($status === 'DaHoanThanh') {
                 $displayStatus = 'Hoàn thành';
             } elseif ($status === 'DaHuy') {
                 $displayStatus = 'Đã hủy';
             }
 
             return [
-                'ma_don' => 'ADM ' . str_pad($order->id, 7, '0', STR_PAD_LEFT), 
-                'khach_hang' => $order->ho_ten ?? 'Khách hàng ẩn', 
-                'ngay_dat' => date('m/d/Y H:i:s', strtotime($order->ngay_tao)),
+                // Trả về đúng ID thật từ MySQL (Ví dụ: ĐH-1, ĐH-2...)
+                'ma_don' => 'ĐH-' . $order->id, 
+                'khach_hang' => $order->ho_ten, 
+                'ngay_dat' => date('d/m/Y H:i:s', strtotime($order->ngay_tao)),
                 'trang_thai' => $displayStatus,
             ];
         });

@@ -2,13 +2,22 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Foundation\Auth\User as Authenticatable; // Dùng Authenticatable để có thể Đăng nhập
+use Laravel\Sanctum\HasApiTokens; // Cấp Token sau khi đăng nhập thành công
 
-class TaiKhoanAdmin extends Model
+class TaiKhoanAdmin extends Authenticatable
 {
     use HasApiTokens;
-    protected $table = 'TaiKhoanAdmin';
+
+    // Chỉ định đích danh tên bảng
+    protected $table = 'taikhoanadmin';
+
+    // Bảng này không có created_at, updated_at
     public $timestamps = false;
-    protected $guarded = ['id'];
+
+    // BÁO CHO LARAVEL BIẾT: "Cột mật khẩu của tôi tên là 'mat_khau' chứ không phải 'password' như mặc định"
+    public function getAuthPassword()
+    {
+        return $this->mat_khau;
+    }
 }

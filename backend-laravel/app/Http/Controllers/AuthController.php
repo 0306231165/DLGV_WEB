@@ -180,40 +180,35 @@ class AuthController extends Controller
     // ==========================================
     public function loginAdmin(Request $request)
     {
-        $request->validate([
-            // Migration dùng ten_dang_nhap, không phải username
-            'ten_dang_nhap' => 'required',
-            'mat_khau'      => 'required',
-        ]);
+        // 1. Tìm người dùng trong DB dựa vào tên đăng nhập (react gửi lên là 'email')
+        $admin = TaiKhoanAdmin::where('ten_dang_nhap', $request->email)->first();
 
-        // TaiKhoanAdmin dùng bảng riêng, không liên quan TaiKhoan
-        $admin = TaiKhoanAdmin::where('ten_dang_nhap', $request->ten_dang_nhap)->first();
-
-        if (!$admin || !Hash::check($request->mat_khau, $admin->mat_khau)) {
+        // 2. Kiểm tra tài khoản có tồn tại và Mật khẩu có khớp không (Dùng Hash::check vì pass trong DB đang mã hóa)
+        if (!$admin || !Hash::check($request->password, $admin->mat_khau)) {
             return response()->json([
-                'message' => 'Tài khoản hoặc mật khẩu không đúng.',
+                'message' => 'Tên đăng nhập hoặc mật khẩu không chính xác!'
             ], 401);
         }
 
-        if (!$admin->trang_thai) {
+        // 3. Kiểm tra xem tài khoản có bị khóa không (trang_thai = 1 là hoạt động)
+        if ($admin->trang_thai != 1) {
             return response()->json([
-                'message' => 'Tài khoản admin đã bị vô hiệu hóa.',
+                'message' => 'Tài khoản của bạn đã bị khóa!'
             ], 403);
         }
 
-        $admin->tokens()->delete();
+        // 4. Đăng nhập thành công -> Tạo 1 thẻ Token cho phép ra vào hệ thống
+        $token = $admin->createToken('admin_token', ['role:admin'])->plainTextToken;
 
-        $token = $admin->createToken('AdminToken', ['role:admin'])->plainTextToken;
-
+        // Trả Token và thông tin user về cho React
         return response()->json([
-            'message' => 'Đăng nhập thành công!',
-            'token'   => $token,
-            'role'    => 'admin',
-            'user'    => [
-                'id'       => $admin->id,
-                'ho_ten'   => $admin->ho_ten,
-                'quyen_han' => $admin->quyen_han, // Admin / Manager / CSKH
-            ],
+            'message' => 'Đăng nhập thành công',
+            'token' => $token,
+            'user' => [
+                'id' => $admin->id,
+                'ho_ten' => $admin->ho_ten,
+                'quyen_han' => $admin->quyen_han,
+            ]
         ]);
     }
 

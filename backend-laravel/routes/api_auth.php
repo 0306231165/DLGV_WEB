@@ -6,7 +6,9 @@ use App\Http\Controllers\AuthController;
 Route::post('/khach-hang/dang-ky', [AuthController::class, 'registerKhachHang']);
 Route::post('/khach-hang/dang-nhap', [AuthController::class, 'loginKhachHang']);
 Route::post('/nhan-vien/dang-nhap', [AuthController::class, 'loginNhanVien']);
-Route::post('/admin/dang-nhap', [AuthController::class, 'loginAdmin']);
+
+// Đăng nhập Admin 
+Route::post('/admin/login', [AuthController::class, 'loginAdmin']);
 
 // NHÓM API BẮT BUỘC ĐÃ ĐĂNG NHẬP MỚI ĐƯỢC GỌI (Protected)
 Route::middleware('auth:sanctum')->group(function () {
