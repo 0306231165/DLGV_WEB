@@ -11,16 +11,14 @@ const AdminAccount = () => {
   const [filterRole, setFilterRole] = useState('Tất cả Vai trò');
   const [filterStatus, setFilterStatus] = useState('Tất cả Trạng thái');
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 6; // Số người trên 1 trang
+  const usersPerPage = 6; 
 
   // 3. STATE MODAL THÊM TÀI KHOẢN
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Khớp với các cột trong DB của bạn
   const [newUser, setNewUser] = useState({ ho_ten: '', loai_tai_khoan: 'KhachHang', email: '', mat_khau: '', so_dien_thoai: '' });
 
   // ================= CÁC HÀM GỌI API LARAVEL =================
 
-  // Hàm lấy danh sách
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
@@ -37,23 +35,22 @@ const AdminAccount = () => {
     fetchUsers();
   }, []);
 
-  // Hàm Thêm tài khoản mới
+  // Hàm Thêm tài khoản mới (Đã kết nối MySQL thật)
   const handleAddNewUserSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Gọi API POST sang Laravel
       await axiosClient.post('/admin/users', newUser);
       alert(`✅ Đã thêm tài khoản "${newUser.ho_ten}" thành công!`);
       setIsModalOpen(false);
-      setNewUser({ ho_ten: '', loai_tai_khoan: 'KhachHang', email: '', mat_khau: '', so_dien_thoai: '' }); // Reset form
-      fetchUsers(); // Tải lại danh sách
+      setNewUser({ ho_ten: '', loai_tai_khoan: 'KhachHang', email: '', mat_khau: '', so_dien_thoai: '' }); 
+      fetchUsers(); 
     } catch (error) {
       console.error("Lỗi khi thêm người dùng:", error);
-      alert("❌ Có lỗi xảy ra khi thêm tài khoản (Vui lòng kiểm tra Laravel)!");
+      alert("❌ Có lỗi xảy ra khi thêm tài khoản (Kiểm tra lại dữ liệu nhập)!");
     }
   };
 
-  // Hàm Khóa / Mở khóa tài khoản
+  // Hàm Khóa / Mở khóa tài khoản (Đã kết nối MySQL thật)
   const handleToggleStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === 'Hoạt động' ? 'DaKhoa' : 'HoatDong';
     const confirmMsg = currentStatus === 'Hoạt động' ? 'Bạn có chắc muốn KHÓA tài khoản này?' : 'Bạn có muốn MỞ KHÓA tài khoản này?';
@@ -61,12 +58,25 @@ const AdminAccount = () => {
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      // Gọi API PATCH sang Laravel để đổi trạng thái
       await axiosClient.patch(`/admin/users/${id}/status`, { trang_thai: newStatus });
-      fetchUsers(); // Tải lại bảng sau khi đổi
+      fetchUsers(); 
     } catch (error) {
       console.error("Lỗi khi cập nhật trạng thái:", error);
       alert("❌ Cập nhật thất bại!");
+    }
+  };
+
+  // Hàm XÓA tài khoản (Tính năng mới)
+  const handleDeleteUser = async (id, name) => {
+    if (!window.confirm(`⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản "${name}" không? Hành động này sẽ xóa dữ liệu khỏi cơ sở dữ liệu!`)) return;
+
+    try {
+      await axiosClient.delete(`/admin/users/${id}`);
+      alert(`✅ Đã xóa tài khoản "${name}" thành công!`);
+      fetchUsers(); // Tải lại bảng sau khi xóa
+    } catch (error) {
+      console.error("Lỗi khi xóa tài khoản:", error);
+      alert("❌ Xóa thất bại! Tài khoản này có thể đang bị ràng buộc bởi các đơn hàng hoặc ví tiền trong hệ thống.");
     }
   };
 
@@ -94,7 +104,6 @@ const AdminAccount = () => {
     return matchSearch && matchRole && matchStatus;
   });
 
-  // Logic Phân trang (Cắt lát mảng dữ liệu)
   const staticTotalPages = Math.ceil(filteredUsers.length / usersPerPage) || 1; 
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
@@ -229,11 +238,21 @@ const AdminAccount = () => {
                     </td>
                     <td className="py-4 pr-6">
                       <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100">
+                        {/* Nút Khóa / Mở Khóa */}
                         {user.status === 'Hoạt động' ? (
-                           <button onClick={() => handleToggleStatus(user.id, user.status)} className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 font-bold text-xs hover:bg-rose-100">Khóa</button>
+                           <button onClick={() => handleToggleStatus(user.id, user.status)} className="px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 font-bold text-xs hover:bg-orange-100">Khóa</button>
                         ) : (
                            <button onClick={() => handleToggleStatus(user.id, user.status)} className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-xs hover:bg-emerald-100">Mở khóa</button>
                         )}
+                        
+                        {/* Nút XÓA MỚI THÊM VÀO ĐÂY */}
+                        <button 
+                          onClick={() => handleDeleteUser(user.id, user.name)} 
+                          className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 font-bold text-xs hover:bg-rose-100 flex items-center justify-center"
+                          title="Xóa tài khoản"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
                       </div>
                     </td>
                   </tr>

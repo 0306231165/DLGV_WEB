@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axiosClient from '../../../api/axiosClient'; // LƯU Ý: Chỉnh lại đường dẫn import này cho khớp với máy bạn (nếu báo lỗi)
+import axios from 'axios'; // Dùng axios mặc định thay vì axiosClient để test lỗi
 
 const AdminLogin = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -10,7 +10,7 @@ const AdminLogin = () => {
   const navigate = useNavigate();
 
   // =====================================
-  // HÀM XỬ LÝ ĐĂNG NHẬP THẬT (GỌI API)
+  // HÀM XỬ LÝ ĐĂNG NHẬP (ÉP ĐƯỜNG DẪN TUYỆT ĐỐI)
   // =====================================
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,22 +23,24 @@ const AdminLogin = () => {
     setIsLoading(true);
     
     try {
-      // Gọi API sang Laravel (Đã đổi tên thành dang-nhap cho khớp với file api_auth.php của bạn)
-      const response = await axiosClient.post('/admin/dang-nhap', {
+      // Gọi thẳng vào http://127.0.0.1:8000 (Bỏ qua file cấu hình axiosClient)
+      const response = await axios.post('http://127.0.0.1:8000/api/admin/dang-nhap', {
         email: credentials.email, 
         password: credentials.password 
       });
 
-      // Nếu thành công -> Lưu Token vào trình duyệt
-      localStorage.setItem('ADMIN_TOKEN', response.token);
-      localStorage.setItem('ADMIN_USER', JSON.stringify(response.user));
+      // Lưu Token vào trình duyệt (Với axios thường, dữ liệu nằm trong response.data)
+      localStorage.setItem('ADMIN_TOKEN', response.data.token);
+      localStorage.setItem('ADMIN_USER', JSON.stringify(response.data.user));
 
       // Đá văng sang trang Dashboard
       navigate('/admin/dashboard'); 
       
     } catch (error) {
-      // Bắt lỗi (Ví dụ: Sai mật khẩu) từ Laravel gửi về
-      const errorMessage = error.response?.data?.message || 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại!';
+      // In lỗi màu đỏ ra thẳng tab Console (F12 -> Console) để dễ nhìn
+      console.error("LỖI CHI TIẾT TỪ MÁY CHỦ:", error);
+      
+      const errorMessage = error.response?.data?.message || 'Không thể kết nối đến máy chủ. Hãy xem lỗi ở tab Console (F12)!';
       alert('❌ ' + errorMessage);
     } finally {
       setIsLoading(false);
