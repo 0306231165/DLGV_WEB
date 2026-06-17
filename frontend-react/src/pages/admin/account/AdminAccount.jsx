@@ -36,7 +36,7 @@ const AdminAccount = () => {
   }, []);
 
   // Hàm Thêm tài khoản mới (Đã kết nối MySQL thật)
-  const handleAddNewUserSubmit = async (e) => {
+ const handleAddNewUserSubmit = async (e) => {
     e.preventDefault();
     try {
       await axiosClient.post('/admin/users', newUser);
@@ -45,14 +45,15 @@ const AdminAccount = () => {
       setNewUser({ ho_ten: '', loai_tai_khoan: 'KhachHang', email: '', mat_khau: '', so_dien_thoai: '' }); 
       fetchUsers(); 
     } catch (error) {
-      console.error("Lỗi khi thêm người dùng:", error);
-      alert("❌ Có lỗi xảy ra khi thêm tài khoản (Kiểm tra lại dữ liệu nhập)!");
+      // ÉP IN RA CÂU LỖI CHI TIẾT TỪ MYSQL LÊN MÀN HÌNH
+      const errorMsg = error.response?.data?.message || 'Lỗi không xác định!';
+      alert("❌ " + errorMsg);
     }
   };
 
   // Hàm Khóa / Mở khóa tài khoản (Đã kết nối MySQL thật)
   const handleToggleStatus = async (id, currentStatus) => {
-    const newStatus = currentStatus === 'Hoạt động' ? 'DaKhoa' : 'HoatDong';
+    const newStatus = currentStatus === 'Hoạt động' ? 'BiKhoa' : 'HoatDong';
     const confirmMsg = currentStatus === 'Hoạt động' ? 'Bạn có chắc muốn KHÓA tài khoản này?' : 'Bạn có muốn MỞ KHÓA tài khoản này?';
 
     if (!window.confirm(confirmMsg)) return;

@@ -9,6 +9,9 @@ const publicApi = {
         return axiosClient.get(`/dich-vu/${id}`);
     },
 
+    getVouchers: () => {
+        return axiosClient.get('/khuyen-mai');
+    },
     
     sendContact: (data) => {
         return axiosClient.post('/gui-lien-he', data);

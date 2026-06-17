@@ -34,6 +34,7 @@ return new class extends Migration
             $table->string('tag_hien_thi', 100)->nullable();
             $table->string('tieu_de', 255);
             $table->text('mo_ta')->nullable();
+            $table->foreignId('nhom_dich_vu_id_ap_dung')->nullable()->constrained('NhomDichVu');
             $table->foreignId('dich_vu_id_ap_dung')->nullable()->constrained('DichVu');
             $table->decimal('gia_tri_don_toi_thieu', 12, 2)->default(0);
             // CHUYỂN SANG ENUM: Cách thức giảm trừ hóa đơn

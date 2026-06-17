@@ -8,7 +8,8 @@ Route::post('/khach-hang/dang-nhap', [AuthController::class, 'loginKhachHang']);
 Route::post('/nhan-vien/dang-nhap', [AuthController::class, 'loginNhanVien']);
 
 // Đăng nhập Admin 
-Route::post('/admin/login', [AuthController::class, 'loginAdmin']);
+// Route::post('/admin/login', [AuthController::class, 'loginAdmin']);
+Route::post('/admin/dang-nhap', [AuthController::class, 'loginAdmin']);
 
 // NHÓM API BẮT BUỘC ĐÃ ĐĂNG NHẬP MỚI ĐƯỢC GỌI (Protected)
 Route::middleware('auth:sanctum')->group(function () {

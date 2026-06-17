@@ -9,44 +9,96 @@ use Illuminate\Http\JsonResponse;
 
 class DichVuController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function indexAdmin(): JsonResponse
     {
-        //
+        // Lấy tất cả dịch vụ (kể cả bị ẩn), kèm theo tên nhóm
+        $dichVu = DichVu::with('nhomDichVu')->orderBy('id', 'asc')->get();
+        return response()->json([
+            'success' => true,
+            'data' => $dichVu
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        try {
+            $validated = $request->validate([
+                'nhom_dich_vu_id' => 'required|exists:NhomDichVu,id',
+                'ten_dich_vu' => 'required|string|max:255',
+                'cap_do_dich_vu' => 'required|in:TieuChuan,CaoCap',
+                'don_gia_co_ban' => 'required|numeric|min:0',
+                'thoi_gian_chuan_co_ban' => 'required|integer|min:0',
+                'mo_ta' => 'nullable|string|max:500',
+                'co_bien_the' => 'boolean'
+            ]);
+
+            $dichVu = DichVu::create([
+                'nhom_dich_vu_id' => $validated['nhom_dich_vu_id'],
+                'ten_dich_vu' => $validated['ten_dich_vu'],
+                'cap_do_dich_vu' => $validated['cap_do_dich_vu'],
+                'don_gia_co_ban' => $validated['don_gia_co_ban'],
+                'thoi_gian_chuan_co_ban' => $validated['thoi_gian_chuan_co_ban'],
+                'mo_ta' => $validated['mo_ta'] ?? null,
+                'co_bien_the' => $validated['co_bien_the'] ?? false,
+                'trang_thai' => true,
+                'is_noi_bat' => false
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Thêm dịch vụ thành công',
+                'data' => $dichVu
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(DichVu $dichVu)
+    public function update(Request $request, $id): JsonResponse
     {
-        //
+        try {
+            $dichVu = DichVu::findOrFail($id);
+
+            $validated = $request->validate([
+                'don_gia_co_ban' => 'required|numeric|min:0',
+            ]);
+
+            $dichVu->update([
+                'don_gia_co_ban' => $validated['don_gia_co_ban'],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật dịch vụ thành công',
+                'data' => $dichVu
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, DichVu $dichVu)
+    public function destroy($id): JsonResponse
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(DichVu $dichVu)
-    {
-        //
+        try {
+            $dichVu = DichVu::findOrFail($id);
+            $dichVu->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Xóa dịch vụ thành công'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể xóa dịch vụ này vì đang được sử dụng.'
+            ], 500);
+        }
     }
 
     public function getServicesPageData(): JsonResponse

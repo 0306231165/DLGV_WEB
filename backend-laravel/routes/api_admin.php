@@ -6,6 +6,7 @@ use App\Http\Controllers\DichVuController;
 use App\Http\Controllers\DonHangController;
 use App\Http\Controllers\AdminAccountController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\KhuyenMaiController;
 
 // --- CÁC ROUTE ĐANG LÀM GIAO DIỆN CHƯA CẦN BẢO MẬT (Để ra ngoài này) ---
 Route::prefix('admin')->group(function () {
@@ -22,7 +23,15 @@ Route::middleware(['auth:sanctum', 'ability:role:admin'])->prefix('admin')->grou
     Route::post('/nhom-dich-vu/them', [NhomDichVuController::class, 'store']);
     Route::put('/nhom-dich-vu/{id}/sua', [NhomDichVuController::class, 'update']);
 
+    Route::get('/dich-vu', [DichVuController::class, 'indexAdmin']);
     Route::post('/dich-vu/them', [DichVuController::class, 'store']);
+    Route::put('/dich-vu/{id}', [DichVuController::class, 'update']);
+    Route::delete('/dich-vu/{id}', [DichVuController::class, 'destroy']);
+
+    Route::get('/khuyen-mai', [KhuyenMaiController::class, 'indexAdmin']);
+    Route::post('/khuyen-mai/them', [KhuyenMaiController::class, 'store']);
+    Route::put('/khuyen-mai/{id}/trang-thai', [KhuyenMaiController::class, 'updateStatus']);
+    Route::delete('/khuyen-mai/{id}', [KhuyenMaiController::class, 'destroy']);
 
     Route::get('/don-hang/tat-ca', [DonHangController::class, 'index']);
     Route::get('/don-hang/{id}/chi-tiet', [DonHangController::class, 'show']);

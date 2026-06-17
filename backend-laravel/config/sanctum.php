@@ -50,7 +50,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => 60 * 24,
+    // 'expiration' => 1,(Test xóa liền 1p) - chạy: php artisan sanctum:prune-expired --hours=0
 
     /*
     |--------------------------------------------------------------------------
