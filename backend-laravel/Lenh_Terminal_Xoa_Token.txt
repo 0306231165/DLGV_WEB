@@ -1,0 +1,5 @@
+php artisan sanctum:prune-expired --hours=24
+
+php artisan sanctum:prune-expired
+
+php artisan sanctum:prune-expired --hours=0
