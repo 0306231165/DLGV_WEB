@@ -10,6 +10,14 @@ class DichVu extends Model
     public $timestamps = false;
     protected $guarded = ['id'];
 
+    // 🌟 QUAN TRỌNG NHẤT: Thêm cast để tự động ép kiểu JSON thành Array
+    protected $casts = [
+        'noi_dung_chi_tiet' => 'array',
+        'is_noi_bat' => 'boolean',
+        'co_bien_the' => 'boolean',
+        'trang_thai' => 'boolean',
+    ];
+
     public function nhomDichVu()
     {
         return $this->belongsTo(NhomDichVu::class, 'nhom_dich_vu_id');

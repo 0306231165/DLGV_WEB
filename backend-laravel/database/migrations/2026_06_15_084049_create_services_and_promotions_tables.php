@@ -23,7 +23,7 @@ return new class extends Migration
             $table->decimal('don_gia_co_ban', 12, 2)->nullable();
             $table->integer('thoi_gian_chuan_co_ban')->nullable(); // Tính bằng phút
             $table->string('mo_ta', 500)->nullable();
-            $table->longText('noi_dung_chi_tiet')->nullable();
+            $table->json('noi_dung_chi_tiet')->nullable();
             $table->boolean('trang_thai')->default(true);
         });
 

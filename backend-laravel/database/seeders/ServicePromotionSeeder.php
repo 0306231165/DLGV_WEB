@@ -14,22 +14,109 @@ class ServicePromotionSeeder extends Seeder
     public function run(): void
     {
         // ══════════════════════════════════════════════════════════════════
+        // Khai báo các đoạn text dùng chung cho tiện
+        $descChung1 = 'Tại CleanTrust, chúng tôi hiểu rằng một không gian sạch sẽ không chỉ mang lại vẻ đẹp thẩm mỹ mà còn bảo vệ sức khỏe cho bạn và những người thân yêu. Gói dịch vụ được thiết kế tỉ mỉ với quy trình chuẩn hóa, sử dụng trang thiết bị hiện đại và dung dịch tẩy rửa an toàn.';
+        $descChung2 = 'Đội ngũ nhân viên của chúng tôi không chỉ được đào tạo bài bản về kỹ năng chuyên môn mà còn thấm nhuần tinh thần tận tâm, chuyên nghiệp, cam kết mang đến sự hài lòng cao nhất. Bạn hoàn toàn có thể yên tâm giao phó không gian của mình cho chúng tôi để tận hưởng những phút giây thảnh thơi trọn vẹn.';
+
+        $taskTieuChuan = [
+            'Quét và lau sàn toàn bộ các phòng',
+            'Lau sạch bụi bẩn trên bề mặt đồ đạc (TV, kệ, bàn ghế)',
+            'Gom rác, thay túi rác và đổ rác đúng nơi quy định',
+            'Vệ sinh bề mặt bếp, lau dọn khu vực nấu nướng',
+            'Chà rửa bồn cầu, bồn rửa mặt, gương trong nhà vệ sinh',
+            'Xếp dọn gọn gàng đồ đạc, đồ chơi, chăn gối',
+        ];
+
+        $taskChuyenSau = [
+            'Tất cả công việc vệ sinh Tiêu chuẩn',
+            'Chà bóng, tẩy ố sàn gạch, đánh bay vết bẩn cứng đầu',
+            'Làm sạch kính cửa sổ (mặt trong và mặt ngoài nếu an toàn)',
+            'Vệ sinh sâu tủ bếp, tẩy dầu mỡ bám lâu ngày',
+            'Lau quạt trần, đèn trang trí và các vị trí trên cao',
+            'Đánh bóng thiết bị vệ sinh, tẩy cặn canxi',
+            'Xử lý bụi mịn, vết sơn, xi măng dư thừa (Dọn sau xây dựng)',
+        ];
+
+        // ══════════════════════════════════════════════════════════════════
         // 9. DichVu
         // ══════════════════════════════════════════════════════════════════
         DB::table('DichVu')->insert([
-            ['id' => 1,  'nhom_dich_vu_id' => 1, 'ten_dich_vu' => 'Dọn dẹp hằng ngày', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => true, 'co_bien_the' => true, 'don_gia_co_ban' => 200000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Quét lau sàn, lau bụi nội thất, dọn rác và vệ sinh bếp, toilet cơ bản.', 'trang_thai' => true],
-            ['id' => 2,  'nhom_dich_vu_id' => 1, 'ten_dich_vu' => 'Dọn dẹp định kỳ', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => true, 'co_bien_the' => true, 'don_gia_co_ban' => 180000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Giữ nhà luôn sạch sẽ với lịch dọn dẹp thường xuyên, tiết kiệm đến 20%.', 'trang_thai' => true],
-            ['id' => 3,  'nhom_dich_vu_id' => 1, 'ten_dich_vu' => 'Tổng vệ sinh chuyên sâu', 'cap_do_dich_vu' => 'CaoCap', 'is_noi_bat' => true, 'co_bien_the' => true, 'don_gia_co_ban' => 450000, 'thoi_gian_chuan_co_ban' => 180, 'mo_ta' => 'Làm sạch toàn diện mọi ngóc ngách, chà sàn, tẩy ố nhà vệ sinh, lau kính.', 'trang_thai' => true],
-            ['id' => 4,  'nhom_dich_vu_id' => 2, 'ten_dich_vu' => 'Chăm sóc người lớn tuổi', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => false, 'don_gia_co_ban' => 300000, 'thoi_gian_chuan_co_ban' => 240, 'mo_ta' => 'Chăm sóc, hỗ trợ sinh hoạt hằng ngày cho người cao tuổi tại nhà.', 'trang_thai' => true],
-            ['id' => 5,  'nhom_dich_vu_id' => 2, 'ten_dich_vu' => 'Trông trẻ', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => false, 'don_gia_co_ban' => 250000, 'thoi_gian_chuan_co_ban' => 240, 'mo_ta' => 'Trông giữ trẻ tại nhà an toàn, tận tâm, phù hợp cho các bé từ 6 tháng trở lên.', 'trang_thai' => true],
-            ['id' => 6,  'nhom_dich_vu_id' => 2, 'ten_dich_vu' => 'Chăm sóc người bệnh', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => false, 'don_gia_co_ban' => 350000, 'thoi_gian_chuan_co_ban' => 240, 'mo_ta' => 'Chăm sóc, hỗ trợ người bệnh tại nhà, theo dõi sức khỏe và hỗ trợ phục hồi.', 'trang_thai' => true],
-            ['id' => 7,  'nhom_dich_vu_id' => 3, 'ten_dich_vu' => 'Dọn sau xây dựng', 'cap_do_dich_vu' => 'CaoCap', 'is_noi_bat' => true, 'co_bien_the' => true, 'don_gia_co_ban' => 500000, 'thoi_gian_chuan_co_ban' => 240, 'mo_ta' => 'Xử lý bụi mịn, vết sơn, xi măng dư thừa sau quá trình thi công.', 'trang_thai' => true],
-            ['id' => 8,  'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Vệ sinh máy lạnh', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 180000, 'thoi_gian_chuan_co_ban' => 60, 'mo_ta' => 'Bao gồm rửa sạch bụi bẩn, xịt diệt khuẩn, kiểm tra và bơm gas.', 'trang_thai' => true],
-            ['id' => 9,  'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Giặt ghế sofa', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 250000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Hút bụi sâu, phun hút hơi nước nóng đánh bay vết bẩn và vi khuẩn.', 'trang_thai' => true],
-            ['id' => 10, 'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Giặt nệm', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 300000, 'thoi_gian_chuan_co_ban' => 90, 'mo_ta' => 'Loại bỏ mạt bụi, tế bào chết và khử mùi hôi nệm phòng ngủ.', 'trang_thai' => true],
-            ['id' => 11, 'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Vệ sinh bếp chuyên sâu', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 220000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Tẩy mỡ màng, làm sạch kỹ lưỡng tủ lạnh, lò vi sóng, bếp ga và bồn rửa.', 'trang_thai' => true],
-            ['id' => 12, 'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Giặt thảm', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 200000, 'thoi_gian_chuan_co_ban' => 60, 'mo_ta' => 'Giặt sạch và khử mùi các loại thảm trang trí, thảm văn phòng.', 'trang_thai' => true],
-            ['id' => 13, 'nhom_dich_vu_id' => 5, 'ten_dich_vu' => 'Dọn văn phòng', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 160000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Lau dọn bàn làm việc, phòng họp, khu vực sinh hoạt chung của công ty.', 'trang_thai' => true],
+            [
+                'id' => 1, 'nhom_dich_vu_id' => 1, 'ten_dich_vu' => 'Dọn dẹp hằng ngày', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => true, 'co_bien_the' => true, 'don_gia_co_ban' => 200000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Quét lau sàn, lau bụi nội thất, dọn rác và vệ sinh bếp, toilet cơ bản.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => [$descChung1, $descChung2], 'tasks' => $taskTieuChuan], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 2, 'nhom_dich_vu_id' => 1, 'ten_dich_vu' => 'Dọn dẹp định kỳ', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => true, 'co_bien_the' => true, 'don_gia_co_ban' => 180000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Giữ nhà luôn sạch sẽ với lịch dọn dẹp thường xuyên, tiết kiệm đến 20%.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => [$descChung1, $descChung2], 'tasks' => $taskTieuChuan], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 3, 'nhom_dich_vu_id' => 1, 'ten_dich_vu' => 'Tổng vệ sinh chuyên sâu', 'cap_do_dich_vu' => 'CaoCap', 'is_noi_bat' => true, 'co_bien_the' => true, 'don_gia_co_ban' => 450000, 'thoi_gian_chuan_co_ban' => 180, 'mo_ta' => 'Làm sạch toàn diện mọi ngóc ngách, chà sàn, tẩy ố nhà vệ sinh, lau kính.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => [$descChung1, $descChung2], 'tasks' => $taskChuyenSau], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 4, 'nhom_dich_vu_id' => 2, 'ten_dich_vu' => 'Chăm sóc người lớn tuổi', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => false, 'don_gia_co_ban' => 300000, 'thoi_gian_chuan_co_ban' => 240, 'mo_ta' => 'Chăm sóc, hỗ trợ sinh hoạt hằng ngày cho người cao tuổi tại nhà.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => ['Dịch vụ chăm sóc người cao tuổi tận tâm, mang lại sự an tâm tuyệt đối cho gia đình bạn.', $descChung2], 'tasks' => [
+                    'Hỗ trợ vệ sinh cá nhân hàng ngày (tắm rửa, thay quần áo)',
+                    'Chuẩn bị và hỗ trợ bữa ăn theo chế độ dinh dưỡng',
+                    'Đo huyết áp, theo dõi sức khỏe cơ bản hàng ngày',
+                    'Đưa đón đi khám bệnh, hỗ trợ mua thuốc',
+                    'Trò chuyện, đọc sách, giải trí để giảm sự cô đơn',
+                    'Dọn dẹp phòng ngủ, khu vực sinh hoạt và giặt giũ nhẹ',
+                    'Nhắc nhở uống thuốc đúng giờ, đúng liều lượng'
+                ]], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 5, 'nhom_dich_vu_id' => 2, 'ten_dich_vu' => 'Trông trẻ', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => false, 'don_gia_co_ban' => 250000, 'thoi_gian_chuan_co_ban' => 240, 'mo_ta' => 'Trông giữ trẻ tại nhà an toàn, tận tâm, phù hợp cho các bé từ 6 tháng trở lên.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => ['Mang đến môi trường an toàn và vui vẻ cho bé yêu của bạn khi bạn vắng nhà.', $descChung2], 'tasks' => [
+                    'Trông giữ và chơi cùng bé an toàn tại nhà',
+                    'Chuẩn bị bữa ăn nhẹ, pha sữa và cho bé ăn',
+                    'Thay tã, tắm rửa, vệ sinh cá nhân cho bé',
+                    'Đọc truyện, hát và tham gia các hoạt động giáo dục nhẹ',
+                    'Ru bé ngủ và theo dõi giấc ngủ sát sao',
+                    'Cập nhật tình hình, gửi hình ảnh/video cho phụ huynh',
+                    'Đảm bảo không gian chơi của bé luôn sạch sẽ, an toàn'
+                ]], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 6, 'nhom_dich_vu_id' => 2, 'ten_dich_vu' => 'Chăm sóc người bệnh', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => false, 'don_gia_co_ban' => 350000, 'thoi_gian_chuan_co_ban' => 240, 'mo_ta' => 'Chăm sóc, hỗ trợ người bệnh tại nhà, theo dõi sức khỏe và hỗ trợ phục hồi.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => ['Chăm sóc y tế cơ bản và hỗ trợ sinh hoạt cho người bệnh trong quá trình phục hồi.', $descChung2], 'tasks' => [
+                    'Hỗ trợ vệ sinh cá nhân tại giường hoặc phòng tắm',
+                    'Theo dõi liên tục dấu hiệu sinh tồn (mạch, huyết áp, nhiệt độ)',
+                    'Nhắc và hỗ trợ người bệnh uống thuốc đúng giờ',
+                    'Hỗ trợ di chuyển, thay đổi tư thế, tập vật lý trị liệu nhẹ',
+                    'Chuẩn bị bữa ăn tuân thủ nghiêm ngặt chế độ bệnh lý',
+                    'Ghi chép nhật ký sức khỏe chi tiết hàng ngày',
+                    'Liên hệ ngay với gia đình và y tế khi có dấu hiệu bất thường'
+                ]], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 7, 'nhom_dich_vu_id' => 3, 'ten_dich_vu' => 'Dọn sau xây dựng', 'cap_do_dich_vu' => 'CaoCap', 'is_noi_bat' => true, 'co_bien_the' => true, 'don_gia_co_ban' => 500000, 'thoi_gian_chuan_co_ban' => 240, 'mo_ta' => 'Xử lý bụi mịn, vết sơn, xi măng dư thừa sau quá trình thi công.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => [$descChung1, $descChung2], 'tasks' => $taskChuyenSau], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 8, 'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Vệ sinh máy lạnh', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 180000, 'thoi_gian_chuan_co_ban' => 60, 'mo_ta' => 'Bao gồm rửa sạch bụi bẩn, xịt diệt khuẩn, kiểm tra và bơm gas.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => [$descChung1, $descChung2], 'tasks' => ['Vệ sinh lồng sóc, mặt nạ máy lạnh', 'Xịt rửa dàn nóng, dàn lạnh', 'Kiểm tra gas và thông đường ống nước thải']], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 9, 'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Giặt ghế sofa', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 250000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Hút bụi sâu, phun hút hơi nước nóng đánh bay vết bẩn và vi khuẩn.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => [$descChung1, $descChung2], 'tasks' => ['Hút bụi khô bề mặt sofa', 'Phun dung dịch giặt chuyên dụng', 'Dùng máy đánh tay chuyên dụng chà sạch vết bẩn', 'Dùng máy hút công suất lớn hút sạch nước bẩn', 'Sấy khô (hỗ trợ)']], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 10, 'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Giặt nệm', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 300000, 'thoi_gian_chuan_co_ban' => 90, 'mo_ta' => 'Loại bỏ mạt bụi, tế bào chết và khử mùi hôi nệm phòng ngủ.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => [$descChung1, $descChung2], 'tasks' => ['Hút bụi mạt giường, tế bào chết trên nệm', 'Phun hơi nước nóng diệt vi khuẩn', 'Phun dung dịch làm sạch và xử lý vết ố', 'Hút sạch bọt và dung dịch bẩn']], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 11, 'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Vệ sinh bếp chuyên sâu', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 220000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Tẩy mỡ màng, làm sạch kỹ lưỡng tủ lạnh, lò vi sóng, bếp ga và bồn rửa.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => [$descChung1, $descChung2], 'tasks' => ['Làm sạch sâu mảng bám dầu mỡ trên tường và mặt bếp', 'Vệ sinh bên trong và ngoài lò vi sóng, tủ lạnh', 'Tẩy cặn bồn rửa chén', 'Lau dọn kệ và tủ bếp']], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 12, 'nhom_dich_vu_id' => 4, 'ten_dich_vu' => 'Giặt thảm', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 200000, 'thoi_gian_chuan_co_ban' => 60, 'mo_ta' => 'Giặt sạch và khử mùi các loại thảm trang trí, thảm văn phòng.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => [$descChung1, $descChung2], 'tasks' => ['Hút bụi khô bề mặt thảm', 'Phun hóa chất tẩy điểm các vết bẩn cứng đầu', 'Sử dụng máy đánh sàn chuyên dụng chà sạch thảm', 'Hút sạch nước dơ bằng máy hút công nghiệp']], JSON_UNESCAPED_UNICODE)
+            ],
+            [
+                'id' => 13, 'nhom_dich_vu_id' => 5, 'ten_dich_vu' => 'Dọn văn phòng', 'cap_do_dich_vu' => 'TieuChuan', 'is_noi_bat' => false, 'co_bien_the' => true, 'don_gia_co_ban' => 160000, 'thoi_gian_chuan_co_ban' => 120, 'mo_ta' => 'Lau dọn bàn làm việc, phòng họp, khu vực sinh hoạt chung của công ty.', 'trang_thai' => true,
+                'noi_dung_chi_tiet' => json_encode(['description' => ['Không gian làm việc sạch sẽ giúp tăng cường sự tập trung và năng suất cho nhân viên.', $descChung2], 'tasks' => ['Lau dọn bàn ghế làm việc', 'Vệ sinh phòng họp, khu vực lễ tân', 'Dọn dẹp khu vực pantry (bếp văn phòng)', 'Gom và đổ rác', 'Lau sàn toàn bộ văn phòng']], JSON_UNESCAPED_UNICODE)
+            ],
         ]);
 
         // ══════════════════════════════════════════════════════════════════
