@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\KhuyenMai;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class KhuyenMaiController extends Controller
 {
@@ -48,7 +49,7 @@ class KhuyenMaiController extends Controller
         //
     }
 
-    public function getPublicVouchers()
+    public function getPublicVouchers(Request $request)
     {
         $now = now();
 
@@ -68,16 +69,168 @@ class KhuyenMaiController extends Controller
             ->whereColumn('so_luong_da_luu', '<', 'tong_luot_luu_toi_da')
             ->select(
                 'KhuyenMai.*',
-                // Cột này sẽ quyết định mã KM nằm ở tab Dropdown nào trên Frontend
                 DB::raw('COALESCE(KhuyenMai.nhom_dich_vu_id_ap_dung, DichVu.nhom_dich_vu_id) as nhom_dich_vu_id_mapped')
             )
             ->orderBy('ngay_ket_thuc', 'asc')
             ->get();
 
+        // 3. Lấy danh sách ID mã khuyến mãi mà user hiện tại ĐÃ LƯU
+        $savedVoucherIds = [];
+        $user = auth('sanctum')->user(); // Lấy user an toàn từ token trên route public
+
+        if ($user) {
+            $khachHang = DB::table('KhachHang')->where('tai_khoan_id', $user->id)->first();
+            if ($khachHang) {
+                $savedVoucherIds = DB::table('KhachHang_KhuyenMai')
+                    ->where('khach_hang_id', $khachHang->id)
+                    ->pluck('khuyen_mai_id')
+                    ->toArray();
+            }
+        }
+
         return response()->json([
             'success' => true,
             'service_groups' => $serviceGroups,
-            'vouchers' => $vouchers
+            'vouchers' => $vouchers,
+            'saved_vouchers' => $savedVoucherIds // Trả về thêm mảng này cho Frontend
         ]);
+    }
+
+    public function getMyVouchers(Request $request)
+    {
+        $khachHang = $request->user()->khachHang;
+
+        if (!$khachHang) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy khách hàng.'], 404);
+        }
+
+        $now = Carbon::now();
+
+        // Lấy tất cả voucher đã lưu kèm pivot + thông tin KhuyenMai
+        $vouchers = $khachHang->khuyenMaiDaLuu()
+            ->withPivot('ngay_luu', 'ngay_su_dung', 'trang_thai_luu')
+            ->get()
+            ->map(function ($km) use ($now) {
+                $pivot = $km->pivot;
+
+                // Xác định trạng thái hiển thị
+                $isExpired = Carbon::parse($km->ngay_ket_thuc)->lt($now)
+                    || $pivot->trang_thai_luu === 'HetHan';
+                $isUsed    = $pivot->trang_thai_luu === 'DaSuDung';
+
+                // Map loại giảm giá → hiển thị giống VoucherCard frontend
+                $percent = rtrim(rtrim(number_format((float) $km->gia_tri_giam, 2, '.', ''), '0'), '.');
+
+                $discountValue = $km->loai_giam_gia === 'PhanTram'
+                    ? $percent . '%'
+                    : number_format($km->gia_tri_giam, 0, ',', '.') . 'đ';
+
+                $discountType = $km->loai_giam_gia === 'PhanTram' ? 'GIẢM' : 'GIẢM';
+
+                // Màu card theo trạng thái
+                $colorClass = $isExpired || $isUsed
+                    ? 'bg-[#a3a3a3]'
+                    : 'bg-[#1a368d]';
+
+                return [
+                    'id'            => $km->id,
+                    'ma_code'       => $km->ma_code,
+                    'type'          => $km->tag_hien_thi ?? 'Khuyến mãi',
+                    'colorClass'    => $colorClass,
+                    'discountValue' => $discountValue,
+                    'discountType'  => $discountType,
+                    'badge'         => $isExpired ? 'Hết hạn' : ($isUsed ? 'Đã dùng' : $km->tag_hien_thi),
+                    'title'         => $km->tieu_de,
+                    'description'   => $km->mo_ta ?? '',
+                    'expiry'        => Carbon::parse($km->ngay_ket_thuc)->format('d/m/Y'),
+                    'status'        => $isExpired ? 'expired' : ($isUsed ? 'used' : 'saved'),
+                    // Thêm thông tin chi tiết để frontend hiển thị đầy đủ
+                    'gia_tri_don_toi_thieu' => $km->gia_tri_don_toi_thieu,
+                    'giam_toi_da'           => $km->giam_toi_da,
+                    'ngay_luu'              => $pivot->ngay_luu,
+                    'ngay_su_dung'          => $pivot->ngay_su_dung,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $vouchers,
+            'total'   => $vouchers->count(),
+        ]);
+    }
+
+    public function luuKhuyenMai(Request $request)
+    {
+        try {
+            // 1. Validate dữ liệu gửi lên
+            $request->validate([
+                'khuyen_mai_id' => 'required|integer|exists:KhuyenMai,id'
+            ]);
+
+            $khuyenMaiId = $request->khuyen_mai_id;
+
+            // 2. Kiểm tra Auth an toàn (Đề phòng route quên bọc middleware)
+            $user = $request->user();
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn chưa đăng nhập hoặc token hết hạn!'
+                ], 401);
+            }
+
+            $taiKhoanId = $user->id;
+
+            // 3. Truy vấn sang bảng KhachHang
+            $khachHang = DB::table('KhachHang')->where('tai_khoan_id', $taiKhoanId)->first();
+
+            if (!$khachHang) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tài khoản này chưa được liên kết với hồ sơ khách hàng!'
+                ], 404);
+            }
+
+            $khachHangId = $khachHang->id;
+
+            // 4. Kiểm tra xem mã này khách đã lưu chưa? (CHỐNG LƯU TRÙNG)
+            $daLuu = DB::table('KhachHang_KhuyenMai')
+                ->where('khach_hang_id', $khachHangId)
+                ->where('khuyen_mai_id', $khuyenMaiId)
+                ->exists();
+
+            if ($daLuu) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn đã lưu mã khuyến mãi này rồi!'
+                ], 400);
+            }
+
+            // 5. Insert vào bảng trung gian
+            DB::table('KhachHang_KhuyenMai')->insert([
+                'khach_hang_id' => $khachHangId,
+                'khuyen_mai_id' => $khuyenMaiId,
+                'ngay_luu' => now()->toDateTimeString(), // CHÚ Ý SỬA LẠI THÀNH CHUỖI
+                'ngay_su_dung' => null,
+                'trang_thai_luu' => 'DaLuu',
+                // NẾU BẢNG CÓ TIMESTAMP, HÃY MỞ COMMENT 2 DÒNG DƯỚI ĐÂY:
+                // 'created_at' => now(),
+                // 'updated_at' => now()
+            ]);
+
+            // 6. Cập nhật tăng số lượng đã lưu trong bảng KhuyenMai
+            DB::table('KhuyenMai')->where('id', $khuyenMaiId)->increment('so_luong_da_luu');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lưu khuyến mãi thành công'
+            ]);
+        } catch (\Exception $e) {
+            // NẾU CÓ LỖI XẢY RA, TRẢ VỀ ĐÚNG LỖI ĐỂ DEUBG THAY VÌ LỖI 500 MÙ MỜ
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi Server: ' . $e->getMessage(),
+                'line' => $e->getLine()
+            ], 500);
+        }
     }
 }
