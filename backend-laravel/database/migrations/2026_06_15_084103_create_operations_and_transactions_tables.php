@@ -21,7 +21,12 @@ return new class extends Migration
             $table->foreignId('khuyen_mai_id')->nullable()->constrained('KhuyenMai');
             $table->foreignId('nhan_vien_duoc_yeu_cau_id')->nullable()->constrained('NhanVien');
             
-            $table->string('phuong_an_thay_the', 100)->nullable();
+            $table->enum('phuong_an_thay_the', [
+                'TimNhanVienYeuThich',
+                'TimNhanVienTieuChuan',
+                'KhongTimThayThe',
+            ])->nullable();
+
             $table->boolean('is_giu_nhan_vien')->default(false);
             $table->integer('tong_so_buoi')->default(1);
             $table->boolean('is_lap_lai_hang_tuan');

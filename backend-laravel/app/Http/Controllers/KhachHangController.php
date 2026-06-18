@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\TaiKhoan;
 use App\Models\KhachHang;
+use Illuminate\Support\Facades\DB;
 
 class KhachHangController extends Controller
 {
@@ -215,5 +216,165 @@ class KhachHangController extends Controller
         if ($sodon >= 20) return 'Thành viên Vàng';
         if ($sodon >= 5)  return 'Thành viên Bạc';
         return 'Thành viên';
+    }
+
+    // ──────────────────────────────────────────────────────────────
+// Thanh toán: Thẻ & MoMo (đều lưu trong ThongTinNganHang)
+// ──────────────────────────────────────────────────────────────
+
+    /**
+     * GET /api/khach-hang/thanh-toan
+     * Trả về danh sách thẻ + trạng thái MoMo của khách hàng.
+     */
+    public function getPaymentMethods(Request $request)
+    {
+        $taiKhoanId = $request->user()->id;
+
+        $all = DB::table('ThongTinNganHang')
+            ->where('tai_khoan_id', $taiKhoanId)
+            ->get();
+
+        $cards = $all->where('ten_ngan_hang', '!=', 'MoMo')->values()->map(fn($r) => [
+            'id'           => $r->id,
+            'ten_ngan_hang' => $r->ten_ngan_hang,
+            'so_tai_khoan' => $r->so_tai_khoan,   // masked ở frontend
+            'chu_tai_khoan' => $r->chu_tai_khoan,
+            'trang_thai'   => $r->trang_thai,
+            'ngay_lien_ket' => $r->ngay_lien_ket,
+        ]);
+
+        $momo = $all->firstWhere('ten_ngan_hang', 'MoMo');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'cards' => $cards,
+                'momo'  => $momo ? [
+                    'id'         => $momo->id,
+                    'so_dien_thoai' => $momo->so_tai_khoan,
+                    'trang_thai' => $momo->trang_thai,
+                ] : null,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/khach-hang/thanh-toan/them-the
+     * Body: { ten_ngan_hang, so_tai_khoan, chu_tai_khoan }
+     */
+    public function addCard(Request $request)
+    {
+        $request->validate([
+            'ten_ngan_hang' => 'required|string|max:100',
+            'so_tai_khoan'  => 'required|string|max:50',
+            'chu_tai_khoan' => 'required|string|max:150',
+        ]);
+
+        $taiKhoanId = $request->user()->id;
+
+        // Giới hạn 5 thẻ / tài khoản
+        $count = DB::table('ThongTinNganHang')
+            ->where('tai_khoan_id', $taiKhoanId)
+            ->where('ten_ngan_hang', '!=', 'MoMo')
+            ->count();
+
+        if ($count >= 5) {
+            return response()->json(['success' => false, 'message' => 'Bạn chỉ có thể lưu tối đa 5 thẻ.'], 422);
+        }
+
+        $id = DB::table('ThongTinNganHang')->insertGetId([
+            'tai_khoan_id'  => $taiKhoanId,
+            'ten_ngan_hang' => $request->ten_ngan_hang,
+            'so_tai_khoan'  => $request->so_tai_khoan,
+            'chu_tai_khoan' => $request->chu_tai_khoan,
+            'chi_nhanh'     => null,
+            'trang_thai'    => true,
+            'ngay_lien_ket' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Thêm thẻ thành công.',
+            'data'    => [
+                'id'            => $id,
+                'ten_ngan_hang' => $request->ten_ngan_hang,
+                'so_tai_khoan'  => $request->so_tai_khoan,
+                'chu_tai_khoan' => $request->chu_tai_khoan,
+                'trang_thai'    => true,
+            ],
+        ], 201);
+    }
+
+    /**
+     * DELETE /api/khach-hang/thanh-toan/{id}
+     * Xóa thẻ hoặc ví (theo id ThongTinNganHang).
+     */
+    public function deletePaymentMethod(Request $request, int $id)
+    {
+        $deleted = DB::table('ThongTinNganHang')
+            ->where('id', $id)
+            ->where('tai_khoan_id', $request->user()->id)
+            ->delete();
+
+        if (!$deleted) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy.'], 404);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Xóa thành công.']);
+    }
+
+    /**
+     * POST /api/khach-hang/thanh-toan/momo/lien-ket
+     * Body: { so_dien_thoai }
+     */
+    public function linkMomo(Request $request)
+    {
+        $request->validate([
+            'so_dien_thoai' => 'required|string|max:15',
+        ]);
+
+        $taiKhoanId = $request->user()->id;
+
+        // Nếu đã có → update
+        $existing = DB::table('ThongTinNganHang')
+            ->where('tai_khoan_id', $taiKhoanId)
+            ->where('ten_ngan_hang', 'MoMo')
+            ->first();
+
+        if ($existing) {
+            DB::table('ThongTinNganHang')->where('id', $existing->id)->update([
+                'so_tai_khoan' => $request->so_dien_thoai,
+                'trang_thai'   => true,
+            ]);
+            $momoId = $existing->id;
+        } else {
+            $momoId = DB::table('ThongTinNganHang')->insertGetId([
+                'tai_khoan_id'  => $taiKhoanId,
+                'ten_ngan_hang' => 'MoMo',
+                'so_tai_khoan'  => $request->so_dien_thoai,
+                'chu_tai_khoan' => $request->user()->ho_ten,
+                'trang_thai'    => true,
+                'ngay_lien_ket' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Liên kết MoMo thành công.',
+            'data'    => ['id' => $momoId, 'so_dien_thoai' => $request->so_dien_thoai],
+        ]);
+    }
+
+    /**
+     * DELETE /api/khach-hang/thanh-toan/momo/huy
+     */
+    public function unlinkMomo(Request $request)
+    {
+        DB::table('ThongTinNganHang')
+            ->where('tai_khoan_id', $request->user()->id)
+            ->where('ten_ngan_hang', 'MoMo')
+            ->delete();
+
+        return response()->json(['success' => true, 'message' => 'Đã hủy liên kết MoMo.']);
     }
 }

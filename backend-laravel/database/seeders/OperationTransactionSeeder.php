@@ -41,7 +41,7 @@ class OperationTransactionSeeder extends Seeder
                 'khuyen_mai_id' => null,
                 'nhan_vien_duoc_yeu_cau_id' => null,
                 
-                'phuong_an_thay_the' => 'standard',
+                'phuong_an_thay_the' => 'TimNhanVienTieuChuan',
                 'is_giu_nhan_vien' => false,
                 'tong_so_buoi' => 1,
                 'is_lap_lai_hang_tuan' => false,
