@@ -15,8 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/*'
         ]);
+<<<<<<< HEAD
         $middleware->alias([
             'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+=======
+
+        $middleware->alias([
+>>>>>>> 255e8859d7eba56d6234c19b430704ec7cc27490
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
         ]);
     })

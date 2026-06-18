@@ -1,47 +1,44 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import VoucherCard from '../../../components/customer/VoucherCard';
 import { Link } from 'react-router-dom';
+import khachHangApi from '../../../api/khachHangApi';
+
+// ─── Skeleton cho 1 card khi đang tải ───────────────────────────────────────
+const CardSkeleton = () => (
+  <div className="rounded-2xl border border-outline-variant/30 p-5 flex gap-4 animate-pulse">
+    <div className="w-24 h-24 rounded-xl bg-surface-container-high shrink-0" />
+    <div className="flex-1 space-y-3 py-1">
+      <div className="h-3 bg-surface-container-high rounded-full w-1/3" />
+      <div className="h-4 bg-surface-container-high rounded-full w-2/3" />
+      <div className="h-3 bg-surface-container-high rounded-full w-full" />
+      <div className="h-3 bg-surface-container-high rounded-full w-1/4" />
+    </div>
+  </div>
+);
 
 const MyVouchersPage = () => {
-  // Simulate saved vouchers that the user has already collected
-  const [savedVouchers] = useState([
-    {
-      id: 1,
-      type: 'Vệ sinh định kỳ',
-      colorClass: 'bg-[#1a368d]',
-      discountValue: '20%',
-      discountType: 'GIẢM',
-      badge: 'Người dùng mới',
-      title: 'Tối đa 50k cho đơn từ 200k',
-      description: 'Áp dụng cho dịch vụ Vệ sinh không gian sống định kỳ.',
-      expiry: '30/11/2024',
-      status: 'saved' // Already saved
-    },
-    {
-      id: 3,
-      type: 'Khác',
-      colorClass: 'bg-[#5c6c75]', 
-      discountValue: '15%',
-      discountType: 'GIẢM',
-      badge: 'Vệ sinh Sofa',
-      title: 'Tối đa 80k cho đơn từ 400k',
-      description: 'Làm sạch sâu sofa, nệm bằng công nghệ hơi nước nóng.',
-      expiry: '20/11/2024',
-      status: 'saved'
-    },
-    {
-      id: 4,
-      type: 'Khác',
-      colorClass: 'bg-[#a3a3a3]',
-      discountValue: 'Free',
-      discountType: 'PHỤ PHÍ',
-      badge: 'Hết hạn',
-      title: 'Miễn phí mang dụng cụ',
-      description: 'Ưu đãi miễn phí 30k phí dụng cụ vệ sinh.',
-      expiry: '01/01/2024',
-      status: 'expired'
+  const [vouchers, setVouchers] = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
+
+  const fetchVouchers = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await khachHangApi.getMyVouchers();
+      if (res.success) {
+        setVouchers(res.data);
+      } else {
+        setError(res.message ?? 'Không thể tải mã giảm giá.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Không thể tải mã giảm giá. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }, []);
+
+  useEffect(() => { fetchVouchers(); }, [fetchVouchers]);
 
   return (
     <div className="p-6">
@@ -50,9 +47,25 @@ const MyVouchersPage = () => {
         <p className="text-body-md text-on-surface-variant mt-2">Quản lý các mã giảm giá bạn đã lưu từ trang Khuyến mãi. Các mã này sẽ được tự động gợi ý khi bạn đặt lịch.</p>
       </div>
 
-      {savedVouchers.length > 0 ? (
+      {loading ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {savedVouchers.map(voucher => (
+          <CardSkeleton /><CardSkeleton /><CardSkeleton /><CardSkeleton />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-surface-container-low rounded-2xl border border-outline-variant/30">
+          <span className="material-symbols-outlined text-[56px] text-error mb-4 opacity-70">error</span>
+          <h3 className="font-bold text-lg text-on-surface mb-2">Đã có lỗi xảy ra</h3>
+          <p className="text-on-surface-variant text-sm mb-6 max-w-md leading-relaxed">{error}</p>
+          <button
+            onClick={fetchVouchers}
+            className="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-primary/90 transition-all shadow-sm"
+          >
+            Thử lại
+          </button>
+        </div>
+      ) : vouchers.length > 0 ? (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {vouchers.map(voucher => (
             <VoucherCard key={voucher.id} voucher={voucher} onSave={() => {}} />
           ))}
         </div>
