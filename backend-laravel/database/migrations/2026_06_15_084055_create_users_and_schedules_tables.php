@@ -40,7 +40,7 @@ return new class extends Migration
         // 17. ThongTinNganHang
         Schema::create('ThongTinNganHang', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tai_khoan_id')->unique()->constrained('TaiKhoan')->cascadeOnDelete();
+            $table->foreignId('tai_khoan_id')->constrained('TaiKhoan')->cascadeOnDelete();
             $table->string('ten_ngan_hang', 100);
             $table->string('so_tai_khoan', 50);
             $table->string('chu_tai_khoan', 150);

@@ -27,14 +27,23 @@ axiosClient.interceptors.request.use(
 // =============================================
 // RESPONSE INTERCEPTOR: Lưới bắt lỗi tập trung
 // =============================================
+// src/api/axiosClient.js — RESPONSE INTERCEPTOR
 axiosClient.interceptors.response.use(
     (response) => response.data,
 
     (error) => {
-        const status = error.response?.status;
+        // Lỗi network hoàn toàn (server offline, timeout) — KHÔNG có response
+        if (!error.response) {
+            // ✅ Reject với flag rõ ràng, KHÔNG xóa token
+            return Promise.reject({ 
+                message: 'Lỗi kết nối đến máy chủ.',
+                isNetworkError: true,  // 👈 flag này
+            });
+        }
+
+        const status = error.response.status;
         const currentUrl = error.config?.url || '';
 
-        // XỬ LÝ LỖI 401: UNAUTHORIZED (Token hết hạn, sai hoặc bị xóa)
         if (status === 401) {
             const isLoginApi =
                 currentUrl.includes('login') ||
@@ -57,6 +66,16 @@ axiosClient.interceptors.response.use(
             if (window.location.pathname.startsWith('/admin')) {
                 localStorage.removeItem('ADMIN_TOKEN');
                 localStorage.removeItem('ADMIN_USER');
+            const isAuthApi = currentUrl.includes('/dang-nhap') || currentUrl.includes('/dang-ky');
+            if (isAuthApi) {
+                return Promise.reject(error.response?.data || { message: 'Đăng nhập thất bại' });
+            }
+
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+
+            const currentPath = window.location.pathname;
+            if (currentPath.startsWith('/admin')) {
                 window.location.href = '/admin/login';
             } else {
                 localStorage.removeItem('token');
@@ -64,12 +83,12 @@ axiosClient.interceptors.response.use(
                 window.location.href = '/login';
             }
             
+
             return Promise.reject({ message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' });
         }
 
-        // XỬ LÝ LỖI 403: FORBIDDEN (Đăng nhập rồi nhưng không đủ quyền)
         if (status === 403) {
-            window.location.href = '/'; // Đá về trang chủ
+            window.location.href = '/';
             return Promise.reject({ message: 'Bạn không có quyền truy cập.' });
         }
 
@@ -79,6 +98,7 @@ axiosClient.interceptors.response.use(
                 message: 'Lỗi kết nối đến máy chủ.',
             }
         );
+        return Promise.reject(error.response?.data || { message: 'Lỗi kết nối đến máy chủ.' });
     }
 );
 
