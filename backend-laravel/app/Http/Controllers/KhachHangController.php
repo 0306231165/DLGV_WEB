@@ -201,6 +201,72 @@ class KhachHangController extends Controller
         ]);
     }
 
+    /**
+     * GET /api/khach-hang/lien-he
+     */
+    public function getContacts(Request $request)
+    {
+        $khachHang = $request->user()->khachHang;
+        if (!$khachHang) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy khách hàng.'], 404);
+        }
+
+        $contacts = $khachHang->lienHeDaLuu()->get()->map(fn($c) => [
+            'id'             => $c->id,
+            'ten_nguoi_nhan' => $c->ten_nguoi_nhan,
+            'sdt_nhan'       => $c->sdt_nhan,
+        ]);
+
+        return response()->json(['success' => true, 'data' => $contacts]);
+    }
+
+    /**
+     * POST /api/khach-hang/lien-he/them
+     */
+    public function storeContact(Request $request)
+    {
+        $request->validate([
+            'ten_nguoi_nhan' => 'required|string|max:150',
+            'sdt_nhan'       => 'required|string|max:15',
+        ]);
+
+        $khachHang = $request->user()->khachHang;
+        if (!$khachHang) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy khách hàng.'], 404);
+        }
+
+        if ($khachHang->lienHeDaLuu()->count() >= 10) {
+            return response()->json(['success' => false, 'message' => 'Chỉ lưu tối đa 10 liên hệ.'], 422);
+        }
+
+        $contact = $khachHang->lienHeDaLuu()->create([
+            'ten_nguoi_nhan' => $request->ten_nguoi_nhan,
+            'sdt_nhan'       => $request->sdt_nhan,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Thêm liên hệ thành công.',
+            'data'    => [
+                'id'             => $contact->id,
+                'ten_nguoi_nhan' => $contact->ten_nguoi_nhan,
+                'sdt_nhan'       => $contact->sdt_nhan,
+            ],
+        ], 201);
+    }
+
+    /**
+     * DELETE /api/khach-hang/lien-he/{id}
+     */
+    public function deleteContact(Request $request, int $id)
+    {
+        $khachHang = $request->user()->khachHang;
+        $contact = $khachHang->lienHeDaLuu()->findOrFail($id);
+        $contact->delete();
+
+        return response()->json(['success' => true, 'message' => 'Đã xóa liên hệ.']);
+    }
+
     // ──────────────────────────────────────────────────────────────
     // Helper: xác định hạng thành viên theo số đơn hoàn thành
     // ──────────────────────────────────────────────────────────────

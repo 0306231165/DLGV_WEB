@@ -9,45 +9,6 @@ use Carbon\Carbon;
 
 class KhuyenMaiController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(KhuyenMai $khuyenMai)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, KhuyenMai $khuyenMai)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(KhuyenMai $khuyenMai)
-    {
-        //
-    }
 
     public function getPublicVouchers(Request $request)
     {
@@ -149,6 +110,12 @@ class KhuyenMaiController extends Controller
                     'giam_toi_da'           => $km->giam_toi_da,
                     'ngay_luu'              => $pivot->ngay_luu,
                     'ngay_su_dung'          => $pivot->ngay_su_dung,
+                    // ✅ FIX: bổ sung các field thô để frontend tính số tiền giảm thực tế
+                    // (trước đây chỉ trả discountValue dạng chuỗi đã format → frontend tính NaN)
+                    'loai_giam_gia'          => $km->loai_giam_gia,          // 'PhanTram' | 'TienMat'
+                    'gia_tri_giam'           => $km->gia_tri_giam,           // số % hoặc số tiền thô
+                    'dich_vu_id_ap_dung'     => $km->dich_vu_id_ap_dung,
+                    'nhom_dich_vu_id_ap_dung' => $km->nhom_dich_vu_id_ap_dung,
                 ];
             });
 
@@ -233,4 +200,5 @@ class KhuyenMaiController extends Controller
             ], 500);
         }
     }
+
 }

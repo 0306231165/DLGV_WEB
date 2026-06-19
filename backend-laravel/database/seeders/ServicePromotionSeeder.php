@@ -45,7 +45,7 @@ class ServicePromotionSeeder extends Seeder
                 'id' => 1,
                 'nhom_dich_vu_id' => 1,
                 'ten_dich_vu' => 'Dọn dẹp hằng ngày',
-                'cap_do_dich_vu' => 'TieuChuan',
+                'cap_do_dich_vu' => 'CaoCap',
                 'is_noi_bat' => true,
                 'co_bien_the' => true,
                 'don_gia_co_ban' => 200000,
@@ -58,7 +58,7 @@ class ServicePromotionSeeder extends Seeder
                 'id' => 2,
                 'nhom_dich_vu_id' => 1,
                 'ten_dich_vu' => 'Dọn dẹp định kỳ',
-                'cap_do_dich_vu' => 'TieuChuan',
+                'cap_do_dich_vu' => 'CaoCap',
                 'is_noi_bat' => true,
                 'co_bien_the' => true,
                 'don_gia_co_ban' => 180000,
@@ -71,7 +71,7 @@ class ServicePromotionSeeder extends Seeder
                 'id' => 3,
                 'nhom_dich_vu_id' => 1,
                 'ten_dich_vu' => 'Tổng vệ sinh chuyên sâu',
-                'cap_do_dich_vu' => 'CaoCap',
+                'cap_do_dich_vu' => 'TieuChuan',
                 'is_noi_bat' => true,
                 'co_bien_the' => true,
                 'don_gia_co_ban' => 450000,
@@ -86,7 +86,7 @@ class ServicePromotionSeeder extends Seeder
                 'ten_dich_vu' => 'Chăm sóc người lớn tuổi',
                 'cap_do_dich_vu' => 'TieuChuan',
                 'is_noi_bat' => false,
-                'co_bien_the' => false,
+                'co_bien_the' => true,
                 'don_gia_co_ban' => 300000,
                 'thoi_gian_chuan_co_ban' => 240,
                 'mo_ta' => 'Chăm sóc, hỗ trợ sinh hoạt hằng ngày cho người cao tuổi tại nhà.',
@@ -107,7 +107,7 @@ class ServicePromotionSeeder extends Seeder
                 'ten_dich_vu' => 'Trông trẻ',
                 'cap_do_dich_vu' => 'TieuChuan',
                 'is_noi_bat' => false,
-                'co_bien_the' => false,
+                'co_bien_the' => true,
                 'don_gia_co_ban' => 250000,
                 'thoi_gian_chuan_co_ban' => 240,
                 'mo_ta' => 'Trông giữ trẻ tại nhà an toàn, tận tâm, phù hợp cho các bé từ 6 tháng trở lên.',
@@ -128,7 +128,7 @@ class ServicePromotionSeeder extends Seeder
                 'ten_dich_vu' => 'Chăm sóc người bệnh',
                 'cap_do_dich_vu' => 'TieuChuan',
                 'is_noi_bat' => false,
-                'co_bien_the' => false,
+                'co_bien_the' => true,
                 'don_gia_co_ban' => 350000,
                 'thoi_gian_chuan_co_ban' => 240,
                 'mo_ta' => 'Chăm sóc, hỗ trợ người bệnh tại nhà, theo dõi sức khỏe và hỗ trợ phục hồi.',
@@ -147,7 +147,7 @@ class ServicePromotionSeeder extends Seeder
                 'id' => 7,
                 'nhom_dich_vu_id' => 3,
                 'ten_dich_vu' => 'Dọn sau xây dựng',
-                'cap_do_dich_vu' => 'CaoCap',
+                'cap_do_dich_vu' => 'TieuChuan',
                 'is_noi_bat' => true,
                 'co_bien_the' => true,
                 'don_gia_co_ban' => 500000,
@@ -269,7 +269,7 @@ class ServicePromotionSeeder extends Seeder
             // Tổng vệ sinh (3) & Dọn sau xây dựng (7)
             ['id' => 7, 'dich_vu_id' => 3, 'ten_tuy_chon' => 'Dưới 60m² (1-2 phòng)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 450000, 'trang_thai' => true],
             ['id' => 8, 'dich_vu_id' => 3, 'ten_tuy_chon' => '60 – 80m² (2-3 phòng)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 549000, 'trang_thai' => true],
-            ['id' => 9, 'dich_vu_id' => 3, 'ten_tuy_chon' => '80 – 150m² (3-5 phòng)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 751500, 'trang_thai' => true],
+            ['id' => 9, 'dich_vu_id' => 3, 'ten_tuy_chon' => '80 – 150m² (3-5 phòng)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 360, 'don_gia' => 751500, 'trang_thai' => true],
             ['id' => 10, 'dich_vu_id' => 7, 'ten_tuy_chon' => 'Dưới 60m² (1-2 phòng)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 500000, 'trang_thai' => true],
             ['id' => 11, 'dich_vu_id' => 7, 'ten_tuy_chon' => '60 – 80m² (2-3 phòng)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 610000, 'trang_thai' => true],
             ['id' => 12, 'dich_vu_id' => 7, 'ten_tuy_chon' => '80 – 150m² (3-5 phòng)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 835000, 'trang_thai' => true],
@@ -292,6 +292,19 @@ class ServicePromotionSeeder extends Seeder
             ['id' => 23, 'dich_vu_id' => 13, 'ten_tuy_chon' => 'Văn phòng nhỏ (dưới 50m²)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 160000, 'trang_thai' => true],
             ['id' => 24, 'dich_vu_id' => 13, 'ten_tuy_chon' => 'Văn phòng vừa (50–100m²)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 280000, 'trang_thai' => true],
             ['id' => 25, 'dich_vu_id' => 13, 'ten_tuy_chon' => 'Văn phòng lớn (trên 100m²)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 300, 'don_gia' => 450000, 'trang_thai' => true],
+
+            // Chăm sóc người lớn tuổi (4)
+            ['id' => 26, 'dich_vu_id' => 4, 'ten_tuy_chon' => '2 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 300000, 'trang_thai' => true],
+            ['id' => 27, 'dich_vu_id' => 4, 'ten_tuy_chon' => '3 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 400000, 'trang_thai' => true],
+            ['id' => 28, 'dich_vu_id' => 4, 'ten_tuy_chon' => '4 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 500000, 'trang_thai' => true],
+            // Trông trẻ (5)
+            ['id' => 29, 'dich_vu_id' => 5, 'ten_tuy_chon' => '2 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 250000, 'trang_thai' => true],
+            ['id' => 30, 'dich_vu_id' => 5, 'ten_tuy_chon' => '3 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 340000, 'trang_thai' => true],
+            ['id' => 31, 'dich_vu_id' => 5, 'ten_tuy_chon' => '4 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 430000, 'trang_thai' => true],
+            // Chăm sóc người bệnh (6)
+            ['id' => 32, 'dich_vu_id' => 6, 'ten_tuy_chon' => '2 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 350000, 'trang_thai' => true],
+            ['id' => 33, 'dich_vu_id' => 6, 'ten_tuy_chon' => '3 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 460000, 'trang_thai' => true],
+            ['id' => 34, 'dich_vu_id' => 6, 'ten_tuy_chon' => '4 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 580000, 'trang_thai' => true],
         ]);
 
         // ══════════════════════════════════════════════════════════════════
@@ -325,9 +338,6 @@ class ServicePromotionSeeder extends Seeder
             ['id' => 1, 'dich_vu_id' => 1, 'dich_vu_them_id' => 1, 'gia_cong_them' => 100000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
             ['id' => 2, 'dich_vu_id' => 1, 'dich_vu_them_id' => 2, 'gia_cong_them' => 150000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
             ['id' => 3, 'dich_vu_id' => 1, 'dich_vu_them_id' => 3, 'gia_cong_them' => 80000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
-            ['id' => 4, 'dich_vu_id' => 2, 'dich_vu_them_id' => 1, 'gia_cong_them' => 100000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
-            ['id' => 5, 'dich_vu_id' => 2, 'dich_vu_them_id' => 2, 'gia_cong_them' => 150000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
-            ['id' => 6, 'dich_vu_id' => 2, 'dich_vu_them_id' => 3, 'gia_cong_them' => 80000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
         ]);
     }
 }
