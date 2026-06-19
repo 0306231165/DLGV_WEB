@@ -27,6 +27,7 @@ return new class extends Migration
             $table->integer('tong_so_danh_gia')->default(0);
             $table->integer('tong_so_ca_hoan_thanh')->default(0);
             $table->integer('tong_gio_lam')->default(0);
+            $table->text('kinh_nghiem')->nullable();
         });
 
         // 16. ViTien
