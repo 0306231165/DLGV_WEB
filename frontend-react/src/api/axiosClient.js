@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api',
+    baseURL: 'http://localhost:8000/api',
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -13,9 +13,7 @@ const axiosClient = axios.create({
 // =============================================
 axiosClient.interceptors.request.use(
     (config) => {
-        const isAdminApi = config.url && config.url.startsWith('/admin');
-        const token = isAdminApi ? localStorage.getItem('ADMIN_TOKEN') : localStorage.getItem('token');
-        
+        const token = localStorage.getItem('token');
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
         }
@@ -45,27 +43,6 @@ axiosClient.interceptors.response.use(
         const currentUrl = error.config?.url || '';
 
         if (status === 401) {
-            const isLoginApi =
-                currentUrl.includes('login') ||
-                currentUrl.includes('auth') ||
-                currentUrl.includes('dang-nhap') || 
-                currentUrl.includes('dang-ky');
-
-            const isLoginPage =
-                window.location.pathname.includes('/login');
-
-            if (isLoginApi || isLoginPage) {
-                return Promise.reject(
-                    error.response?.data || {
-                        message: 'Đăng nhập thất bại',
-                    }
-                );
-            }
-
-            // Đá văng về trang Login dựa theo khu vực đang đứng
-            if (window.location.pathname.startsWith('/admin')) {
-                localStorage.removeItem('ADMIN_TOKEN');
-                localStorage.removeItem('ADMIN_USER');
             const isAuthApi = currentUrl.includes('/dang-nhap') || currentUrl.includes('/dang-ky');
             if (isAuthApi) {
                 return Promise.reject(error.response?.data || { message: 'Đăng nhập thất bại' });
@@ -78,11 +55,8 @@ axiosClient.interceptors.response.use(
             if (currentPath.startsWith('/admin')) {
                 window.location.href = '/admin/login';
             } else {
-                localStorage.removeItem('token');
-                localStorage.removeItem('role');
-                window.location.href = '/login';
+                window.location.href = '/login'; 
             }
-            
 
             return Promise.reject({ message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' });
         }
@@ -92,12 +66,6 @@ axiosClient.interceptors.response.use(
             return Promise.reject({ message: 'Bạn không có quyền truy cập.' });
         }
 
-        // CÁC LỖI KHÁC (500, 422, 404...)
-        return Promise.reject(
-            error.response?.data || {
-                message: 'Lỗi kết nối đến máy chủ.',
-            }
-        );
         return Promise.reject(error.response?.data || { message: 'Lỗi kết nối đến máy chủ.' });
     }
 );

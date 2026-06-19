@@ -73,6 +73,7 @@ return new class extends Migration
             $table->dateTime('ngay_tao')->useCurrent();
             // CHUYỂN SANG ENUM: Tình trạng vận hành của tài khoản
             $table->enum('trang_thai', ['HoatDong', 'BiKhoa', 'ChoXacMinh'])->default('HoatDong');
+            $table->text('ly_do_tu_choi')->nullable();
         });
 
         // 7. TaiKhoanAdmin

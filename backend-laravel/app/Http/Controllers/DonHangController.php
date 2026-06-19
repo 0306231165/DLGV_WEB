@@ -2,48 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DonHang;
+use App\Models\DichVu;
+use App\Models\TuyChonBienTheDichVu;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class DonHangController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
+    public function index() {}
+    public function show(\App\Models\DonHang $donHang) {}
+    public function update(Request $request, \App\Models\DonHang $donHang) {}
+    public function destroy(\App\Models\DonHang $donHang) {}
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(DonHang $donHang)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, DonHang $donHang)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(DonHang $donHang)
-    {
-        //
-    }
 }

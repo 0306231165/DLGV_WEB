@@ -21,6 +21,11 @@ Route::middleware(['auth:sanctum', 'ability:role:khach-hang'])->prefix('khach-ha
     Route::delete('/dia-chi/{id}', [KhachHangController::class, 'deleteAddress']);
     Route::post('/dia-chi/{id}/mac-dinh', [KhachHangController::class, 'setDefaultAddress']);
 
+    // ─── Liên hệ đã lưu ───────────────────────────────────────────────────────
+    Route::get('/lien-he', [KhachHangController::class, 'getContacts']);
+    Route::post('/lien-he/them', [KhachHangController::class, 'storeContact']);
+    Route::delete('/lien-he/{id}', [KhachHangController::class, 'deleteContact']);
+
     // ─── Khuyến mãi ───────────────────────────────────────────────────────────
     Route::get('/khuyen-mai/cua-toi', [KhuyenMaiController::class, 'getMyVouchers']);
     Route::post('/khuyen-mai/luu', [KhuyenMaiController::class, 'luuKhuyenMai']);

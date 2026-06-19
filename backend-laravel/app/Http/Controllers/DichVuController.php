@@ -103,29 +103,51 @@ class DichVuController extends Controller
 
     public function getServicesPageData(): JsonResponse
     {
-        // 1. Lấy tất cả nhóm dịch vụ để làm thanh lọc (Filter Pills)
-        $nhomDichVu = NhomDichVu::all();
+        // 1. Lấy tất cả nhóm dịch vụ để làm thanh lọc (Filter Pills), sắp theo thứ tự hiển thị
+        $nhomDichVu = NhomDichVu::where('trang_thai', true)
+            ->orderBy('thu_tu_hien_thi', 'asc')
+            ->get();
 
-        // 2. Lấy tất cả dịch vụ, kèm theo quan hệ loaiGoi để check gói tháng/ca lẻ
-        $dichVu = DichVu::with(['loaiGoi.loaiGoi'])->where('trang_thai', true)->get();
+        // 2. Lấy tất cả dịch vụ, kèm loaiGoi (Ca lẻ/Gói tháng/24-7),
+        //    tuyChonBienThe (giá theo diện tích, chỉ có khi co_bien_the = true)
+        //    và dichVuThem (dịch vụ thêm tùy chọn, nếu có)
+        $dichVu = DichVu::with([
+                'loaiGoi.loaiGoi',
+                'tuyChonBienThe' => function ($q) {
+                    $q->where('trang_thai', true);
+                },
+                'dichVuThem' => function ($q) {
+                    $q->where('trang_thai', true);
+                },
+                'dichVuThem.dichVuThem',
+            ])
+            ->where('trang_thai', true)
+            ->get();
 
         return response()->json([
             'success' => true,
             'groups'  => $nhomDichVu,
-            'services'=> $dichVu
+            'services' => $dichVu
         ], 200);
     }
 
-    public function getServiceDetail($id): JsonResponse
+    public function getServiceDetail(int $id): JsonResponse
     {
         try {
-            // Nạp kèm loaiGoi (để hiển thị tag Gói tháng) và nhomDichVu (để hiển thị Tên nhóm)
-            // Lưu ý: Đảm bảo tên quan hệ 'nhomDichVu' viết đúng như bạn định nghĩa trong Model DichVu
-            $dichVu = DichVu::with(['loaiGoi.loaiGoi', 'nhomDichVu'])
+            $dichVu = DichVu::with([
+                'loaiGoi.loaiGoi',
+                'nhomDichVu',
+                'tuyChonBienThe' => function ($q) {
+                    $q->where('trang_thai', true);
+                },
+                'dichVuThem' => function ($q) {
+                    $q->where('trang_thai', true);
+                },
+                'dichVuThem.dichVuThem',
+            ])
                 ->where('trang_thai', true)
                 ->find($id);
 
-            // Nếu không tìm thấy dịch vụ hoặc dịch vụ đang bị ẩn (trang_thai = false)
             if (!$dichVu) {
                 return response()->json([
                     'success' => false,
@@ -133,11 +155,7 @@ class DichVuController extends Controller
                 ], 404);
             }
 
-            return response()->json([
-                'success' => true,
-                'service' => $dichVu
-            ], 200);
-
+            return response()->json(['success' => true, 'service' => $dichVu], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

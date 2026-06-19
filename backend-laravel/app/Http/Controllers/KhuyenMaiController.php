@@ -201,6 +201,12 @@ class KhuyenMaiController extends Controller
                     'giam_toi_da'           => $km->giam_toi_da,
                     'ngay_luu'              => $pivot->ngay_luu,
                     'ngay_su_dung'          => $pivot->ngay_su_dung,
+                    // ✅ FIX: bổ sung các field thô để frontend tính số tiền giảm thực tế
+                    // (trước đây chỉ trả discountValue dạng chuỗi đã format → frontend tính NaN)
+                    'loai_giam_gia'          => $km->loai_giam_gia,          // 'PhanTram' | 'TienMat'
+                    'gia_tri_giam'           => $km->gia_tri_giam,           // số % hoặc số tiền thô
+                    'dich_vu_id_ap_dung'     => $km->dich_vu_id_ap_dung,
+                    'nhom_dich_vu_id_ap_dung' => $km->nhom_dich_vu_id_ap_dung,
                 ];
             });
 
@@ -285,4 +291,5 @@ class KhuyenMaiController extends Controller
             ], 500);
         }
     }
+
 }

@@ -73,30 +73,40 @@ const khachHangApi = {
         axiosClient.delete('/khach-hang/thanh-toan/momo/huy-lien-ket'),
 
     // ─── Ví tiền ──────────────────────────────────────────────
-// GET /api/khach-hang/vi-tien
+    // GET /api/khach-hang/vi-tien
     // Trả về: { so_du, giao_dich[] }
     getViTien: () => {
         return axiosClient.get('/khach-hang/vi-tien');
     },
- 
+
     // POST /api/khach-hang/vi-tien/nap
     // Body: { so_tien, phuong_thuc_nap }
     napTien: (data) => {
         return axiosClient.post('/khach-hang/vi-tien/nap', data);
     },
- 
+
     // POST /api/khach-hang/vi-tien/rut
     // Body (dùng ngân hàng đã lưu): { so_tien, ngan_hang_id }
     // Body (tự nhập):               { so_tien, ten_ngan_hang, so_tai_khoan, chu_tai_khoan }
     rutTien: (data) => {
         return axiosClient.post('/khach-hang/vi-tien/rut', data);
     },
- 
+
     // GET /api/khach-hang/vi-tien/ngan-hang
     // Trả về danh sách ngân hàng đã lưu của user
     getNganHangDaLuu: () => {
         return axiosClient.get('/khach-hang/vi-tien/ngan-hang');
     },
+
+    // ─── Liên hệ đã lưu ────────────────────────────────────────
+    // GET /api/khach-hang/lien-he
+    getContacts: () => axiosClient.get('/khach-hang/lien-he'),
+
+    // POST /api/khach-hang/lien-he/them
+    addContact: (data) => axiosClient.post('/khach-hang/lien-he/them', data),
+
+    // DELETE /api/khach-hang/lien-he/{id}
+    deleteContact: (id) => axiosClient.delete(`/khach-hang/lien-he/${id}`),
 
     // ─── Đặt lịch ──────────────────────────────────────────────
     // POST /api/khach-hang/don-hang/dat-lich
