@@ -30,10 +30,10 @@ const AdminLogin = () => {
       });
 
       // Lưu Token vào trình duyệt (Với axios thường, dữ liệu nằm trong response.data)
-      localStorage.setItem('ADMIN_TOKEN', response.data.token);
-      localStorage.setItem('ADMIN_USER', JSON.stringify(response.data.user));
-
-      localStorage.setItem('token', response.data.token);
+  // Trong hàm xử lý đăng nhập Admin thành công
+      localStorage.setItem('token', response.data.token); 
+      localStorage.setItem('role', 'admin'); // Phân biệt role để sau này xử lý quyền
+      localStorage.setItem('ADMIN_USER', JSON.stringify(response.data.user)); // Key này dùng riêng cho UI Admin thì giữ nguyên cũng được
 
       // Đá văng sang trang Dashboard
       navigate('/admin/dashboard'); 

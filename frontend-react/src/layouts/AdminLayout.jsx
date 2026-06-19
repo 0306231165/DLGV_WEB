@@ -12,20 +12,21 @@ const AdminLayout = () => {
   const [pendingApprovalsCount] = useState(12); // Hồ sơ chờ duyệt
 
   // ================= HÀM XỬ LÝ ĐĂNG XUẤT =================
-  const handleLogout = (e) => {
-    e.preventDefault();
-    
-    // Bật hộp thoại hỏi xác nhận
-    const isConfirm = window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?");
-    
-    if (isConfirm) {
-      // Nếu sau này bạn có dùng token đăng nhập, có thể xóa ở đây:
-      // localStorage.removeItem('admin_token'); 
-      
-      // Chuyển hướng về trang Login
-      navigate('/admin/login');
-    }
-  };
+ // ================= HÀM XỬ LÝ ĐĂNG XUẤT =================
+const handleLogout = (e) => {
+  e.preventDefault();
+
+  const isConfirm = window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?");
+
+  if (isConfirm) {
+    // Xóa đúng các key mà axiosClient và hệ thống đang dùng
+    localStorage.removeItem('token'); 
+    localStorage.removeItem('role');
+    localStorage.removeItem('ADMIN_USER'); 
+
+    navigate('/admin/login');
+  }
+};
 
   // ================= DANH MỤC MENU DÀNH CHO ADMIN =================
   const menuItems = [
