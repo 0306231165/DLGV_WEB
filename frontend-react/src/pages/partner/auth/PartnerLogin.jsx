@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axiosClient from '../../../api/axiosClient';
 
 export default function PartnerLogin() {
   const navigate = useNavigate();
@@ -31,12 +32,31 @@ export default function PartnerLogin() {
     };
   }, []);
 
+  const [isLoading, setIsLoading] = useState(false);
+
   // 4. Hàm xử lý gửi dữ liệu Đăng nhập
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    console.log("Dữ liệu đăng nhập Đối tác:", { emailOrPhone, password });
-    // Tích hợp logic gọi API hoặc lưu token và chuyển hướng
-    navigate('/partner/dashboard');
+    
+    try {
+      setIsLoading(true);
+      const response = await axiosClient.post('/nhan-vien/dang-nhap', {
+        so_dien_thoai: emailOrPhone,
+        mat_khau: password
+      });
+      
+      // Lưu token vào localStorage
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('role', response.role);
+      
+      // Chuyển hướng sang Dashboard
+      navigate('/partner/dashboard');
+    } catch (error) {
+      console.error("Lỗi đăng nhập:", error);
+      alert(error.message || "Tài khoản hoặc mật khẩu không đúng.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

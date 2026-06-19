@@ -33,6 +33,8 @@ const AdminLogin = () => {
       localStorage.setItem('ADMIN_TOKEN', response.data.token);
       localStorage.setItem('ADMIN_USER', JSON.stringify(response.data.user));
 
+      localStorage.setItem('token', response.data.token);
+
       // Đá văng sang trang Dashboard
       navigate('/admin/dashboard'); 
       

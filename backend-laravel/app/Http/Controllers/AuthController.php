@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\TaiKhoan;
 use App\Models\KhachHang;
 use App\Models\TaiKhoanAdmin;
+use App\Models\NhanVien;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 
@@ -66,6 +67,67 @@ class AuthController extends Controller
                 'message' => 'Lỗi hệ thống, vui lòng thử lại.',
                 // Chỉ bật dòng dưới khi dev, tắt khi production
                 // 'debug'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ==========================================
+    // 1.5 ĐĂNG KÝ NHÂN VIÊN (ĐỐI TÁC)
+    // ==========================================
+    public function registerNhanVien(Request $request)
+    {
+        $request->validate([
+            'so_dien_thoai' => 'required|unique:taikhoan,so_dien_thoai|max:15',
+            'mat_khau'      => 'required|min:6', 
+            'ho_ten'        => 'required|max:150',
+            'email'         => 'nullable|email|max:100',
+            'cccd'          => 'required|max:12',
+            'dia_chi'       => 'required|max:255',
+            'kinh_nghiem'   => 'nullable|string',
+        ], [
+            'so_dien_thoai.required' => 'Vui lòng nhập số điện thoại.',
+            'so_dien_thoai.unique'   => 'Số điện thoại này đã được đăng ký.',
+            'mat_khau.min'           => 'Mật khẩu phải có ít nhất 6 ký tự.',
+            'ho_ten.required'        => 'Vui lòng nhập họ tên.',
+            'cccd.required'          => 'Vui lòng nhập CCCD.',
+            'dia_chi.required'       => 'Vui lòng nhập địa chỉ.',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Bước 1: Tạo TaiKhoan với trạng thái chờ xác minh
+            $taiKhoan = TaiKhoan::create([
+                'so_dien_thoai'  => $request->so_dien_thoai,
+                'mat_khau'       => Hash::make($request->mat_khau),
+                'ho_ten'         => $request->ho_ten,
+                'email'          => $request->email,
+                'loai_tai_khoan' => 'NhanVien',
+                'trang_thai'     => 'ChoXacMinh',
+            ]);
+
+            // Bước 2: Tạo bản ghi NhanVien gắn với TaiKhoan
+            NhanVien::create([
+                'tai_khoan_id' => $taiKhoan->id,
+                'cccd'         => $request->cccd,
+                'dia_chi'      => $request->dia_chi,
+                'kinh_nghiem'  => $request->kinh_nghiem,
+            ]);
+
+            // Bước 3: Tạo ví tiền tự động
+            $taiKhoan->viTien()->create([
+                'so_du' => 0.00,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Đăng ký đối tác thành công! Vui lòng chờ quản trị viên phê duyệt.',
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Lỗi hệ thống, vui lòng thử lại.',
             ], 500);
         }
     }
@@ -151,8 +213,18 @@ class AuthController extends Controller
         }
 
         if ($taiKhoan->trang_thai === 'BiKhoa') {
+            $msg = 'Tài khoản của bạn đã bị khóa hoặc hồ sơ bị từ chối.';
+            if ($taiKhoan->ly_do_tu_choi) {
+                $msg = 'Hồ sơ bị từ chối: ' . $taiKhoan->ly_do_tu_choi;
+            }
             return response()->json([
-                'message' => 'Tài khoản của bạn đã bị khóa.',
+                'message' => $msg,
+            ], 403);
+        }
+
+        if ($taiKhoan->trang_thai === 'ChoXacMinh') {
+            return response()->json([
+                'message' => 'Hồ sơ của bạn đang chờ quản trị viên phê duyệt.',
             ], 403);
         }
 

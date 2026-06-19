@@ -7,14 +7,29 @@ use App\Http\Controllers\DonHangController;
 use App\Http\Controllers\AdminAccountController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\KhuyenMaiController;
+use App\Http\Controllers\QuyDinhPhuPhiController;
+use App\Http\Controllers\KhieuNaiController;
+use App\Http\Controllers\AdminApprovalController;
+use App\Http\Controllers\AdminBookingController;
 
 // --- CÁC ROUTE ĐANG LÀM GIAO DIỆN CHƯA CẦN BẢO MẬT (Để ra ngoài này) ---
 Route::prefix('admin')->group(function () {
     Route::get('/users', [AdminAccountController::class, 'index']);
     Route::patch('/users/{id}/status', [AdminAccountController::class, 'updateStatus']);
     Route::post('/users', [AdminAccountController::class, 'store']);
-    Route::get('/recent-orders', [AdminDashboardController::class, 'recentOrders']);
     Route::delete('/users/{id}', [AdminAccountController::class, 'destroy']);
+    
+    // Approval Routes
+    Route::get('/approvals', [AdminApprovalController::class, 'index']);
+    Route::put('/approvals/{id}/approve', [AdminApprovalController::class, 'approve']);
+    Route::put('/approvals/{id}/reject', [AdminApprovalController::class, 'reject']);
+
+    // Booking Routes
+    Route::get('/bookings', [AdminBookingController::class, 'index']);
+    Route::put('/bookings/{id}/assign', [AdminBookingController::class, 'assign']);
+
+    Route::get('/recent-orders', [AdminDashboardController::class, 'recentOrders']);
+    Route::get('/reports', [AdminDashboardController::class, 'getReports']);
 });
 
 // --- CÁC ROUTE CẦN ĐĂNG NHẬP MỚI ĐƯỢC XEM (Để trong này) ---
@@ -35,6 +50,14 @@ Route::middleware(['auth:sanctum', 'ability:role:admin'])->prefix('admin')->grou
 
     Route::get('/don-hang/tat-ca', [DonHangController::class, 'index']);
     Route::get('/don-hang/{id}/chi-tiet', [DonHangController::class, 'show']);
+
+    Route::get('/quy-dinh-phu-phi', [QuyDinhPhuPhiController::class, 'index']);
+    Route::put('/quy-dinh-phu-phi/{id}', [QuyDinhPhuPhiController::class, 'update']);
+
+    Route::get('/khieu-nai', [KhieuNaiController::class, 'indexAdmin']);
+    Route::put('/khieu-nai/{id}/phan-hoi', [KhieuNaiController::class, 'updateReply']);
+    Route::put('/khieu-nai/{id}/trang-thai-hien-thi', [KhieuNaiController::class, 'toggleVisibility']);
+    Route::delete('/khieu-nai/{id}', [KhieuNaiController::class, 'destroy']);
 
     Route::get('/user', function (Request $request) {
         return $request->user();

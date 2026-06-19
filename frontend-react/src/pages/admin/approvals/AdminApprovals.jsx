@@ -1,73 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axiosClient from '../../../api/axiosClient';
 
 const AdminApprovals = () => {
-  // Thêm setCandidates để có thể cập nhật danh sách (xóa bớt khi đã duyệt/từ chối)
-  const [candidates, setCandidates] = useState([
-    {
-      id: 1,
-      name: 'Nguyễn Thị Mai',
-      applyTime: 'Ứng tuyển: 10:30 Hôm nay',
-      isNew: true,
-      avatar: 'https://i.pravatar.cc/150?img=47',
-      quote: 'Tôi có 5 năm kinh nghiệm dọn dẹp căn hộ cao cấp và luôn đảm bảo sự hài lòng tuyệt đối của khách hàng.',
-      location: 'Quận 7, TP. HCM',
-      phone: '090 123 4567',
-      age: '32 tuổi',
-      skills: [
-        { title: 'Dọn dẹp nhà ở (5 năm)', desc: 'Kinh nghiệm làm việc tại Vinhomes Central Park.' },
-        { title: 'Nấu ăn gia đình', desc: 'Có khả năng nấu đa dạng các món miền Nam.' },
-        { title: 'Sử dụng máy hút bụi', desc: 'Thành thạo các thiết bị vệ sinh hiện đại.' }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Phạm Văn Nam',
-      applyTime: 'Ứng tuyển: 08:15 Hôm nay',
-      isNew: false,
-      initials: 'PV',
-      avatar: null,
-      quote: 'Mong muốn tìm công việc ổn định, gắn bó lâu dài. Cẩn thận, trung thực.',
-      location: 'Gò Vấp, TP. HCM',
-      phone: '093 456 7890',
-      age: '28 tuổi',
-      skills: [
-        { title: 'Vệ sinh công nghiệp', desc: 'Đã từng làm cho công ty vệ sinh Hoàn Mỹ trong 3 năm.' },
-        { title: 'Làm sạch sofa, rèm', desc: 'Biết sử dụng hóa chất chuyên dụng an toàn.' }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Trần Hoàng Long',
-      applyTime: 'Ứng tuyển: 15:20 Hôm qua',
-      isNew: false,
-      avatar: 'https://i.pravatar.cc/150?img=11',
-      quote: 'Sinh viên năm 3 chăm chỉ, cần tìm việc làm thêm vào buổi tối.',
-      location: 'Bình Thạnh, TP. HCM',
-      phone: '098 765 4321',
-      age: '21 tuổi',
-      skills: [
-        { title: 'Dọn dẹp cơ bản', desc: 'Nhanh nhẹn, cẩn thận, biết lắng nghe ý kiến khách hàng.' }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Hoàng Linh',
-      applyTime: 'Ứng tuyển: 14:00 Hôm qua',
-      isNew: false,
-      initials: 'HL',
-      avatar: null,
-      quote: 'Kinh nghiệm giúp việc nhà theo giờ hơn 2 năm tại khu vực Phú Mỹ Hưng.',
-      location: 'Quận 4, TP. HCM',
-      phone: '091 234 5678',
-      age: '35 tuổi',
-      skills: [
-        { title: 'Dọn dẹp nhà ở', desc: 'Quen thuộc với các căn hộ chung cư cao cấp.' },
-        { title: 'Chăm sóc trẻ em', desc: 'Yêu trẻ, có kỹ năng chơi đùa và cho bé ăn.' }
-      ]
-    }
-  ]);
+  const [candidates, setCandidates] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [selectedId, setSelectedId] = useState(1);
+  // Fetch candidates
+  const fetchCandidates = async () => {
+    try {
+      setIsLoading(true);
+      const data = await axiosClient.get('/admin/approvals');
+      setCandidates(data);
+      if (data.length > 0) {
+        setSelectedId(data[0].id);
+      } else {
+        setSelectedId(null);
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách chờ duyệt:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCandidates();
+  }, []);
+
   const selectedCandidate = candidates.find(c => c.id === selectedId);
 
   // ================= CÁC HÀM XỬ LÝ CHỨC NĂNG =================
@@ -86,26 +46,36 @@ const AdminApprovals = () => {
   };
 
   // 2. Xử lý Phê duyệt
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedCandidate) return;
     const confirmApprove = window.confirm(`Xác nhận phê duyệt đối tác: ${selectedCandidate.name}?`);
     
     if (confirmApprove) {
-      alert(`✅ Đã phê duyệt thành công: ${selectedCandidate.name}`);
-      removeCandidateFromList(selectedCandidate.id);
+      try {
+        await axiosClient.put(`/admin/approvals/${selectedCandidate.id}/approve`);
+        alert(`✅ Đã phê duyệt thành công: ${selectedCandidate.name}`);
+        removeCandidateFromList(selectedCandidate.id);
+      } catch (error) {
+        alert('Có lỗi xảy ra khi phê duyệt.');
+      }
     }
   };
 
   // 3. Xử lý Từ chối
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!selectedCandidate) return;
     
     // Yêu cầu nhập lý do từ chối
-    const reason = window.prompt(`Nhập lý do từ chối hồ sơ của ${selectedCandidate.name}:`, "Chưa đạt yêu cầu kinh nghiệm");
+    const reason = window.prompt(`Nhập lý do từ chối hồ sơ của ${selectedCandidate.name}:`, "Không đạt yêu cầu");
     
     if (reason !== null) { // Nếu bấm OK (không bấm Hủy)
-      alert(`❌ Đã từ chối: ${selectedCandidate.name}.\nLý do: ${reason}`);
-      removeCandidateFromList(selectedCandidate.id);
+      try {
+        await axiosClient.put(`/admin/approvals/${selectedCandidate.id}/reject`, { reason });
+        alert(`❌ Đã từ chối: ${selectedCandidate.name}.\nLý do: ${reason}`);
+        removeCandidateFromList(selectedCandidate.id);
+      } catch (error) {
+        alert('Có lỗi xảy ra khi từ chối.');
+      }
     }
   };
 
@@ -127,7 +97,6 @@ const AdminApprovals = () => {
           </div>
           <div>
             <p className="text-[13px] font-bold text-slate-500">Hồ sơ chờ duyệt</p>
-            {/* Lấy số lượng thực tế từ mảng */}
             <h3 className="text-2xl font-black text-slate-800">{candidates.length}</h3>
           </div>
         </div>
@@ -160,11 +129,16 @@ const AdminApprovals = () => {
         <div className="lg:col-span-4 bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col h-[700px]">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-800">Danh sách chờ</h2>
-            <button className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">Làm mới</button>
+            <button onClick={fetchCandidates} className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">Làm mới</button>
           </div>
           
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {candidates.length > 0 ? (
+            {isLoading ? (
+              <div className="h-full flex flex-col items-center justify-center">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-sm font-bold text-slate-500 mt-3">Đang tải...</p>
+              </div>
+            ) : candidates.length > 0 ? (
               candidates.map((cand) => (
                 <div 
                   key={cand.id} 
@@ -235,9 +209,11 @@ const AdminApprovals = () => {
                     "{selectedCandidate.quote}"
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-600 font-medium">
-                    <div className="flex items-center gap-1.5"><span className="material-symbols-outlined text-slate-400 text-[18px]">location_on</span> {selectedCandidate.location}</div>
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-600 font-medium mt-2">
+                    <div className="flex items-center gap-1.5"><span className="material-symbols-outlined text-slate-400 text-[18px]">badge</span> CCCD: {selectedCandidate.cccd}</div>
                     <div className="flex items-center gap-1.5"><span className="material-symbols-outlined text-slate-400 text-[18px]">call</span> {selectedCandidate.phone}</div>
+                    <div className="flex items-center gap-1.5"><span className="material-symbols-outlined text-slate-400 text-[18px]">mail</span> {selectedCandidate.email}</div>
+                    <div className="flex items-center gap-1.5 w-full mt-1"><span className="material-symbols-outlined text-slate-400 text-[18px]">location_on</span> {selectedCandidate.location}</div>
                     <div className="flex items-center gap-1.5"><span className="material-symbols-outlined text-slate-400 text-[18px]">cake</span> {selectedCandidate.age}</div>
                   </div>
                 </div>
@@ -248,19 +224,17 @@ const AdminApprovals = () => {
             <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 flex flex-col flex-1">
               <h3 className="text-lg font-black text-slate-800 mb-5 flex items-center gap-2">
                 <span className="material-symbols-outlined text-blue-600">assignment_turned_in</span>
-                Kinh nghiệm & Kỹ năng chuyên môn
+                Kinh nghiệm & Kỹ năng chuyên môn đăng ký
               </h3>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1 bg-slate-50/50 p-5 rounded-xl border border-slate-100">
-                {selectedCandidate.skills.map((skill, index) => (
-                  <div key={index} className="flex gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <span className="material-symbols-outlined text-blue-500 text-[24px] shrink-0">check_circle</span>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800">{skill.title}</h4>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">{skill.desc}</p>
-                    </div>
+              <div className="flex-1 bg-slate-50/50 p-5 rounded-xl border border-slate-100">
+                {(selectedCandidate.kinh_nghiem || selectedCandidate.kinhNghiem) ? (
+                  <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 whitespace-pre-line text-sm text-slate-700 leading-relaxed">
+                    {selectedCandidate.kinh_nghiem || selectedCandidate.kinhNghiem}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center text-slate-500 py-4">Chưa cập nhật kinh nghiệm làm việc.</div>
+                )}
               </div>
             </div>
 
@@ -287,13 +261,13 @@ const AdminApprovals = () => {
 
           </div>
         ) : (
-          // MÀN HÌNH TRỐNG KHI ĐÃ DUYỆT HẾT
-          <div className="lg:col-span-8 bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col items-center justify-center text-center p-12">
+          // MÀN HÌNH TRỐNG KHI ĐÃ DUYỆT HẾT HOẶC KHÔNG CÓ AI
+          <div className="lg:col-span-8 bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col items-center justify-center text-center p-12 h-[700px]">
             <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-6 shadow-sm border border-emerald-100">
               <span className="material-symbols-outlined text-[48px]">task_alt</span>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-2">Tuyệt vời!</h2>
-            <p className="text-slate-500">Bạn đã hoàn thành kiểm duyệt tất cả hồ sơ ngày hôm nay.</p>
+            <p className="text-slate-500">Bạn đã hoàn thành kiểm duyệt tất cả hồ sơ hiện tại.</p>
           </div>
         )}
       </div>

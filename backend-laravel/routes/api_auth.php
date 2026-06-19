@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 // NHÓM API KHÔNG CẦN ĐĂNG NHẬP (Public)
 Route::post('/khach-hang/dang-ky', [AuthController::class, 'registerKhachHang']);
 Route::post('/khach-hang/dang-nhap', [AuthController::class, 'loginKhachHang']);
+Route::post('/nhan-vien/dang-ky', [AuthController::class, 'registerNhanVien']);
 Route::post('/nhan-vien/dang-nhap', [AuthController::class, 'loginNhanVien']);
 
 // Đăng nhập Admin 

@@ -1,133 +1,41 @@
 import React, { useState, useEffect } from 'react';
+import axiosClient from '../../../api/axiosClient';
 
 const AdminReports = () => {
-  // ================= 1. DỮ LIỆU GIẢ LẬP THEO TỪNG NĂM (2021 -> 2026) =================
-  
-  const yearlyData = {
-    '2026': {
-      chart: [
-        { month: 'TH 1', value: 60, amount: '1.8B' }, { month: 'TH 2', value: 75, amount: '2.3B' },
-        { month: 'TH 3', value: 100, amount: '3.4B', isPeak: true }, { month: 'TH 4', value: 80, amount: '2.6B' },
-        { month: 'TH 5', value: 85, amount: '2.9B' }, { month: 'TH 6', value: 95, amount: '3.2B' },
-      ],
-      topServices: [
-        { name: 'Vệ sinh máy lạnh', percent: 35 }, { name: 'Giặt ủi & Sofa', percent: 25 },
-        { name: 'Vệ sinh nhà cửa', percent: 22 }, { name: 'Trông trẻ & Giúp việc', percent: 13 }, { name: 'Dịch vụ khác', percent: 5 },
-      ],
-      detailedServices: [
-        { name: 'Vệ sinh máy lạnh', orders: '1.680', revenue: '756.000.000 đ', rating: '4.9', trend: 'Dẫn đầu thị trường', trendColor: 'text-purple-700 bg-purple-50 border-purple-100' },
-        { name: 'Giặt ủi & Sofa', orders: '1.240', revenue: '396.800.000 đ', rating: '4.8', trend: 'Tăng trưởng mạnh', trendColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-        { name: 'Vệ sinh nhà cửa', orders: '1.020', revenue: '867.000.000 đ', rating: '4.7', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Trông trẻ & Giúp việc', orders: '580', revenue: '696.000.000 đ', rating: '4.6', trend: 'Bão hòa', trendColor: 'text-orange-700 bg-orange-50 border-orange-100' },
-        { name: 'Dịch vụ khác', orders: '250', revenue: '235.000.000 đ', rating: '4.5', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-      ]
-    },
-    '2025': {
-      chart: [
-        { month: 'TH 1', value: 50, amount: '1.5B' }, { month: 'TH 2', value: 60, amount: '1.8B' },
-        { month: 'TH 3', value: 85, amount: '2.7B' }, { month: 'TH 4', value: 70, amount: '2.1B' },
-        { month: 'TH 5', value: 80, amount: '2.4B' }, { month: 'TH 6', value: 100, amount: '3.2B', isPeak: true },
-      ],
-      topServices: [
-        { name: 'Vệ sinh máy lạnh', percent: 34 }, { name: 'Vệ sinh nhà cửa', percent: 26 },
-        { name: 'Giặt ủi & Sofa', percent: 22 }, { name: 'Trông trẻ & Giúp việc', percent: 14 }, { name: 'Dịch vụ khác', percent: 4 },
-      ],
-      detailedServices: [
-        { name: 'Vệ sinh máy lạnh', orders: '1.520', revenue: '684.000.000 đ', rating: '4.9', trend: 'Tăng trưởng mạnh', trendColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-        { name: 'Vệ sinh nhà cửa', orders: '1.110', revenue: '943.500.000 đ', rating: '4.8', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Giặt ủi & Sofa', orders: '980', revenue: '313.600.000 đ', rating: '4.7', trend: 'Tăng trưởng', trendColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-        { name: 'Trông trẻ & Giúp việc', orders: '610', revenue: '732.000.000 đ', rating: '4.6', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Dịch vụ khác', orders: '190', revenue: '185.000.000 đ', rating: '4.5', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-      ]
-    },
-    '2024': {
-      chart: [
-        { month: 'TH 1', value: 40, amount: '1.2B' }, { month: 'TH 2', value: 55, amount: '1.6B' },
-        { month: 'TH 3', value: 90, amount: '2.8B', isPeak: true }, { month: 'TH 4', value: 65, amount: '1.9B' },
-        { month: 'TH 5', value: 75, amount: '2.2B' }, { month: 'TH 6', value: 100, amount: '3.1B' },
-      ],
-      topServices: [
-        { name: 'Vệ sinh máy lạnh', percent: 32 }, { name: 'Vệ sinh nhà cửa', percent: 28 },
-        { name: 'Giặt ủi & Sofa', percent: 20 }, { name: 'Trông trẻ & Giúp việc', percent: 15 }, { name: 'Dịch vụ khác', percent: 5 },
-      ],
-      detailedServices: [
-        { name: 'Vệ sinh máy lạnh', orders: '1.350', revenue: '607.500.000 đ', rating: '4.9', trend: 'Tăng trưởng mạnh', trendColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-        { name: 'Vệ sinh nhà cửa', orders: '1.180', revenue: '1.003.000.000 đ', rating: '4.8', trend: 'Tăng trưởng', trendColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-        { name: 'Giặt ủi & Sofa', orders: '843', revenue: '269.760.000 đ', rating: '4.7', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Trông trẻ & Giúp việc', orders: '632', revenue: '758.400.000 đ', rating: '4.6', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Dịch vụ khác', orders: '213', revenue: '201.340.000 đ', rating: '4.5', trend: 'Giảm nhẹ', trendColor: 'text-rose-700 bg-rose-50 border-rose-100' },
-      ]
-    },
-    '2023': {
-      chart: [
-        { month: 'TH 1', value: 30, amount: '900M' }, { month: 'TH 2', value: 45, amount: '1.3B' },
-        { month: 'TH 3', value: 60, amount: '1.8B' }, { month: 'TH 4', value: 50, amount: '1.5B' },
-        { month: 'TH 5', value: 85, amount: '2.5B', isPeak: true }, { month: 'TH 6', value: 70, amount: '2.1B' },
-      ],
-      topServices: [
-        { name: 'Vệ sinh nhà cửa', percent: 35 }, { name: 'Vệ sinh máy lạnh', percent: 25 },
-        { name: 'Trông trẻ & Giúp việc', percent: 20 }, { name: 'Giặt ủi & Sofa', percent: 12 }, { name: 'Dịch vụ khác', percent: 8 },
-      ],
-      detailedServices: [
-        { name: 'Vệ sinh nhà cửa', orders: '1.250', revenue: '1.050.000.000 đ', rating: '4.8', trend: 'Tăng trưởng', trendColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-        { name: 'Vệ sinh máy lạnh', orders: '980', revenue: '420.000.000 đ', rating: '4.7', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Trông trẻ & Giúp việc', orders: '810', revenue: '950.000.000 đ', rating: '4.8', trend: 'Tăng trưởng mạnh', trendColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-        { name: 'Giặt ủi & Sofa', orders: '520', revenue: '160.000.000 đ', rating: '4.5', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Dịch vụ khác', orders: '310', revenue: '290.000.000 đ', rating: '4.6', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-      ]
-    },
-    '2022': {
-      chart: [
-        { month: 'TH 1', value: 20, amount: '600M' }, { month: 'TH 2', value: 25, amount: '750M' },
-        { month: 'TH 3', value: 40, amount: '1.2B' }, { month: 'TH 4', value: 35, amount: '1.0B' },
-        { month: 'TH 5', value: 50, amount: '1.5B', isPeak: true }, { month: 'TH 6', value: 45, amount: '1.3B' },
-      ],
-      topServices: [
-        { name: 'Trông trẻ & Giúp việc', percent: 40 }, { name: 'Vệ sinh nhà cửa', percent: 30 },
-        { name: 'Giặt ủi & Sofa', percent: 15 }, { name: 'Vệ sinh máy lạnh', percent: 10 }, { name: 'Dịch vụ khác', percent: 5 },
-      ],
-      detailedServices: [
-        { name: 'Trông trẻ & Giúp việc', orders: '1.100', revenue: '1.200.000.000 đ', rating: '4.9', trend: 'Đỉnh điểm', trendColor: 'text-purple-700 bg-purple-50 border-purple-100' },
-        { name: 'Vệ sinh nhà cửa', orders: '850', revenue: '750.000.000 đ', rating: '4.7', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Giặt ủi & Sofa', orders: '420', revenue: '130.000.000 đ', rating: '4.6', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Vệ sinh máy lạnh', orders: '210', revenue: '85.000.000 đ', rating: '4.4', trend: 'Đang phát triển', trendColor: 'text-blue-700 bg-blue-50 border-blue-100' },
-        { name: 'Dịch vụ khác', orders: '150', revenue: '120.000.000 đ', rating: '4.5', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-      ]
-    },
-    '2021': {
-      chart: [
-        { month: 'TH 1', value: 15, amount: '450M' }, { month: 'TH 2', value: 20, amount: '600M' },
-        { month: 'TH 3', value: 18, amount: '540M' }, { month: 'TH 4', value: 25, amount: '750M' },
-        { month: 'TH 5', value: 22, amount: '660M' }, { month: 'TH 6', value: 35, amount: '1.0B', isPeak: true },
-      ],
-      topServices: [
-        { name: 'Vệ sinh nhà cửa', percent: 50 }, { name: 'Trông trẻ & Giúp việc', percent: 30 },
-        { name: 'Giặt ủi & Sofa', percent: 10 }, { name: 'Dịch vụ khác', percent: 6 }, { name: 'Vệ sinh máy lạnh', percent: 4 },
-      ],
-      detailedServices: [
-        { name: 'Vệ sinh nhà cửa', orders: '980', revenue: '820.000.000 đ', rating: '4.6', trend: 'Chủ lực', trendColor: 'text-indigo-700 bg-indigo-50 border-indigo-100' },
-        { name: 'Trông trẻ & Giúp việc', orders: '650', revenue: '710.000.000 đ', rating: '4.8', trend: 'Tăng trưởng', trendColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-        { name: 'Giặt ủi & Sofa', orders: '210', revenue: '65.000.000 đ', rating: '4.5', trend: 'Mới ra mắt', trendColor: 'text-blue-700 bg-blue-50 border-blue-100' },
-        { name: 'Dịch vụ khác', orders: '120', revenue: '80.000.000 đ', rating: '4.4', trend: 'Ổn định', trendColor: 'text-slate-600 bg-slate-50 border-slate-100' },
-        { name: 'Vệ sinh máy lạnh', orders: '80', revenue: '35.000.000 đ', rating: '4.2', trend: 'Thử nghiệm', trendColor: 'text-orange-700 bg-orange-50 border-orange-100' },
-      ]
-    }
+  // ================= 1. STATE & LẤY DỮ LIỆU MYSQL =================
+  const [reportData, setReportData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [chartYear, setChartYear] = useState('');
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const response = await axiosClient.get('/admin/reports');
+        if (response.success) {
+          setReportData(response);
+          // Auto select the latest year
+          if (response.years_available && response.years_available.length > 0) {
+            setChartYear(response.years_available[0].toString());
+          }
+        }
+      } catch (error) {
+        console.error('Lỗi khi lấy dữ liệu báo cáo:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReports();
+  }, []);
+
+  const activeData = reportData?.yearly_data[chartYear] || {
+    chart: [],
+    topServices: [],
+    detailedServices: []
   };
 
-  // Dữ liệu Giao dịch gần đây
-  const [transactions] = useState([
-    { id: '#CT-9042', customer: 'Nguyễn Văn A', avatar: 'https://i.pravatar.cc/150?img=11', service: 'Vệ sinh máy lạnh', date: '12/03/2024', amount: '450.000 đ', status: 'Hoàn thành' },
-    { id: '#CT-9041', customer: 'Trần Thị B', avatar: 'https://i.pravatar.cc/150?img=5', service: 'Giặt ủi & Sofa', date: '12/03/2024', amount: '320.000 đ', status: 'Đang xử lý' },
-    { id: '#CT-9040', customer: 'Lê Hoàng C', avatar: 'https://i.pravatar.cc/150?img=12', service: 'Dọn dẹp nhà cửa', date: '11/03/2024', amount: '850.000 đ', status: 'Hoàn thành' },
-    { id: '#CT-9039', customer: 'Phạm Thị D', avatar: 'https://i.pravatar.cc/150?img=44', service: 'Vệ sinh máy lạnh', date: '11/03/2024', amount: '200.000 đ', status: 'Hoàn thành' },
-    { id: '#CT-9038', customer: 'Hoàng Quang E', avatar: 'https://i.pravatar.cc/150?img=15', service: 'Trông trẻ & Giúp việc', date: '10/03/2024', amount: '1.200.000 đ', status: 'Hủy' },
-    { id: '#CT-9037', customer: 'Vũ Văn F', avatar: 'https://i.pravatar.cc/150?img=60', service: 'Vệ sinh nhà cửa', date: '10/03/2024', amount: '350.000 đ', status: 'Đang xử lý' },
-    { id: '#CT-9036', customer: 'Đỗ Mỹ G', avatar: 'https://i.pravatar.cc/150?img=20', service: 'Giặt ủi & Sofa', date: '09/03/2024', amount: '400.000 đ', status: 'Hoàn thành' },
-  ]);
-
-  // ================= 2. STATES & LOGIC =================
-  const [chartYear, setChartYear] = useState('2024');
-  const activeData = yearlyData[chartYear];
+  const overview = reportData?.overview || {};
+  const transactions = reportData?.transactions || [];
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('Tất cả');
@@ -170,6 +78,15 @@ const AdminReports = () => {
     return () => { document.body.style.overflow = 'unset'; };
   }, [showServiceModal]);
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-[500px] items-center justify-center bg-slate-50/30">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-sm font-bold text-slate-500">Đang tải dữ liệu báo cáo...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-full bg-slate-50/30 relative">
       {/* ================= KHU VỰC TIÊU ĐỀ ================= */}
@@ -182,41 +99,43 @@ const AdminReports = () => {
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-transform">
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><span className="material-symbols-outlined text-[20px]">account_balance_wallet</span></div>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">+12.5%</span>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${overview.monthly_growth >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+              {overview.monthly_growth >= 0 ? '+' : ''}{overview.monthly_growth}%
+            </span>
           </div>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tổng doanh thu</p>
-          <h3 className="text-2xl font-black text-slate-800">2.840.000.000 <span className="text-sm">đ</span></h3>
-          <p className="text-[10px] text-slate-400 mt-2">So với 2.520.000.000 đ tháng trước</p>
+          <h3 className="text-2xl font-black text-slate-800">{new Intl.NumberFormat('vi-VN').format(overview.total_revenue)} <span className="text-sm">đ</span></h3>
+          <p className="text-[10px] text-slate-400 mt-2">Đã được thanh toán và hoàn thành</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-transform">
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center"><span className="material-symbols-outlined text-[20px]">trending_up</span></div>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">+8.2%</span>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${overview.monthly_growth >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+              {overview.monthly_growth >= 0 ? '+' : ''}{overview.monthly_growth}%
+            </span>
           </div>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tăng trưởng tháng</p>
-          <h3 className="text-2xl font-black text-slate-800">18.4%</h3>
-          <p className="text-[10px] text-slate-400 mt-2">Mục tiêu quý: 20%</p>
+          <h3 className="text-2xl font-black text-slate-800">{overview.monthly_growth}%</h3>
+          <p className="text-[10px] text-slate-400 mt-2">So với doanh thu tháng trước</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-transform">
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><span className="material-symbols-outlined text-[20px]">group</span></div>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">+420</span>
           </div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Người dùng tích cực</p>
-          <h3 className="text-2xl font-black text-slate-800">12.540</h3>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Khách hàng tích cực</p>
+          <h3 className="text-2xl font-black text-slate-800">{new Intl.NumberFormat('vi-VN').format(overview.active_users)}</h3>
           <p className="text-[10px] text-slate-400 mt-2">Hoạt động trong 30 ngày qua</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-transform">
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><span className="material-symbols-outlined text-[20px]">receipt_long</span></div>
-            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-md">-2.1%</span>
           </div>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tổng đơn hàng</p>
-          <h3 className="text-2xl font-black text-slate-800">4.218</h3>
-          <p className="text-[10px] text-slate-400 mt-2">Tỉ lệ hoàn thành: 94.8%</p>
+          <h3 className="text-2xl font-black text-slate-800">{new Intl.NumberFormat('vi-VN').format(overview.total_orders)}</h3>
+          <p className="text-[10px] text-slate-400 mt-2">Tỉ lệ hoàn thành: {overview.completion_rate}%</p>
         </div>
       </div>
 
@@ -236,12 +155,9 @@ const AdminReports = () => {
               onChange={(e) => setChartYear(e.target.value)} 
               className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
             >
-              <option value="2026">Năm 2026</option>
-              <option value="2025">Năm 2025</option>
-              <option value="2024">Năm 2024</option>
-              <option value="2023">Năm 2023</option>
-              <option value="2022">Năm 2022</option>
-              <option value="2021">Năm 2021</option>
+              {reportData?.years_available?.map((year) => (
+                <option key={year} value={year.toString()}>Năm {year}</option>
+              ))}
             </select>
           </div>
 
@@ -407,7 +323,6 @@ const AdminReports = () => {
                       <th className="py-3.5 pl-4">Tên dịch vụ</th>
                       <th className="py-3.5">Tổng đơn đặt</th>
                       <th className="py-3.5">Doanh thu mang lại</th>
-                      <th className="py-3.5">Đánh giá trung bình</th>
                       <th className="py-3.5 pr-4 text-center">Xu hướng trạng thái</th>
                     </tr>
                   </thead>
@@ -418,12 +333,6 @@ const AdminReports = () => {
                         <td className="py-4 pl-4 font-bold text-slate-800">{item.name}</td>
                         <td className="py-4 text-slate-600">{item.orders} đơn</td>
                         <td className="py-4 font-black text-slate-800">{item.revenue}</td>
-                        <td className="py-4">
-                          <div className="flex items-center gap-1 text-slate-700">
-                            <span className="material-symbols-outlined text-[16px] text-amber-400 font-bold">star</span>
-                            {item.rating} / 5.0
-                          </div>
-                        </td>
                         <td className="py-4 pr-4 text-center">
                           <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-black border ${item.trendColor}`}>
                             {item.trend}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axiosClient from '../../../api/axiosClient';
 
 export default function PartnerRegister() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function PartnerRegister() {
   const [email, setEmail] = useState('');
   const [cccd, setCccd] = useState('');
   const [diaChi, setDiaChi] = useState('');
+  const [kinhNghiem, setKinhNghiem] = useState('');
   const [matKhau, setMatKhau] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
@@ -37,28 +39,37 @@ export default function PartnerRegister() {
     };
   }, []);
 
+  const [isLoading, setIsLoading] = useState(false);
+
   // 3. Xử lý submit thông tin đăng ký ứng tuyển
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (matKhau !== confirmPassword) {
       alert("Mật khẩu xác nhận của đối tác chưa trùng khớp!");
       return;
     }
 
-    // Cấu trúc Data gửi lên API trùng khớp 100% với các trường Database của bạn
     const registerPayload = {
       so_dien_thoai: soDienThoai,
       mat_khau: matKhau,
       ho_ten: hoTen,
       email: email || null,
-      loai_tai_khoan: 'NhanVien', // Định danh cứng để backend phân loại vào bảng TaiKhoan
       cccd: cccd,
-      dia_chi: diaChi
+      dia_chi: diaChi,
+      kinh_nghiem: kinhNghiem
     };
 
-    console.log("Dữ liệu đăng ký Đối tác khớp Database:", registerPayload);
-    alert("Đăng ký thành công! Hồ sơ nhân viên đã được ghi nhận hệ thống.");
-    navigate('/partner/login');
+    try {
+      setIsLoading(true);
+      await axiosClient.post('/nhan-vien/dang-ky', registerPayload);
+      alert("Đăng ký thành công! Hồ sơ của bạn đã được gửi cho Quản trị viên phê duyệt.");
+      navigate('/partner/login');
+    } catch (error) {
+      console.error("Lỗi đăng ký:", error);
+      alert(error.message || "Có lỗi xảy ra khi đăng ký.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -270,6 +281,25 @@ export default function PartnerRegister() {
                 </div>
               </div>
 
+              {/* Kinh nghiệm làm việc */}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="kinhNghiem">
+                  Kinh nghiệm làm việc <span className="text-slate-400 font-normal">(Không bắt buộc)</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3 text-slate-400">
+                    <span className="material-symbols-outlined text-xl">work_history</span>
+                  </span>
+                  <textarea 
+                    className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all outline-none text-slate-800 text-sm min-h-[100px] resize-y"
+                    id="kinhNghiem"
+                    placeholder="- Quét và lau sàn toàn bộ các phòng&#10;- Lau sạch bụi bẩn trên bề mặt đồ đạc..."
+                    value={kinhNghiem}
+                    onChange={(e) => setKinhNghiem(e.target.value)}
+                  />
+                </div>
+              </div>
+
               {/* Mật khẩu */}
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="matKhau">
@@ -325,9 +355,21 @@ export default function PartnerRegister() {
               <div className="pt-2">
                 <button 
                   type="submit"
-                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm tracking-wide shadow-md shadow-emerald-600/10 hover:shadow-lg transition-all active:scale-[0.99]"
+                  disabled={isLoading}
+                  className={`w-full py-3 px-4 rounded-xl text-white font-bold text-sm tracking-wide shadow-md transition-all ${
+                    isLoading 
+                      ? 'bg-emerald-400 cursor-not-allowed flex items-center justify-center gap-2' 
+                      : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10 hover:shadow-lg active:scale-[0.99]'
+                  }`}
                 >
-                  Gửi thông tin ứng tuyển
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Đang gửi yêu cầu...
+                    </>
+                  ) : (
+                    "Gửi thông tin ứng tuyển"
+                  )}
                 </button>
               </div>
             </form>

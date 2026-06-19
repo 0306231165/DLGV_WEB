@@ -1,97 +1,30 @@
 import React, { useState, useEffect } from 'react';
+import axiosClient from '../../../api/axiosClient';
 
 const AdminBookings = () => {
-  // ================= 1. STATE DỮ LIỆU ĐƠN HÀNG =================
-  const [orders, setOrders] = useState([
-    {
-      id: '#CT-8802',
-      serviceType: 'Tổng vệ sinh',
-      serviceColor: 'bg-blue-600',
-      customer: 'Lê Văn Hùng',
-      location: 'Quận 7, TP. HCM',
-      timeText: 'Hôm nay',
-      timeRange: '14:00 - 18:00',
-      timeStatus: 'normal',
-      status: 'pending',
-      worker: null
-    },
-    {
-      id: '#CT-8795',
-      serviceType: 'Vệ sinh Máy lạnh',
-      serviceColor: 'bg-cyan-500',
-      customer: 'Trần Thị Lan',
-      location: 'Thảo Điền, Quận 2',
-      timeText: 'Ngày mai',
-      timeRange: '09:00 - 11:00',
-      timeStatus: 'normal',
-      status: 'assigned',
-      worker: { name: 'Nguyễn Văn An', id: 'W-102', avatar: 'https://i.pravatar.cc/150?img=11' }
-    },
-    {
-      id: '#CT-8780',
-      serviceType: 'Chăm sóc sân vườn',
-      serviceColor: 'bg-emerald-500',
-      customer: 'Phạm Minh Đức',
-      location: 'Ciputra, Hà Nội',
-      timeText: 'Đang làm việc',
-      timeRange: 'Kết thúc trong 45p',
-      timeStatus: 'active',
-      status: 'in_progress',
-      worker: { name: 'Kiều Minh', id: 'W-088', initials: 'KM' }
-    },
-    {
-      id: '#CT-8772',
-      serviceType: 'Dọn dẹp sau xây dựng',
-      serviceColor: 'bg-rose-500',
-      customer: 'Đặng Mai Anh',
-      location: 'Quận 1, TP. HCM',
-      timeText: 'Bị trễ',
-      timeRange: 'Nhân viên chưa đến',
-      timeStatus: 'delayed',
-      status: 'pending',
-      worker: null
-    },
-    {
-      id: '#CT-8765',
-      serviceType: 'Dọn dẹp Cơ bản',
-      serviceColor: 'bg-blue-400',
-      customer: 'Hoàng Nhật Minh',
-      location: 'Bình Thạnh, TP. HCM',
-      timeText: 'Hôm nay',
-      timeRange: '10:00 - 12:00',
-      timeStatus: 'normal',
-      status: 'completed',
-      worker: { name: 'Lê Thị Hoa', id: 'W-045', avatar: 'https://i.pravatar.cc/150?img=32' }
-    },
-    {
-      id: '#CT-8760',
-      serviceType: 'Giặt Sofa, Rèm',
-      serviceColor: 'bg-purple-500',
-      customer: 'Vũ Thanh Hằng',
-      location: 'Gò Vấp, TP. HCM',
-      timeText: 'Hôm nay',
-      timeRange: '15:30 - 17:30',
-      timeStatus: 'normal',
-      status: 'pending',
-      worker: null
-    }
-  ]);
+  // ================= 1. STATE DỮ LIỆU ĐƠN HÀNG VÀ NHÂN VIÊN =================
+  const [orders, setOrders] = useState([]);
+  const [availableWorkers, setAvailableWorkers] = useState([]);
+  const [stats, setStats] = useState({ pending: 0, assigned: 0, inProgress: 0, completed: 0 });
+  const [isLoading, setIsLoading] = useState(true);
 
-  // ================= 2. STATE DỮ LIỆU NHÂN VIÊN SẴN SÀNG =================
-  const [availableWorkers] = useState([
-    { id: 'W-105', name: 'Lê Thị Hoa', role: 'Chuyên viên Vệ sinh', rating: 4.9, distance: '1.2 km', avatar: 'https://i.pravatar.cc/150?img=32' },
-    { id: 'W-201', name: 'Trần Tuấn Kiệt', role: 'Vệ sinh Máy lạnh', rating: 4.8, distance: '2.5 km', avatar: 'https://i.pravatar.cc/150?img=53' },
-    { id: 'W-088', name: 'Bùi Gia Khiêm', role: 'Dọn dẹp Cơ bản', rating: 4.6, distance: '3.0 km', avatar: 'https://i.pravatar.cc/150?img=51' },
-    { id: 'W-302', name: 'Nguyễn Văn An', role: 'Tổng vệ sinh', rating: 5.0, distance: '4.1 km', avatar: 'https://i.pravatar.cc/150?img=11' },
-    { id: 'W-405', name: 'Phạm Thị Mai', role: 'Dọn dẹp Khẩn cấp', rating: 4.7, distance: '4.8 km', avatar: 'https://i.pravatar.cc/150?img=44' },
-    { id: 'W-512', name: 'Hoàng Quang Huy', role: 'Chăm sóc sân vườn', rating: 4.9, distance: '5.5 km', avatar: 'https://i.pravatar.cc/150?img=15' },
-    { id: 'W-618', name: 'Đỗ Mỹ Linh', role: 'Chuyên viên Vệ sinh', rating: 4.5, distance: '6.2 km', avatar: 'https://i.pravatar.cc/150?img=20' },
-    { id: 'W-722', name: 'Vũ Văn Đức', role: 'Tổng vệ sinh', rating: 4.8, distance: '7.0 km', avatar: 'https://i.pravatar.cc/150?img=60' },
-    { id: 'W-830', name: 'Bùi Thanh Trúc', role: 'Vệ sinh Máy lạnh', rating: 4.7, distance: '8.1 km', avatar: 'https://i.pravatar.cc/150?img=47' },
-    { id: 'W-941', name: 'Phan Văn Tài', role: 'Dọn dẹp Cơ bản', rating: 4.9, distance: '9.5 km', avatar: 'https://i.pravatar.cc/150?img=33' },
-    { id: 'W-155', name: 'Ngô Thu Thảo', role: 'Chăm sóc sân vườn', rating: 4.6, distance: '10.2 km', avatar: 'https://i.pravatar.cc/150?img=24' },
-    { id: 'W-266', name: 'Đinh Phương Nam', role: 'Dọn dẹp Khẩn cấp', rating: 5.0, distance: '11.8 km', avatar: 'https://i.pravatar.cc/150?img=13' },
-  ]);
+  const fetchBookingsData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await axiosClient.get('/admin/bookings');
+      setOrders(data.orders || []);
+      setAvailableWorkers(data.availableWorkers || []);
+      setStats(data.stats || { pending: 0, assigned: 0, inProgress: 0, completed: 0 });
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu điều phối:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookingsData();
+  }, []);
 
   // ================= 3. STATE UI (TÌM KIẾM, MODAL) =================
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,6 +33,7 @@ const AdminBookings = () => {
   
   const [showFullMap, setShowFullMap] = useState(false);
   const [assigningOrderId, setAssigningOrderId] = useState(null); 
+  const [assigningOrderRawId, setAssigningOrderRawId] = useState(null);
   
   const [isAddingOrder, setIsAddingOrder] = useState(false);
   const [newOrderForm, setNewOrderForm] = useState({
@@ -124,26 +58,21 @@ const AdminBookings = () => {
   const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
 
   // ================= 5. CÁC HÀM CHỨC NĂNG =================
-  const openAssignModal = (orderId) => {
+  const openAssignModal = (orderId, orderRawId) => {
     setAssigningOrderId(orderId);
+    setAssigningOrderRawId(orderRawId);
   };
 
-  const confirmAssignWorker = (worker) => {
-    setOrders(orders.map(order => {
-      if (order.id === assigningOrderId) {
-        return {
-          ...order,
-          status: 'assigned',
-          timeStatus: 'normal',
-          timeText: 'Sắp tới',
-          timeRange: 'Đã phân công',
-          worker: { name: worker.name, id: worker.id, avatar: worker.avatar }
-        };
-      }
-      return order;
-    }));
-    setAssigningOrderId(null);
-    alert(`✅ Đã phân công đơn ${assigningOrderId} cho nhân sự: ${worker.name}`);
+  const confirmAssignWorker = async (worker) => {
+    try {
+      await axiosClient.put(`/admin/bookings/${assigningOrderRawId}/assign`, { worker_id: worker.raw_id });
+      alert(`✅ Đã phân công đơn ${assigningOrderId} cho nhân sự: ${worker.name}`);
+      setAssigningOrderId(null);
+      setAssigningOrderRawId(null);
+      fetchBookingsData(); // Refresh data
+    } catch (error) {
+      alert('Có lỗi xảy ra khi phân công nhân sự.');
+    }
   };
 
   const getServiceColor = (service) => {
@@ -161,6 +90,7 @@ const AdminBookings = () => {
     e.preventDefault();
     const newOrder = {
       id: `#CT-${Math.floor(Math.random() * 1000) + 9000}`,
+      raw_id: Date.now(), // Fake ID
       serviceType: newOrderForm.service,
       serviceColor: getServiceColor(newOrderForm.service),
       customer: newOrderForm.customer,
@@ -175,19 +105,13 @@ const AdminBookings = () => {
     setOrders([newOrder, ...orders]);
     setIsAddingOrder(false);
     setNewOrderForm({ customer: '', location: '', date: '', time: '', service: 'Dọn dẹp Khẩn cấp' });
+    alert('Đã thêm đơn hàng khẩn cấp (Chỉ hiển thị tạm thời trên giao diện).');
   };
 
-  const handleReDispatch = (orderId) => {
+  const handleReDispatch = (orderId, orderRawId) => {
     if(window.confirm(`Đơn ${orderId} đang bị trễ do nhân viên không đến. Bạn muốn điều phối lại ngay?`)) {
-       openAssignModal(orderId);
+       openAssignModal(orderId, orderRawId);
     }
-  };
-
-  const stats = {
-    pending: orders.filter(o => o.status === 'pending').length,
-    assigned: orders.filter(o => o.status === 'assigned').length,
-    inProgress: orders.filter(o => o.status === 'in_progress').length,
-    completed: orders.filter(o => o.status === 'completed').length,
   };
 
   useEffect(() => {
@@ -214,9 +138,9 @@ const AdminBookings = () => {
           {availableWorkers.slice(0, 3).map((worker, index) => (
             <img 
               key={index} 
-              src={worker.avatar} 
+              src={worker.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(worker.name)}&background=random`} 
               alt={worker.name} 
-              className="w-10 h-10 rounded-full border-2 border-white object-cover shadow-sm" 
+              className="w-10 h-10 rounded-full border-2 border-white object-cover shadow-sm bg-slate-100" 
             />
           ))}
           {/* Nếu có nhiều hơn 3 người, hiển thị dấu + */}
@@ -233,9 +157,14 @@ const AdminBookings = () => {
   return (
     <div className="flex flex-col min-h-full bg-slate-50/50 relative">
       {/* ================= KHU VỰC TIÊU ĐỀ ================= */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Điều phối đơn hàng</h1>
-        <p className="text-sm text-slate-500 mt-1">Giám sát và phân bổ nhân sự cho các yêu cầu dịch vụ theo thời gian thực.</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Điều phối đơn hàng</h1>
+          <p className="text-sm text-slate-500 mt-1">Giám sát và phân bổ nhân sự cho các yêu cầu dịch vụ theo thời gian thực.</p>
+        </div>
+        <button onClick={fetchBookingsData} className="px-4 py-2 bg-white border border-slate-200 text-sm font-bold text-slate-700 rounded-lg shadow-sm hover:bg-slate-50 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[18px]">refresh</span> Làm mới
+        </button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1">
@@ -323,7 +252,14 @@ const AdminBookings = () => {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  {currentOrders.length > 0 ? (
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan="5" className="py-12 text-center text-slate-400">
+                        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                        <p>Đang tải dữ liệu...</p>
+                      </td>
+                    </tr>
+                  ) : currentOrders.length > 0 ? (
                     currentOrders.map((order) => (
                       <tr key={order.id} className="border-b border-slate-50 hover:bg-slate-50/70 transition-colors group">
                         <td className="py-4 pl-6 font-bold text-slate-800">{order.id}</td>
@@ -335,7 +271,7 @@ const AdminBookings = () => {
                         </td>
                         <td className="py-4">
                           <p className="font-bold text-slate-800">{order.customer}</p>
-                          <p className="text-[11px] text-slate-500 font-medium mt-0.5">{order.location}</p>
+                          <p className="text-[11px] text-slate-500 font-medium mt-0.5 max-w-[200px] truncate" title={order.location}>{order.location}</p>
                         </td>
                         <td className="py-4">
                           {order.timeStatus === 'active' && (
@@ -377,14 +313,14 @@ const AdminBookings = () => {
                           ) : (
                             order.timeStatus === 'delayed' ? (
                               <button 
-                                onClick={() => handleReDispatch(order.id)} 
+                                onClick={() => handleReDispatch(order.id, order.raw_id)} 
                                 className="px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-[11px] font-bold flex items-center gap-1.5 hover:bg-rose-100 transition-colors w-max"
                               >
                                 <span className="material-symbols-outlined text-[14px]">sync_problem</span>Điều phối lại
                               </button>
                             ) : (
                               <button 
-                                onClick={() => openAssignModal(order.id)} 
+                                onClick={() => openAssignModal(order.id, order.raw_id)} 
                                 className="px-3 py-1.5 border border-dashed border-blue-300 text-blue-600 rounded-lg text-[11px] font-bold flex items-center gap-1.5 hover:bg-blue-50 transition-colors w-max"
                               >
                                 <span className="material-symbols-outlined text-[14px]">person_add</span>Phân công ngay
@@ -569,7 +505,7 @@ const AdminBookings = () => {
                 <h2 className="text-xl font-black text-slate-800 tracking-tight">Phân công nhân sự</h2>
                 <p className="text-sm text-slate-500 font-medium mt-1">Đang chọn người cho đơn hàng: <strong className="text-blue-600">{assigningOrderId}</strong></p>
               </div>
-              <button onClick={() => setAssigningOrderId(null)} className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center shadow-sm">
+              <button onClick={() => { setAssigningOrderId(null); setAssigningOrderRawId(null); }} className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center shadow-sm">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -581,7 +517,7 @@ const AdminBookings = () => {
                   <div key={worker.id} className="border border-slate-100 rounded-2xl p-4 flex items-center justify-between hover:border-blue-300 hover:shadow-md hover:bg-blue-50/30 transition-all group">
                     <div className="flex items-center gap-4">
                       <div className="relative">
-                        <img src={worker.avatar} alt={worker.name} className="w-14 h-14 rounded-full object-cover border border-slate-200 shadow-sm" />
+                        <img src={worker.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(worker.name)}&background=random`} alt={worker.name} className="w-14 h-14 rounded-full object-cover border border-slate-200 shadow-sm bg-slate-100" />
                         <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
                       </div>
                       <div>
@@ -614,7 +550,7 @@ const AdminBookings = () => {
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
                 <h2 className="text-xl font-black text-slate-800 tracking-tight">Thêm Đơn hàng mới</h2>
-                <p className="text-sm text-slate-500 font-medium mt-1">Khởi tạo nhanh một đơn dịch vụ vào hệ thống.</p>
+                <p className="text-sm text-slate-500 font-medium mt-1">Khởi tạo nhanh một đơn dịch vụ (Mô phỏng ở Frontend).</p>
               </div>
               <button onClick={() => setIsAddingOrder(false)} className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center shadow-sm">
                 <span className="material-symbols-outlined">close</span>
@@ -657,7 +593,7 @@ const AdminBookings = () => {
                 <button type="button" onClick={() => setIsAddingOrder(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-100 transition-colors">Hủy bỏ</button>
                 <button type="submit" className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-[#0f2857] hover:bg-[#1a3873] shadow-sm transition-colors flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">add_task</span>
-                  Tạo đơn hàng
+                  Tạo đơn tạm
                 </button>
               </div>
             </form>

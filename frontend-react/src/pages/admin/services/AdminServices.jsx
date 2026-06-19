@@ -4,9 +4,9 @@ import axiosClient from '../../../api/axiosClient';
 const AdminServices = () => {
   // ================= 1. STATE QUẢN LÝ TÌM KIẾM & CẤU HÌNH CHUNG =================
   const [searchTerm, setSearchTerm] = useState('');
-  const [defaultSurcharge, setDefaultSurcharge] = useState('20');
-  const [nightSurcharge, setNightSurcharge] = useState('50000');
-  const [isStackVoucher, setIsStackVoucher] = useState(true);
+  const [phuPhiList, setPhuPhiList] = useState([]);       // danh sách quy định phụ phí từ DB
+  const [editingPhuPhi, setEditingPhuPhi] = useState({}); // { [id]: gia_tri_phu_phi }
+  const [savingId, setSavingId] = useState(null);         // id đang được lưu
 
   // ================= 2. STATE DỮ LIỆU DỊCH VỤ & KHUYẾN MÃI =================
   const [services, setServices] = useState([]);
@@ -18,14 +18,36 @@ const AdminServices = () => {
 
   const fetchData = async () => {
     try {
-      const [resServices, resPromos] = await Promise.all([
+      const [resServices, resPromos, resPhuPhi] = await Promise.all([
         axiosClient.get('/admin/dich-vu'),
-        axiosClient.get('/admin/khuyen-mai')
+        axiosClient.get('/admin/khuyen-mai'),
+        axiosClient.get('/admin/quy-dinh-phu-phi'),
       ]);
       if (resServices.success) setServices(resServices.data);
       if (resPromos.success) setPromotions(resPromos.data);
+      if (resPhuPhi.success) {
+        setPhuPhiList(resPhuPhi.data);
+        // Khởi tạo state chỉnh sửa
+        const initEdit = {};
+        resPhuPhi.data.forEach(pp => { initEdit[pp.id] = String(pp.gia_tri_phu_phi); });
+        setEditingPhuPhi(initEdit);
+      }
     } catch (error) {
       console.error('Lỗi khi fetch dữ liệu:', error);
+    }
+  };
+
+  const handleSavePhuPhi = async (id) => {
+    setSavingId(id);
+    try {
+      await axiosClient.put(`/admin/quy-dinh-phu-phi/${id}`, {
+        gia_tri_phu_phi: editingPhuPhi[id]
+      });
+      await fetchData();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Có lỗi khi lưu phụ phí');
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -65,13 +87,18 @@ const AdminServices = () => {
     }
   };
 
-  const handleSaveDefault = () => alert(`✅ Đã lưu Cấu hình Mặc định!`);
-  const handleSaveNight = () => alert(`✅ Đã lưu Phụ phí ca tối!`);
-
   // ================= 4. CÁC HÀM XỬ LÝ KHUYẾN MÃI (MODAL) =================
+  const PROMO_TAGS = ['Khuyến mãi', 'Gia đình', 'Nội thất', 'Doanh nghiệp', 'Tổng vệ sinh', 'Khách mới', 'Đặc biệt', 'Theo mùa'];
+
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoForm, setPromoForm] = useState({
-    code: '', discountType: 'PhanTram', discountValue: '', limit: '', totalLimit: '', startDate: '', expiryDate: ''
+    code: '', tag: 'Khuyến mãi', title: '', desc: '', discountType: 'PhanTram', discountValue: '',
+    limit: '', totalLimit: '', startDate: '', expiryDate: ''
+  });
+
+  const resetPromoForm = () => setPromoForm({
+    code: '', tag: 'Khuyến mãi', title: '', desc: '', discountType: 'PhanTram', discountValue: '',
+    limit: '', totalLimit: '', startDate: '', expiryDate: ''
   });
 
   const handleSubmitPromo = async (e) => {
@@ -79,7 +106,9 @@ const AdminServices = () => {
     try {
       await axiosClient.post('/admin/khuyen-mai/them', {
         ma_code: promoForm.code,
-        tieu_de: promoForm.discountType === 'PhanTram' ? `Giảm ${promoForm.discountValue}%` : `Giảm ${promoForm.discountValue}đ`,
+        tag_hien_thi: promoForm.tag,
+        tieu_de: promoForm.title,
+        mo_ta: promoForm.desc,
         loai_giam_gia: promoForm.discountType,
         gia_tri_giam: promoForm.discountValue,
         tong_luot_luu_toi_da: promoForm.limit || 100,
@@ -88,7 +117,7 @@ const AdminServices = () => {
         ngay_ket_thuc: promoForm.expiryDate
       });
       setShowPromoModal(false);
-      setPromoForm({ code: '', discountType: 'PhanTram', discountValue: '', limit: '', totalLimit: '', startDate: '', expiryDate: '' }); 
+      resetPromoForm();
       fetchData();
       alert(`✅ Đã thêm mã khuyến mãi thành công!`);
     } catch (error) {
@@ -121,7 +150,7 @@ const AdminServices = () => {
   // ================= 5. HÀM XỬ LÝ THÊM DỊCH VỤ MỚI (MODAL) =================
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [serviceForm, setServiceForm] = useState({
-    name: '', type: 'TieuChuan', desc: '', price: '', time: '120', groupId: 1
+    name: '', type: 'TieuChuan', desc: '', price: '', time: '120', groupId: 1, noiDungChiTiet: ''
   });
 
   const handleSubmitService = async (e) => {
@@ -134,10 +163,11 @@ const AdminServices = () => {
         don_gia_co_ban: serviceForm.price,
         thoi_gian_chuan_co_ban: serviceForm.time,
         mo_ta: serviceForm.desc,
+        noi_dung_chi_tiet: serviceForm.noiDungChiTiet ? serviceForm.noiDungChiTiet.split('\n').map(item => item.trim()).filter(item => item !== '') : [],
         co_bien_the: false
       });
       setShowServiceModal(false);
-      setServiceForm({ name: '', type: 'TieuChuan', desc: '', price: '', time: '120', groupId: 1 });
+      setServiceForm({ name: '', type: 'TieuChuan', desc: '', price: '', time: '120', groupId: 1, noiDungChiTiet: '' });
       fetchData();
       alert(`✅ Đã thêm dịch vụ thành công!`);
     } catch (error) {
@@ -187,16 +217,28 @@ const AdminServices = () => {
                 <textarea required placeholder="Mô tả công việc thực hiện..." rows="2" value={serviceForm.desc} onChange={(e) => setServiceForm({...serviceForm, desc: e.target.value})} className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none transition-all"></textarea>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Nội dung chi tiết <span className="text-rose-500">*</span> <span className="text-[10px] text-slate-400 font-normal">(Mỗi dòng một mục)</span></label>
+                <textarea required placeholder="- Quét mạng nhện trần nhà&#10;- Hút bụi sàn nhà&#10;- Lau kính cửa sổ..." rows="3" value={serviceForm.noiDungChiTiet} onChange={(e) => setServiceForm({...serviceForm, noiDungChiTiet: e.target.value})} className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none transition-all"></textarea>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Mức giá cơ bản <span className="text-rose-500">*</span></label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Mức giá <span className="text-rose-500">*</span></label>
                   <div className="relative">
                     <input type="number" required placeholder="500000" value={serviceForm.price} onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})} className="w-full pl-3 pr-8 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-black text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">VNĐ</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Nhóm Dịch Vụ ID <span className="text-rose-500">*</span></label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Thời gian <span className="text-rose-500">*</span></label>
+                  <div className="relative">
+                    <input type="number" required placeholder="120" value={serviceForm.time} onChange={(e) => setServiceForm({...serviceForm, time: e.target.value})} className="w-full pl-3 pr-10 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-black text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">phút</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Nhóm DV <span className="text-rose-500">*</span></label>
                   <input type="number" required placeholder="1" value={serviceForm.groupId} onChange={(e) => setServiceForm({...serviceForm, groupId: e.target.value})} className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
                 </div>
               </div>
@@ -216,7 +258,9 @@ const AdminServices = () => {
       {/* ================= MODAL THÊM KHUYẾN MÃI ================= */}
       {showPromoModal && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
-          <div className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in scale-100">
+          <div className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in scale-100">
+
+            {/* Header */}
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-rose-50/50 to-orange-50/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center text-white shadow-sm shadow-rose-500/30">
@@ -224,58 +268,170 @@ const AdminServices = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-black text-slate-800 tracking-tight">Tạo Voucher</h2>
-                  <p className="text-xs text-slate-500 font-medium">Khởi tạo mã giảm giá mới</p>
+                  <p className="text-xs text-slate-500 font-medium">Khởi tạo mã giảm giá mới cho hệ thống</p>
                 </div>
               </div>
-              <button onClick={() => setShowPromoModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/80 border border-slate-200 text-slate-500 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm">
+              <button onClick={() => { setShowPromoModal(false); resetPromoForm(); }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/80 border border-slate-200 text-slate-500 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm">
                 <span className="material-symbols-outlined text-base">close</span>
               </button>
             </div>
-            
-            <form onSubmit={handleSubmitPromo} className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Mã Code</label>
-                <input type="text" required placeholder="VD: SUMMER_SALE" value={promoForm.code} onChange={(e) => setPromoForm({...promoForm, code: e.target.value})} className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all uppercase placeholder:font-normal placeholder:normal-case" />
+
+            <form onSubmit={handleSubmitPromo} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+
+              {/* Row 1: Mã code + Tag hiển thị */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Mã Code <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text" required
+                    placeholder="VD: SUMMER25"
+                    value={promoForm.code}
+                    onChange={(e) => setPromoForm({...promoForm, code: e.target.value.toUpperCase()})}
+                    className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all tracking-widest"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Tag hiển thị <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={promoForm.tag}
+                    onChange={(e) => setPromoForm({...promoForm, tag: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 cursor-pointer transition-all"
+                  >
+                    {PROMO_TAGS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
               </div>
+
+              {/* Row 2: Tiêu đề */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Tiêu đề <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text" required
+                  placeholder="VD: Giảm 25% cho đơn từ 500.000đ"
+                  value={promoForm.title}
+                  onChange={(e) => setPromoForm({...promoForm, title: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
+                />
+              </div>
+
+              {/* Row 2.5: Mô tả */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Mô tả
+                </label>
+                <textarea
+                  placeholder="Mô tả chi tiết về điều kiện áp dụng..." rows="2"
+                  value={promoForm.desc}
+                  onChange={(e) => setPromoForm({...promoForm, desc: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 resize-none transition-all"
+                ></textarea>
+              </div>
+
+              {/* Row 3: Loại ưu đãi + Giá trị giảm */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">Loại ưu đãi</label>
-                  <select value={promoForm.discountType} onChange={(e) => setPromoForm({...promoForm, discountType: e.target.value})} className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 cursor-pointer transition-all" >
+                  <select
+                    value={promoForm.discountType}
+                    onChange={(e) => setPromoForm({...promoForm, discountType: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 cursor-pointer transition-all"
+                  >
                     <option value="PhanTram">Phần trăm (%)</option>
                     <option value="TienMat">Tiền mặt (đ)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Giá trị giảm</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Giá trị giảm <span className="text-rose-500">*</span></label>
                   <div className="relative">
-                    <input type="number" required placeholder={promoForm.discountType === 'PhanTram' ? "10" : "50000"} value={promoForm.discountValue} onChange={(e) => setPromoForm({...promoForm, discountValue: e.target.value})} className="w-full pl-3 pr-8 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-black text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">{promoForm.discountType === 'PhanTram' ? '%' : 'đ'}</span>
+                    <input
+                      type="number" required min="0"
+                      placeholder={promoForm.discountType === 'PhanTram' ? '10' : '50000'}
+                      value={promoForm.discountValue}
+                      onChange={(e) => setPromoForm({...promoForm, discountValue: e.target.value})}
+                      className="w-full pl-3 pr-8 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-black text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">
+                      {promoForm.discountType === 'PhanTram' ? '%' : 'đ'}
+                    </span>
                   </div>
                 </div>
               </div>
+
+              {/* Row 4: Giới hạn / KH + Tổng số lượt */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">Giới hạn / KH</label>
-                  <input type="number" placeholder="Lượt lưu tối đa" value={promoForm.limit} onChange={(e) => setPromoForm({...promoForm, limit: e.target.value})} className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all" />
+                  <input
+                    type="number" min="1" placeholder="Lượt lưu tối đa (mặc định 100)"
+                    value={promoForm.limit}
+                    onChange={(e) => setPromoForm({...promoForm, limit: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Tổng số lượt</label>
-                  <input type="number" placeholder="Tổng mã" value={promoForm.totalLimit} onChange={(e) => setPromoForm({...promoForm, totalLimit: e.target.value})} className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all" />
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Tổng số lượt dùng</label>
+                  <input
+                    type="number" min="1" placeholder="Tổng mã (mặc định 100)"
+                    value={promoForm.totalLimit}
+                    onChange={(e) => setPromoForm({...promoForm, totalLimit: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
+                  />
                 </div>
               </div>
+
+              {/* Row 5: Ngày bắt đầu + Ngày kết thúc */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Bắt đầu</label>
-                  <input type="date" required value={promoForm.startDate} onChange={(e) => setPromoForm({...promoForm, startDate: e.target.value})} className="w-full px-2 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 cursor-pointer transition-all" />
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Bắt đầu <span className="text-rose-500">*</span></label>
+                  <input
+                    type="date" required
+                    value={promoForm.startDate}
+                    onChange={(e) => setPromoForm({...promoForm, startDate: e.target.value})}
+                    className="w-full px-2 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 cursor-pointer transition-all"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Kết thúc</label>
-                  <input type="date" required value={promoForm.expiryDate} onChange={(e) => setPromoForm({...promoForm, expiryDate: e.target.value})} className="w-full px-2 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 cursor-pointer transition-all" />
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Kết thúc <span className="text-rose-500">*</span></label>
+                  <input
+                    type="date" required
+                    value={promoForm.expiryDate}
+                    onChange={(e) => setPromoForm({...promoForm, expiryDate: e.target.value})}
+                    className="w-full px-2 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 cursor-pointer transition-all"
+                  />
                 </div>
               </div>
-              <div className="pt-2 flex gap-3 mt-2">
-                <button type="button" onClick={() => setShowPromoModal(false)} className="flex-1 py-2.5 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 text-sm transition-colors">Hủy bỏ</button>
-                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white font-bold shadow-md shadow-rose-500/20 hover:-translate-y-0.5 transition-all text-sm flex items-center justify-center gap-1.5">
+
+              {/* Preview badge */}
+              {(promoForm.tag || promoForm.title) && (
+                <div className="bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-100 rounded-xl p-3">
+                  <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1.5">Xem trước</p>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-600 border border-rose-200 uppercase tracking-wider">
+                      {promoForm.tag || 'Tag'}
+                    </span>
+                    <span className="text-xs font-bold text-slate-700 truncate">{promoForm.title || 'Tiêu đề voucher'}</span>
+                  </div>
+                  <p className="text-[10px] font-black text-rose-600 mt-1">
+                    {promoForm.code || 'MA_CODE'} · Giảm {promoForm.discountValue || '0'}{promoForm.discountType === 'PhanTram' ? '%' : 'đ'}
+                  </p>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="pt-1 flex gap-3">
+                <button type="button" onClick={() => { setShowPromoModal(false); resetPromoForm(); }}
+                  className="flex-1 py-2.5 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 text-sm transition-colors">
+                  Hủy bỏ
+                </button>
+                <button type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white font-bold shadow-md shadow-rose-500/20 hover:-translate-y-0.5 transition-all text-sm flex items-center justify-center gap-1.5">
                   <span className="material-symbols-outlined text-[18px]">add_circle</span>
                   Tạo Voucher
                 </button>
@@ -468,44 +624,70 @@ const AdminServices = () => {
               <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
                 <span className="material-symbols-outlined text-sm">settings</span>
               </div>
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Cấu hình chung</h3>
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Cấu hình phụ phí</h3>
             </div>
 
-            <div className="space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Phụ phí Ngày Lễ & Cuối Tuần</label>
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <input type="number" value={defaultSurcharge} onChange={(e) => setDefaultSurcharge(e.target.value)} className="w-full pl-3 pr-8 py-2 bg-indigo-50/50 border border-indigo-100 text-indigo-700 rounded-xl text-sm font-black focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all shadow-inner" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-400 font-black text-sm">%</span>
-                  </div>
-                  <button onClick={handleSaveDefault} className="w-10 h-[38px] rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md transition-all" ><span className="material-symbols-outlined text-[18px]">save</span></button>
-                </div>
-              </div>
+            <div className="space-y-3">
+              {phuPhiList.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-4">Đang tải dữ liệu...</p>
+              ) : (
+                phuPhiList.map((pp) => (
+                  <div key={pp.id} className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-md text-[9px] font-black shrink-0
+                          ${pp.loai_phu_phi === 'PhanTram' ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-700'}`}>
+                          {pp.loai_phu_phi === 'PhanTram' ? '%' : '₫'}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black text-slate-800 leading-tight truncate">{pp.ten_phu_phi}</p>
+                          <p className="text-[9px] text-slate-400 font-medium truncate">{pp.ma_phu_phi}</p>
+                        </div>
+                      </div>
+                      <span className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold
+                        ${pp.trang_thai ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {pp.trang_thai ? 'Bật' : 'Tắt'}
+                      </span>
+                    </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Phụ phí Ca Tối</label>
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <input type="text" value={nightSurcharge} onChange={(e) => setNightSurcharge(e.target.value)} className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm font-black focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-400 transition-all shadow-inner" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">đ</span>
-                  </div>
-                  <button onClick={handleSaveNight} className="w-10 h-[38px] rounded-xl bg-slate-800 hover:bg-slate-900 text-white flex items-center justify-center shadow-md transition-all" ><span className="material-symbols-outlined text-[18px]">save</span></button>
-                </div>
-              </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <input
+                          type="number"
+                          value={editingPhuPhi[pp.id] ?? ''}
+                          onChange={(e) => setEditingPhuPhi(prev => ({ ...prev, [pp.id]: e.target.value }))}
+                          className={`w-full pl-3 pr-8 py-1.5 border rounded-lg text-sm font-black focus:outline-none focus:ring-2 transition-all
+                            ${pp.loai_phu_phi === 'PhanTram'
+                              ? 'bg-indigo-50/50 border-indigo-100 text-indigo-700 focus:ring-indigo-500/20 focus:border-indigo-400'
+                              : 'bg-amber-50/50 border-amber-100 text-amber-700 focus:ring-amber-500/20 focus:border-amber-400'}`}
+                        />
+                        <span className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black
+                          ${pp.loai_phu_phi === 'PhanTram' ? 'text-indigo-400' : 'text-amber-400'}`}>
+                          {pp.loai_phu_phi === 'PhanTram' ? '%' : 'đ'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleSavePhuPhi(pp.id)}
+                        disabled={savingId === pp.id}
+                        className={`w-9 h-[34px] rounded-lg flex items-center justify-center text-white shadow-sm transition-all
+                          ${pp.loai_phu_phi === 'PhanTram'
+                            ? 'bg-indigo-600 hover:bg-indigo-700'
+                            : 'bg-amber-500 hover:bg-amber-600'}
+                          ${savingId === pp.id ? 'opacity-60 cursor-wait' : ''}`}
+                        title="Lưu"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {savingId === pp.id ? 'sync' : 'save'}
+                        </span>
+                      </button>
+                    </div>
 
-              <div className="h-[1px] w-full bg-slate-100 my-2"></div>
-
-              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => setIsStackVoucher(!isStackVoucher)}>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800 mb-0.5">Cộng dồn Voucher</h4>
-                  <p className="text-[10px] text-slate-500 font-medium">Áp dụng nhiều mã</p>
-                </div>
-                <div className={`w-10 h-6 rounded-full relative shadow-inner transition-colors duration-300 ${isStackVoucher ? 'bg-emerald-500' : 'bg-slate-300'}`} >
-                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-md transition-transform duration-300 flex items-center justify-center ${isStackVoucher ? 'translate-x-5' : 'translate-x-1'}`}>
+                    {pp.mo_ta && (
+                      <p className="mt-1.5 text-[9px] text-slate-400 font-medium leading-snug line-clamp-2">{pp.mo_ta}</p>
+                    )}
                   </div>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           </div>
 

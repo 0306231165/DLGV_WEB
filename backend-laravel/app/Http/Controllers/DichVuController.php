@@ -29,7 +29,8 @@ class DichVuController extends Controller
                 'don_gia_co_ban' => 'required|numeric|min:0',
                 'thoi_gian_chuan_co_ban' => 'required|integer|min:0',
                 'mo_ta' => 'nullable|string|max:500',
-                'co_bien_the' => 'boolean'
+                'co_bien_the' => 'boolean',
+                'noi_dung_chi_tiet' => 'nullable|array'
             ]);
 
             $dichVu = DichVu::create([
@@ -39,6 +40,7 @@ class DichVuController extends Controller
                 'don_gia_co_ban' => $validated['don_gia_co_ban'],
                 'thoi_gian_chuan_co_ban' => $validated['thoi_gian_chuan_co_ban'],
                 'mo_ta' => $validated['mo_ta'] ?? null,
+                'noi_dung_chi_tiet' => $validated['noi_dung_chi_tiet'] ?? null,
                 'co_bien_the' => $validated['co_bien_the'] ?? false,
                 'trang_thai' => true,
                 'is_noi_bat' => false

@@ -1,29 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axiosClient from '../../../api/axiosClient';
 
 const AdminComplain = () => {
-  // ================= 1. STATE DỮ LIỆU KHIẾU NẠI (MÔ PHỎNG KHÁCH GỬI VỀ) =================
-  const [complaints, setComplaints] = useState([
-    { 
-      id: '#FB-1029', customer: 'Nguyễn Văn A', phone: '0901234567', service: 'Vệ sinh nhà ở', 
-      date: '14/06/2026', type: 'Thái độ nhân viên', desc: 'Nhân viên đến trễ 45 phút mà không gọi báo trước, thái độ lúc làm việc rất khó chịu.', 
-      status: 'Chờ xử lý', adminNote: '' 
-    },
-    { 
-      id: '#FB-1028', customer: 'Trần Thị B', phone: '0987654321', service: 'Vệ sinh máy lạnh', 
-      date: '13/06/2026', type: 'Chất lượng dịch vụ', desc: 'Máy lạnh rửa xong vẫn bị chảy nước ròng ròng, yêu cầu cho người qua kiểm tra lại gấp!', 
-      status: 'Đang xử lý', adminNote: 'Đã gọi xin lỗi khách. Chiều nay cử thợ kỹ thuật qua fix lại.' 
-    },
-    { 
-      id: '#FB-1015', customer: 'Lê Hoàng C', phone: '0911222333', service: 'Giặt Sofa', 
-      date: '10/06/2026', type: 'Hư hỏng tài sản', desc: 'Hóa chất tẩy rửa làm phai màu bộ sofa da thật của nhà tôi.', 
-      status: 'Đã giải quyết', adminNote: 'Đã đền bù 30% giá trị dịch vụ và tặng voucher miễn phí lần sau. Khách đã đồng ý.' 
-    },
-    { 
-      id: '#FB-0992', customer: 'Phạm Mai Anh', phone: '0933444555', service: 'App/Hệ thống', 
-      date: '08/06/2026', type: 'Lỗi hệ thống', desc: 'App bị lỗi không thanh toán được qua VNPay, trừ tiền rồi nhưng app báo lỗi.', 
-      status: 'Chờ xử lý', adminNote: '' 
-    },
-  ]);
+  // ================= 1. LẤY DỮ LIỆU TỪ MYSQL =================
+  const [complaints, setComplaints] = useState([]);
+
+  const fetchComplaints = async () => {
+    try {
+      const response = await axiosClient.get('/admin/khieu-nai');
+      if (response.success) {
+        setComplaints(response.data);
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu khiếu nại:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
 
   // ================= 2. STATE UI (LỌC, TÌM KIẾM, MODAL) =================
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,32 +45,52 @@ const AdminComplain = () => {
   };
 
   // Cập nhật dữ liệu khiếu nại (Lưu)
-  const handleSaveChanges = (e) => {
+  const handleSaveChanges = async (e) => {
     e.preventDefault();
-    setComplaints(complaints.map(c => 
-      c.id === selectedComplaint.id 
-        ? { ...c, status: editStatus, adminNote: editNote } 
-        : c
-    ));
-    setSelectedComplaint(null); // Đóng modal
-    alert(`✅ Đã cập nhật xử lý cho khiếu nại ${selectedComplaint.id}`);
+    try {
+      // Map frontend status to backend enum
+      let backendStatus = 'DangXuLy';
+      if (editStatus === 'Đã giải quyết') backendStatus = 'DaGiaiQuyet';
+      if (editStatus === 'Từ chối' || editStatus === 'TuChoi') backendStatus = 'TuChoi';
+
+      await axiosClient.put(`/admin/khieu-nai/${selectedComplaint.id}/phan-hoi`, {
+        adminNote: editNote,
+        status: backendStatus
+      });
+      setSelectedComplaint(null); // Đóng modal
+      fetchComplaints();
+      alert(`✅ Đã cập nhật xử lý cho khiếu nại ${selectedComplaint.code}`);
+    } catch (error) {
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi lưu xử lý');
+    }
   };
 
   // Màu sắc trạng thái
   const getStatusBadge = (status) => {
     switch(status) {
+      case 'DaGiaiQuyet': 
       case 'Đã giải quyết': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'DangXuLy': 
       case 'Đang xử lý': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'TuChoi':
+      case 'Từ chối': return 'bg-rose-100 text-rose-700 border-rose-200';
       case 'Chờ xử lý': return 'bg-amber-100 text-amber-700 border-amber-200';
       default: return 'bg-slate-100 text-slate-600 border-slate-200';
     }
   };
 
+  const displayStatus = (status) => {
+    if (status === 'DangXuLy') return 'Đang xử lý';
+    if (status === 'DaGiaiQuyet') return 'Đã giải quyết';
+    if (status === 'TuChoi') return 'Từ chối';
+    return status;
+  };
+
   // Thống kê nhanh
   const stats = {
-    pending: complaints.filter(c => c.status === 'Chờ xử lý').length,
-    processing: complaints.filter(c => c.status === 'Đang xử lý').length,
-    resolved: complaints.filter(c => c.status === 'Đã giải quyết').length,
+    pending: complaints.filter(c => c.status === 'Chờ xử lý' || c.status === 'DangXuLy').length,
+    processing: complaints.filter(c => c.status === 'Đang xử lý').length, // Assuming DangXuLy handles both
+    resolved: complaints.filter(c => c.status === 'Đã giải quyết' || c.status === 'DaGiaiQuyet').length,
   };
 
   return (
@@ -126,9 +141,9 @@ const AdminComplain = () => {
                     onChange={(e) => setEditStatus(e.target.value)}
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500 bg-slate-50"
                   >
-                    <option value="Chờ xử lý">🔴 Chờ xử lý</option>
-                    <option value="Đang xử lý">🔵 Đang xử lý</option>
-                    <option value="Đã giải quyết">🟢 Đã giải quyết</option>
+                    <option value="DangXuLy">🔵 Đang xử lý</option>
+                    <option value="DaGiaiQuyet">🟢 Đã giải quyết</option>
+                    <option value="TuChoi">🔴 Từ chối</option>
                   </select>
                 </div>
 
@@ -235,7 +250,7 @@ const AdminComplain = () => {
               {filteredComplaints.length > 0 ? (
                 filteredComplaints.map((c, i) => (
                   <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/70 transition-colors">
-                    <td className="py-4 pl-6 font-black text-[#0f2857]">{c.id}</td>
+                    <td className="py-4 pl-6 font-black text-[#0f2857]">{c.code}</td>
                     <td className="py-4">
                       <p className="font-bold text-slate-800">{c.customer}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">{c.phone}</p>
@@ -247,19 +262,19 @@ const AdminComplain = () => {
                     <td className="py-4 text-slate-500">{c.date}</td>
                     <td className="py-4 text-center">
                       <span className={`inline-block border px-2.5 py-1 rounded-md text-[10px] font-black ${getStatusBadge(c.status)}`}>
-                        {c.status}
+                        {displayStatus(c.status)}
                       </span>
                     </td>
                     <td className="py-4 pr-6 text-center">
                       <button 
                         onClick={() => handleOpenProcessModal(c)} 
                         className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors border ${
-                          c.status === 'Đã giải quyết' 
+                          c.status === 'DaGiaiQuyet' || c.status === 'Đã giải quyết' 
                             ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' 
                             : 'bg-[#0f2857] border-[#0f2857] text-white hover:bg-[#1a3873]'
                         }`}
                       >
-                        {c.status === 'Đã giải quyết' ? 'Xem lại' : 'Xử lý ngay'}
+                        {c.status === 'DaGiaiQuyet' || c.status === 'Đã giải quyết' ? 'Xem lại' : 'Xử lý ngay'}
                       </button>
                     </td>
                   </tr>

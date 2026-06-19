@@ -1,28 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import axiosClient from '../../../api/axiosClient';
 
 const AdminReviews = () => {
-  // ================= 1. LẤY DỮ LIỆU TỪ LOCAL STORAGE (DÙNG CHUNG VỚI KHIẾU NẠI) =================
-  const [reviews, setReviews] = useState(() => {
-    // ĐỔI TÊN KEY ĐỂ RESET BỘ NHỚ TRÌNH DUYỆT
-    const savedData = localStorage.getItem('cleantrust_data_v2'); 
-    if (savedData) {
-      return JSON.parse(savedData);
-    }
-    // DỮ LIỆU ĐỒNG NHẤT 100% VỚI TRANG KHIẾU NẠI
-    return [
-      { id: '#FB-1029', customer: 'Nguyễn Văn A', phone: '0901234567', service: 'Vệ sinh nhà ở', date: '14/06/2026', type: 'Thái độ nhân viên', desc: 'Nhân viên đến trễ 45 phút mà không gọi báo trước, thái độ lúc làm việc rất khó chịu.', status: 'Chờ xử lý', adminNote: '', rating: 1, isVisible: true },
-      { id: '#FB-1028', customer: 'Trần Thị B', phone: '0987654321', service: 'Vệ sinh máy lạnh', date: '13/06/2026', type: 'Chất lượng dịch vụ', desc: 'Máy lạnh rửa xong vẫn bị chảy nước ròng ròng, yêu cầu cho người qua kiểm tra lại gấp!', status: 'Đang xử lý', adminNote: 'Đã gọi xin lỗi khách. Chiều nay cử thợ kỹ thuật qua fix lại.', rating: 2, isVisible: true },
-      { id: '#FB-1015', customer: 'Lê Hoàng C', phone: '0911222333', service: 'Giặt Sofa', date: '10/06/2026', type: 'Hư hỏng tài sản', desc: 'Hóa chất tẩy rửa làm phai màu bộ sofa da thật của nhà tôi.', status: 'Đã giải quyết', adminNote: 'Đã đền bù 30% giá trị dịch vụ và tặng voucher miễn phí lần sau. Khách đã đồng ý.', rating: 3, isVisible: true },
-      { id: '#FB-0992', customer: 'Phạm Mai Anh', phone: '0933444555', service: 'App/Hệ thống', date: '08/06/2026', type: 'Lỗi hệ thống', desc: 'App bị lỗi không thanh toán được qua VNPay, trừ tiền rồi nhưng app báo lỗi.', status: 'Chờ xử lý', adminNote: '', rating: 4, isVisible: true },
-      // Thêm 1 bình luận Toxic ẩn danh để test chức năng ẩn (hiển thị màu đỏ)
-      { id: '#FB-0888', customer: 'Khách Ẩn Danh', phone: '0999999999', service: 'Dọn dẹp cơ bản', date: '01/06/2026', type: 'Thái độ nhân viên', desc: 'Bọn lừa đảo, làm ăn như sh**t, đồ đạc nhà tao bị mất một đống đéo hiểu kiểu gì luôn bực mình!!!', status: 'Chờ xử lý', adminNote: '', rating: 1, isVisible: false }
-    ];
-  });
+  // ================= 1. LẤY DỮ LIỆU TỪ MYSQL =================
+  const [reviews, setReviews] = useState([]);
 
-  // TỰ ĐỘNG LƯU VÀO LOCAL STORAGE MỖI KHI CÓ THAY ĐỔI
+  const fetchReviews = async () => {
+    try {
+      const response = await axiosClient.get('/admin/khieu-nai');
+      if (response.success) {
+        setReviews(response.data);
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu đánh giá:', error);
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem('cleantrust_data_v2', JSON.stringify(reviews));
-  }, [reviews]);
+    fetchReviews();
+  }, []);
 
   // ================= 2. STATE UI MANAGEMENT =================
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,13 +29,23 @@ const AdminReviews = () => {
   const [replyText, setReplyText] = useState('');
 
   // ================= 3. CÁC HÀM XỬ LÝ =================
-  const handleToggleVisibility = (id) => {
-    setReviews(reviews.map(r => r.id === id ? { ...r, isVisible: r.isVisible === false ? true : false } : r));
+  const handleToggleVisibility = async (id) => {
+    try {
+      await axiosClient.put(`/admin/khieu-nai/${id}/trang-thai-hien-thi`);
+      fetchReviews();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Có lỗi xảy ra');
+    }
   };
 
-  const handleDeleteReview = (id, customer) => {
+  const handleDeleteReview = async (id, customer) => {
     if (window.confirm(`Bạn có chắc muốn xóa vĩnh viễn đánh giá của "${customer}"? (Sẽ xóa luôn bên trang Khiếu nại)`)) {
-      setReviews(reviews.filter(r => r.id !== id));
+      try {
+        await axiosClient.delete(`/admin/khieu-nai/${id}`);
+        fetchReviews();
+      } catch (error) {
+        alert(error.response?.data?.message || 'Có lỗi xảy ra');
+      }
     }
   };
 
@@ -48,13 +54,18 @@ const AdminReviews = () => {
     setReplyText(review.adminNote || ''); 
   };
 
-  const handleSaveReply = (e) => {
+  const handleSaveReply = async (e) => {
     e.preventDefault();
-    setReviews(reviews.map(r => 
-      r.id === selectedReview.id ? { ...r, adminNote: replyText, status: 'Đã giải quyết' } : r
-    ));
-    setSelectedReview(null);
-    alert(`✅ Đã đăng tải phản hồi! (Trang Khiếu nại cũng đã được cập nhật)`);
+    try {
+      await axiosClient.put(`/admin/khieu-nai/${selectedReview.id}/phan-hoi`, {
+        adminNote: replyText
+      });
+      setSelectedReview(null);
+      fetchReviews();
+      alert(`✅ Đã đăng tải phản hồi! (Trang Khiếu nại cũng đã được cập nhật)`);
+    } catch (error) {
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi lưu phản hồi');
+    }
   };
 
   // ================= 4. LOGIC LỌC TÌM KIẾM =================

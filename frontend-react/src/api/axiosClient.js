@@ -43,6 +43,7 @@ axiosClient.interceptors.response.use(
         const currentUrl = error.config?.url || '';
 
         if (status === 401) {
+
             const isAuthApi = currentUrl.includes('/dang-nhap') || currentUrl.includes('/dang-ky');
             if (isAuthApi) {
                 return Promise.reject(error.response?.data || { message: 'Đăng nhập thất bại' });
@@ -51,8 +52,11 @@ axiosClient.interceptors.response.use(
             localStorage.removeItem('token');
             localStorage.removeItem('role');
 
+
             const currentPath = window.location.pathname;
             if (currentPath.startsWith('/admin')) {
+                localStorage.removeItem('ADMIN_TOKEN');
+                localStorage.removeItem('ADMIN_USER');
                 window.location.href = '/admin/login';
             } else {
                 window.location.href = '/login'; 
@@ -67,6 +71,7 @@ axiosClient.interceptors.response.use(
         }
 
         return Promise.reject(error.response?.data || { message: 'Lỗi kết nối đến máy chủ.' });
+
     }
 );
 

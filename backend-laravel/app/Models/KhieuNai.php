@@ -10,6 +10,13 @@ class KhieuNai extends Model
     public $timestamps = false;
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'is_visible' => 'boolean',
+        'rating' => 'integer',
+        'ngay_tao' => 'datetime',
+        'ngay_dong' => 'datetime',
+    ];
+
     public function donHang()
     {
         return $this->belongsTo(DonHang::class, 'don_hang_id');
