@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import RequireAuth from "../components/guards/RequireAuth";
+import AlreadyLoggedInGuard from "../components/guards/AlreadyLoggedInGuard";
 
 // =========================================================
 // 1. IMPORT LAYOUTS (Dùng chung cho toàn hệ thống)
@@ -31,6 +32,7 @@ import SavedStaffPage from "../pages/customer/staff/SavedStaffPage";
 // -- Pages — Account
 import ProfilePage from "../pages/customer/account/ProfilePage";
 import AddressesPage from "../pages/customer/account/AddressesPage";
+import ContactsPage from "../pages/customer/account/ContactsPage";
 import PaymentPage from "../pages/customer/account/PaymentPage";
 import MyVouchersPage from "../pages/customer/account/MyVouchersPage";
 
@@ -99,13 +101,27 @@ const AppRouter = () => {
           <Route path="services" element={<ServicesPage />} />
           <Route path="services/:id" element={<ServiceDetailPage />} />
           <Route path="contact" element={<ContactPage />} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="register" element={<RegisterPage />} />
+          <Route
+            path="login"
+            element={
+              <AlreadyLoggedInGuard>
+                <LoginPage />
+              </AlreadyLoggedInGuard>
+            }
+          />
+          <Route
+            path="register"
+            element={
+              <AlreadyLoggedInGuard>
+                <RegisterPage />
+              </AlreadyLoggedInGuard>
+            }
+          />
           {/* 🔒 PROTECTED — Phải đăng nhập */}
           <Route
             path="booking"
             element={
-              <RequireAuth>
+              <RequireAuth allowedRoles={["khach-hang"]}>
                 <BookingPage />
               </RequireAuth>
             }
@@ -113,7 +129,7 @@ const AppRouter = () => {
           <Route
             path="promotions"
             element={
-              <RequireAuth>
+              <RequireAuth allowedRoles={["khach-hang"]}>
                 <VoucherPage />
               </RequireAuth>
             }
@@ -121,7 +137,7 @@ const AppRouter = () => {
           <Route
             path="wallet"
             element={
-              <RequireAuth>
+              <RequireAuth allowedRoles={["khach-hang"]}>
                 <WalletPage />
               </RequireAuth>
             }
@@ -129,7 +145,7 @@ const AppRouter = () => {
           <Route
             path="notifications"
             element={
-              <RequireAuth>
+              <RequireAuth allowedRoles={["khach-hang"]}>
                 <NotificationPage />
               </RequireAuth>
             }
@@ -137,7 +153,7 @@ const AppRouter = () => {
           <Route
             path="messages"
             element={
-              <RequireAuth>
+              <RequireAuth allowedRoles={["khach-hang"]}>
                 <MessagePage />
               </RequireAuth>
             }
@@ -148,7 +164,7 @@ const AppRouter = () => {
           <Route
             path="saved-staffs"
             element={
-              <RequireAuth>
+              <RequireAuth allowedRoles={["khach-hang"]}>
                 <SavedStaffPage />
               </RequireAuth>
             }
@@ -157,7 +173,7 @@ const AppRouter = () => {
           <Route
             path="account"
             element={
-              <RequireAuth>
+              <RequireAuth allowedRoles={["khach-hang"]}>
                 <AccountLayout />
               </RequireAuth>
             }
@@ -165,6 +181,7 @@ const AppRouter = () => {
             <Route index element={<Navigate to="profile" replace />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="addresses" element={<AddressesPage />} />
+            <Route path="contacts" element={<ContactsPage />} />
             <Route path="payment" element={<PaymentPage />} />
             <Route path="vouchers" element={<MyVouchersPage />} />
           </Route>
@@ -172,7 +189,7 @@ const AppRouter = () => {
           <Route path="my-bookings">
             <Route
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["khach-hang"]}>
                   <MyBookingsLayout />
                 </RequireAuth>
               }
@@ -185,7 +202,7 @@ const AppRouter = () => {
             <Route
               path="history"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["khach-hang"]}>
                   <BookingHistoryPage />
                 </RequireAuth>
               }
@@ -193,7 +210,7 @@ const AppRouter = () => {
             <Route
               path=":id"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["khach-hang"]}>
                   <BookingDetailPage />
                 </RequireAuth>
               }
@@ -206,26 +223,135 @@ const AppRouter = () => {
         {/* TOÀN BỘ PHÂN VÙNG NHÂN VIÊN                               */}
         {/* ========================================================= */}
         <Route path="/partner" element={<PartnerLayout />}>
-          <Route index element={<Navigate to="/partner/dashboard" replace />} />
+          <Route
+            path="login"
+            element={
+              <AlreadyLoggedInGuard>
+                <PartnerLogin />
+              </AlreadyLoggedInGuard>
+            }
+          />
+          <Route
+            path="register"
+            element={
+              // <AlreadyLoggedInGuard>
+                <PartnerRegister />
+              // </AlreadyLoggedInGuard>
+            }
+          />
+          <Route
+            index
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <Navigate to="/partner/dashboard" replace />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="dashboard"
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <PartnerDashboard />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="schedule"
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <ScheduleManager />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="wallet"
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <PartnerWallet />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="reviews"
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <PartnerReviews />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <PartnerProfile />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="notifications"
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <PartnerNotifications />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="messages"
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <PartnerMessagePage />
+              </RequireAuth>
+            }
+          />
 
-          <Route path="login" element={<PartnerLogin />} />
-          <Route path="register" element={<PartnerRegister />} />
-
-          <Route path="dashboard" element={<PartnerDashboard />} />
-          <Route path="schedule" element={<ScheduleManager />} />
-          <Route path="wallet" element={<PartnerWallet />} />
-          <Route path="reviews" element={<PartnerReviews />} />
-          <Route path="profile" element={<PartnerProfile />} />
-          <Route path="notifications" element={<PartnerNotifications />} />
-          <Route path="messages" element={<PartnerMessagePage />} />
-
-          <Route path="skills-registration" element={<SkillsRegistration />} />
+          <Route
+            path="skills-registration"
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <SkillsRegistration />
+              </RequireAuth>
+            }
+          />
 
           {/* Cơ chế 2: Nhân viên gõ sai URL trong phân vùng của mình */}
           {/* Ví dụ: /nhanvien/sai-chinh-ta -> đá về trang chủ nhân viên /nhanvien */}
           <Route
-            path="/partner/*"
-            element={<Navigate to="/partner/dashboard" replace />}
+            path="*"
+            element={
+              <RequireAuth
+                allowedRoles={["nhan-vien"]}
+                redirectTo="/partner/login"
+              >
+                <Navigate to="/partner/dashboard" replace />
+              </RequireAuth>
+            }
           />
         </Route>
 

@@ -24,6 +24,7 @@ Route::middleware(['auth:sanctum', 'ability:role:khach-hang'])->prefix('khach-ha
     // ─── Liên hệ đã lưu ───────────────────────────────────────────────────────
     Route::get('/lien-he', [KhachHangController::class, 'getContacts']);
     Route::post('/lien-he/them', [KhachHangController::class, 'storeContact']);
+    Route::put('/lien-he/{id}', [KhachHangController::class, 'updateContact']);
     Route::delete('/lien-he/{id}', [KhachHangController::class, 'deleteContact']);
 
     // ─── Khuyến mãi ───────────────────────────────────────────────────────────
@@ -52,8 +53,8 @@ Route::middleware(['auth:sanctum', 'ability:role:khach-hang'])->prefix('khach-ha
         Route::delete('/{id}', [NhanVienController::class, 'xoaYeuThich']);   // Xóa
     });
  
-// ─── Nhân viên đã từng làm (để picker chọn yêu thích) ────────────────────────
-Route::get('/nhan-vien-da-lam', [NhanVienController::class, 'getNhanVienDaLam']);
+    // ─── Nhân viên đã từng làm (để picker chọn yêu thích) ────────────────────────
+    Route::get('/nhan-vien-da-lam', [NhanVienController::class, 'getNhanVienDaLam']);
 
     // ─── Đặt lịch ─────────────────────────────────────────────────────────────
     Route::post('/dat-lich', [DonHangController::class, 'store']);

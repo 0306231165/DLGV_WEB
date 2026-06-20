@@ -105,6 +105,9 @@ const khachHangApi = {
     // POST /api/khach-hang/lien-he/them
     addContact: (data) => axiosClient.post('/khach-hang/lien-he/them', data),
 
+    // PUT /api/khach-hang/lien-he/{id}
+    updateContact: (id, data) => axiosClient.put(`/khach-hang/lien-he/${id}`, data),
+
     // DELETE /api/khach-hang/lien-he/{id}
     deleteContact: (id) => axiosClient.delete(`/khach-hang/lien-he/${id}`),
 

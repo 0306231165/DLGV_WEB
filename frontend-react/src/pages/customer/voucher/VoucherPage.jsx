@@ -220,6 +220,7 @@ const VoucherPage = () => {
                   key={voucher.id}
                   voucher={voucher}
                   onSave={handleSave}
+                  context="public"
                 />
               ))}
             </div>

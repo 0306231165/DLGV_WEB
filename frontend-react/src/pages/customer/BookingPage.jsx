@@ -3954,16 +3954,18 @@ const BookingPage = () => {
                         />
                       </div>
 
-                      {/* Lặp lại hàng tuần — CHỈ có ở ca lẻ */}
-                      <div className="mt-8 border-t border-outline-variant/20 pt-6">
-                        <ToggleRow
-                          icon="update"
-                          title="Lặp lại lịch này hàng tuần"
-                          description="Tự động đặt lại lịch này mỗi tuần. Bạn có thể hủy bất kỳ lúc nào."
-                          checked={isWeeklyRepeat}
-                          onChange={() => setIsWeeklyRepeat((prev) => !prev)}
-                        />
-                      </div>
+                      {/* Lặp lại hàng tuần — CHỈ có ở ca lẻ của dịch vụ id = 1 */}
+                      {pkgData.id === 1 && !preselectedStaff && (
+                        <div className="mt-8 border-t border-outline-variant/20 pt-6">
+                          <ToggleRow
+                            icon="update"
+                            title="Lặp lại lịch này hàng tuần"
+                            description="Tự động đặt lại lịch này mỗi tuần. Bạn có thể hủy bất kỳ lúc nào."
+                            checked={isWeeklyRepeat}
+                            onChange={() => setIsWeeklyRepeat((prev) => !prev)}
+                          />
+                        </div>
+                      )}
                     </section>
                   )}
 
