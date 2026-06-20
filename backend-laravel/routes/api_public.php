@@ -3,6 +3,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DichVuController;
 use App\Http\Controllers\NhanVienController;
 use App\Http\Controllers\KhuyenMaiController;
+use App\Http\Controllers\QuyDinhPhuPhiController;
+
+//Phụ phí
+Route::get('/phu-phi', [QuyDinhPhuPhiController::class, 'index']);
 
 // Lấy danh sách dịch vụ hệ thống
 Route::get('/dich-vu', [DichVuController::class, 'getServicesPageData']);

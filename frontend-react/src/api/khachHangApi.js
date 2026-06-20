@@ -111,7 +111,7 @@ const khachHangApi = {
     // ─── Đặt lịch ──────────────────────────────────────────────
     // POST /api/khach-hang/don-hang/dat-lich
     datLich: (data) => {
-        return axiosClient.post('/khach-hang/don-hang/dat-lich', data);
+        return axiosClient.post('/khach-hang/dat-lich', data);
     },
 
 };

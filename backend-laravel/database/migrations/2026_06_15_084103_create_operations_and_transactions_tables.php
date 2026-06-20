@@ -33,7 +33,7 @@ return new class extends Migration
             $table->string('cac_ngay_trong_tuan', 50)->nullable();
             $table->time('gio_lam_mac_dinh')->nullable();
             $table->integer('so_thang_goi_thang')->nullable();
-            $table->string('ca_lam_247', 50)->nullable();
+            $table->enum('ca_lam_247', ['Ngay', 'Dem', 'CaNgay'])->nullable();
             $table->integer('so_ngay_goi_247')->nullable();
             $table->integer('tld_giam_goi_thang')->default(0);
             

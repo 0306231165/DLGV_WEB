@@ -64,7 +64,7 @@ class KhuyenMaiController extends Controller
         }
     }
 
-    public function updateStatus(Request $request, $id): \Illuminate\Http\JsonResponse
+    public function updateStatus(Request $request, int $id): \Illuminate\Http\JsonResponse
     {
         try {
             $khuyenMai = KhuyenMai::findOrFail($id);
@@ -85,7 +85,7 @@ class KhuyenMaiController extends Controller
         }
     }
 
-    public function destroy($id): \Illuminate\Http\JsonResponse
+    public function destroy(int $id): \Illuminate\Http\JsonResponse
     {
         try {
             $khuyenMai = KhuyenMai::findOrFail($id);

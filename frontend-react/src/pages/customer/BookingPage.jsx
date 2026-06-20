@@ -53,9 +53,7 @@ const TIME_SLOTS = {
 };
 
 const URGENT_THRESHOLD_HOURS = 1.5;
-const URGENT_FEE = 50000;
-const SELF_PICK_FEE = 20000;
-const PREMIUM_RATE = 0.25;
+
 const MAX_HOURS_NORMAL = 4;
 const MAX_HOURS_DEEP = 8;
 
@@ -116,6 +114,26 @@ const REPLACEMENT_OPTIONS = [
     isDestructive: true,
   },
 ];
+
+const REPLACEMENT_OPTION_TO_ENUM = {
+  favorite: "TimNhanVienYeuThich",
+  standard: "TimNhanVienTieuChuan",
+  none: "KhongTimThayThe",
+};
+
+const PAYMENT_METHOD_TO_ENUM = {
+  cash: "TienMat",
+  cleantrust: "ViTien",
+  card: "Online",
+  ewallet: "Online",
+};
+
+// ✅ MỚI: map shift247 (FE id) -> enum ca_lam_247 thật trong DB
+const SHIFT_247_TO_ENUM = {
+  "shift-day": "Ngay",
+  "shift-night": "Dem",
+  "shift-full": "CaNgay",
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -191,6 +209,7 @@ const getExtraServicesFromApi = (pkg) => {
   if (!pkg?.dich_vu_them || !Array.isArray(pkg.dich_vu_them)) return [];
   return pkg.dich_vu_them.map((item) => ({
     id: `extra-${item.id}`,
+    masterId: item.dich_vu_them?.id ?? null,
     title: item.dich_vu_them?.ten_dv_them || "",
     icon: item.dich_vu_them?.icon || "add_circle",
     price: Number(item.gia_cong_them),
@@ -204,6 +223,7 @@ const getLoaiGoiList = (pkg) => {
   return pkg.loai_goi
     .filter((lg) => lg.loai_goi && lg.trang_thai !== false)
     .map((lg) => ({
+      pivotId: lg.id,
       id: lg.loai_goi_id || lg.loai_goi?.id,
       name: lg.loai_goi?.ten_loai_goi || "",
     }));
@@ -1343,6 +1363,11 @@ const BookingPage = () => {
 
   // ✅ MỚI: dữ liệu dịch vụ lấy từ API thay vì PACKAGE_GROUPS tĩnh
   const [apiGroups, setApiGroups] = useState([]);
+
+  const [urgentFeeVal, setUrgentFeeVal] = useState(50000);
+  const [selfPickFeeVal, setSelfPickFeeVal] = useState(20000);
+  const [premiumRateVal, setPremiumRateVal] = useState(0.25);
+
   const [apiServices, setApiServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(true);
 
@@ -1351,14 +1376,40 @@ const BookingPage = () => {
   );
   const [showTasksId, setShowTasksId] = useState(null);
 
+  // ✅ MỚI: nhân viên được chọn trước từ StaffDetailPage (id thật)
+  const [preselectedStaff, setPreselectedStaff] = useState(
+    location.state?.preselectedStaff || null,
+  );
+
+  // ✅ MỚI: đặt riêng với 1 nhân viên → chỉ cho chọn 2 dịch vụ id 1, 2
+  const ALLOWED_SERVICE_IDS_WITH_STAFF = [1];
+  const availableServices = preselectedStaff
+    ? apiServices.filter((s) => ALLOWED_SERVICE_IDS_WITH_STAFF.includes(s.id))
+    : apiServices;
+
   useEffect(() => {
     const fetchServices = async () => {
       try {
         setLoadingServices(true);
-        const res = await publicApi.getServices();
-        if (res.success) {
-          setApiGroups(res.groups || []);
-          setApiServices(res.services || []);
+        const [svcRes, feeRes] = await Promise.all([
+          publicApi.getServices(),
+          publicApi.getPhuPhi(),
+        ]);
+
+        if (svcRes.success) {
+          setApiGroups(svcRes.groups || []);
+          setApiServices(svcRes.services || []);
+        }
+
+        if (feeRes?.success) {
+          const fees = feeRes.data || [];
+          const find = (ma) => fees.find((f) => f.ma_phu_phi === ma);
+          const datGap = find("DAT_GAP");
+          const chonNv = find("CHON_NV");
+          const caoCap = find("CAO_CAP");
+          if (datGap) setUrgentFeeVal(Number(datGap.gia_tri_phu_phi));
+          if (chonNv) setSelfPickFeeVal(Number(chonNv.gia_tri_phu_phi));
+          if (caoCap) setPremiumRateVal(Number(caoCap.gia_tri_phu_phi) / 100);
         }
       } catch (err) {
         console.error("Lỗi khi tải danh sách dịch vụ:", err);
@@ -1369,11 +1420,18 @@ const BookingPage = () => {
     fetchServices();
   }, []);
 
+  // ✅ FIX: tự chọn dịch vụ đầu tiên trong danh sách CHO PHÉP, và tự đổi
+  // nếu selectedPackage cũ không còn nằm trong availableServices (vd: từ
+  // luồng chọn dịch vụ trước đó, sau đó mới chọn nhân viên)
   useEffect(() => {
-    if (!selectedPackage && apiServices.length > 0) {
-      setSelectedPackage(apiServices[0].id);
+    if (
+      availableServices.length > 0 &&
+      (!selectedPackage ||
+        !availableServices.some((s) => s.id === selectedPackage))
+    ) {
+      setSelectedPackage(availableServices[0].id);
     }
-  }, [apiServices, selectedPackage]);
+  }, [availableServices, selectedPackage]);
 
   const [selectedArea, setSelectedArea] = useState(null);
   const [extras, setExtras] = useState([]);
@@ -1381,23 +1439,23 @@ const BookingPage = () => {
   const [staffFavorite, setStaffFavorite] = useState(false);
   const [staffSelfPick, setStaffSelfPick] = useState(false);
   const [premiumStaff, setPremiumStaff] = useState(false);
-  const [preselectedStaff, setPreselectedStaff] = useState(
-    location.state?.preselectedStaff || null,
-  );
+
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
-  const [replacementOption, setReplacementOption] = useState("favorite");
+  const [replacementOption, setReplacementOption] = useState("none");
 
   // Nếu có nhân viên được chọn trước từ trang chi tiết nhân viên, tự bật staffSelfPick
   useEffect(() => {
     if (preselectedStaff) {
       setStaffSelfPick(true);
+      setReplacementOption("none");
+      setPremiumStaff(false);
     }
   }, [preselectedStaff]);
 
   useEffect(() => {
     if (!preselectedStaff) {
       setShowReplacementOptions(false);
-      setReplacementOption("favorite");
+      setReplacementOption("none");
     }
   }, [preselectedStaff]);
 
@@ -1437,6 +1495,8 @@ const BookingPage = () => {
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoId, setPromoId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [showStep5Tasks, setShowStep5Tasks] = useState(false);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
@@ -1502,7 +1562,9 @@ const BookingPage = () => {
   };
 
   const apiPkgData =
-    apiServices.find((p) => p.id === selectedPackage) || apiServices[0] || null;
+    availableServices.find((p) => p.id === selectedPackage) ||
+    availableServices[0] ||
+    null;
   // pkgData giữ tên cũ để không phải sửa toàn bộ phần dưới component còn dùng pkgData.title, pkgData.base_price...
   const pkgData = apiPkgData
     ? {
@@ -1610,8 +1672,8 @@ const BookingPage = () => {
   const isUrgent = effectiveTime
     ? isUrgentSlot(selectedDayObj, effectiveTime, totalHours)
     : false;
-  const urgentFee = isUrgent ? URGENT_FEE : 0;
-  const selfPickFee = staffSelfPick ? SELF_PICK_FEE : 0;
+  const urgentFee = isUrgent ? urgentFeeVal : 0;
+  const selfPickFee = staffSelfPick ? selfPickFeeVal : 0;
   const travelFee = 15000;
   const extrasTotal = apiExtraList
     .filter((s) => extras.includes(s.id))
@@ -1664,14 +1726,265 @@ const BookingPage = () => {
       ? Math.round(monthlyRawTotal * (monthlyDurationData.discount / 100))
       : 0;
 
-  const showPremium = pkgData.capDoDichVu === "CaoCap";
+  const showPremium = pkgData.capDoDichVu === "CaoCap" && !preselectedStaff;
   const premiumFeePerSession =
-    premiumStaff && showPremium ? Math.round(basePrice * PREMIUM_RATE) : 0;
+    premiumStaff && showPremium ? Math.round(basePrice * premiumRateVal) : 0;
   const premiumFeeTotal = isMonthly
     ? premiumFeePerSession *
       (totalSessions ??
         monthlySessionsPerMonth * (monthlyDurationData?.months || 1))
     : premiumFeePerSession;
+
+  // ✅ Map resolvedType -> enum loai_goi_ca_lam của bảng calamviec
+  const LOAI_GOI_CA_LAM_MAP = {
+    single: "CaLe",
+    monthly: "GoiThang",
+    247: "Goi247",
+  };
+
+  // ✅ Danh sách ngày làm thực tế để sinh từng bản ghi calamviec.
+  // - Ca lẻ: chỉ 1 ngày (selectedDayObj)
+  // - Gói tháng: customDates (nếu khách tự chỉnh lịch, kể cả lung tung không trùng tuần nào)
+  //   hoặc defaultDates (sinh tự động theo các thứ đã chọn, lặp đều mỗi tuần)
+  // - 24/7: CHƯA xử lý ở đây — cách sinh ca cho 24/7 khác hẳn, cần bàn riêng.
+  const getCaLamViecDates = () => {
+    if (isSingle && selectedDayObj) {
+      const y = selectedDayObj.year;
+      const m = String(selectedDayObj.month + 1).padStart(2, "0");
+      const d = String(selectedDayObj.dateNum).padStart(2, "0");
+      return [`${y}-${m}-${d}`];
+    }
+    if (isMonthly) {
+      return isCustomSchedule && customDates ? customDates : defaultDates;
+    }
+    return [];
+  };
+
+  // ✅ MỚI: sinh danh sách {ngay_lam, gio_bat_dau} cho từng ca trực 24/7
+  // - shift-day / shift-night: 1 ca/ngày, 12 giờ
+  // - shift-full: 2 ca/ngày (ca ngày 06:00 + ca đêm 18:00), mỗi ca 12 giờ
+  const getCaLamViec247List = () => {
+    if (!is247 || startDate247 === null || !duration247Data) return [];
+    const startObj = next7Days247[startDate247];
+    const startDateObj = new Date(
+      startObj.year,
+      startObj.month,
+      startObj.dateNum,
+    );
+
+    const shiftsPerDay =
+      shift247 === "shift-full"
+        ? [{ gio_bat_dau: "06:00", thoi_gian_lam_phut: 1440 }]
+        : shift247 === "shift-night"
+          ? [{ gio_bat_dau: "18:00", thoi_gian_lam_phut: 720 }]
+          : [{ gio_bat_dau: "06:00", thoi_gian_lam_phut: 720 }]; // shift-day hoặc chưa chọn -> mặc định ca ngày
+
+    const result = [];
+    for (let i = 0; i < duration247Data.days; i++) {
+      const d = new Date(startDateObj);
+      d.setDate(d.getDate() + i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const ngay_lam = `${y}-${m}-${dd}`;
+      shiftsPerDay.forEach((s) => result.push({ ngay_lam, ...s }));
+    }
+    return result;
+  };
+
+  // ✅ Snapshot dịch vụ thêm đã chọn -> [{id, ten}] lưu vào calamviec.chi_tiet_dich_vu_them
+  const getChiTietDichVuThemSnapshot = () =>
+    apiExtraList
+      .filter((s) => extras.includes(s.id))
+      .map((s) => ({ id: s.masterId, ten: s.title }));
+
+  // ✅ Sinh toàn bộ danh sách calamviec cần tạo cho đơn hiện tại (chỉ dựng payload, chưa gọi API)
+  const buildCaLamViecList = () => {
+    const diaChi =
+      addressMode === "saved" && savedAddresses.length > 0
+        ? savedAddresses.find((a) => a.id === selectedSavedAddress)?.address
+        : `${newAddress.street}, ${newAddress.district}`;
+
+    // ✅ MỚI: 24/7 sinh riêng — mỗi ca 12 giờ (720 phút), không dùng effectiveTime/totalHours
+    if (is247) {
+      const shiftsList = getCaLamViec247List();
+      return shiftsList.map(
+        ({ ngay_lam, gio_bat_dau, thoi_gian_lam_phut }) => ({
+          dich_vu_id: pkgData.id,
+          chi_tiet_dich_vu_them: null,
+          ngay_lam,
+          gio_bat_dau,
+          thoi_gian_lam_phut,
+          loai_goi_ca_lam: "Goi247",
+          dia_chi_lam_viec: diaChi,
+          // gia_ca_nay chỉ để pass validate, BE sẽ tự tính lại từ tien_giam_giu / tong_so_buoi
+          gia_ca_nay: 0,
+          trang_thai_ca: preselectedStaff
+            ? "ChoNhanVienChiDinhXacNhan"
+            : "ChoNhanVienTuDoNhan",
+          loai_ghep: preselectedStaff ? "ThuCong" : "TuDong",
+        }),
+      );
+    }
+
+    const dates = getCaLamViecDates();
+    const chiTietDichVuThem = getChiTietDichVuThemSnapshot();
+
+    return dates.map((ngay_lam) => ({
+      dich_vu_id: pkgData.id,
+      chi_tiet_dich_vu_them:
+        chiTietDichVuThem.length > 0 ? JSON.stringify(chiTietDichVuThem) : null,
+      ngay_lam,
+      gio_bat_dau: effectiveTime,
+      thoi_gian_lam_phut: Math.round(totalHours * 60),
+      loai_goi_ca_lam: LOAI_GOI_CA_LAM_MAP[resolvedType] || "CaLe",
+      dia_chi_lam_viec: diaChi,
+      gia_ca_nay: basePrice + premiumFeePerSession,
+      trang_thai_ca: preselectedStaff
+        ? "ChoNhanVienChiDinhXacNhan"
+        : "ChoNhanVienTuDoNhan",
+      loai_ghep: preselectedStaff ? "ThuCong" : "TuDong",
+    }));
+  };
+
+  // ✅ Build payload đơn hàng gửi lên BE (donhang + mảng calamviec)
+  const buildDonHangPayload = () => {
+    // ✅ MỚI: tính trước để dùng chung cho cả tong_so_buoi và ca_lam_viec
+    const caLamViecList = buildCaLamViecList();
+
+    // ── dich_vu_loai_goi_id: tìm đúng pivotId theo resolvedType ──
+    const nameMap = {
+      single: "Ca lẻ",
+      monthly: "Gói tháng",
+      247: "24/7 Thường trực",
+    };
+    const targetName = hasSingleFrequency
+      ? loaiGoiList[0]?.name
+      : nameMap[resolvedType];
+    const dichVuLoaiGoiId = loaiGoiList.find(
+      (lg) => lg.name === targetName,
+    )?.pivotId;
+
+    // ── tuy_chon_bien_the_id: strip "variant-" ──
+    const bienTheId = careOptionId
+      ? parseInt(careOptionId.replace("variant-", ""), 10)
+      : null;
+
+    // ── Thông tin liên hệ thực tế ──
+    const contactInfo =
+      contactMode === "saved" && savedContacts.length > 0
+        ? savedContacts.find((c) => c.id === selectedSavedContact)
+        : null;
+    const hoTenThucTe = contactInfo
+      ? contactInfo.ten_nguoi_nhan
+      : newContact.name;
+    const sdtThucTe = contactInfo ? contactInfo.sdt_nhan : newContact.phone;
+
+    // ── Địa chỉ thực tế ──
+    const addrInfo =
+      addressMode === "saved" && savedAddresses.length > 0
+        ? savedAddresses.find((a) => a.id === selectedSavedAddress)
+        : null;
+    const diaChiThucTe = addrInfo
+      ? addrInfo.address
+      : `${newAddress.street}, ${newAddress.district}`;
+
+    // ── ngay_bat_dau / ngay_ket_thuc ──
+    const toYMD = (d) =>
+      `${d.year}-${String(d.month + 1).padStart(2, "0")}-${String(d.dateNum).padStart(2, "0")}`;
+
+    let ngayBatDau, ngayKetThuc;
+
+    if (isSingle && selectedDayObj) {
+      ngayBatDau = toYMD(selectedDayObj);
+      ngayKetThuc = ngayBatDau;
+    } else if (isMonthly) {
+      const dates =
+        isCustomSchedule && customDates ? customDates : defaultDates;
+      ngayBatDau = dates[0];
+      ngayKetThuc = dates[dates.length - 1];
+    } else if (is247 && startDate247 !== null) {
+      const startObj = next7Days247[startDate247];
+      ngayBatDau = toYMD(startObj);
+      const endD = new Date(
+        startObj.year,
+        startObj.month,
+        startObj.dateNum + (duration247Data?.days || 7) - 1,
+      );
+      ngayKetThuc = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, "0")}-${String(endD.getDate()).padStart(2, "0")}`;
+    }
+
+    return {
+      dich_vu_loai_goi_id: dichVuLoaiGoiId,
+      tuy_chon_bien_the_id: bienTheId,
+      so_luong_tuy_chon: 1,
+      khuyen_mai_id: promoId ?? null,
+      nhan_vien_duoc_yeu_cau_id: preselectedStaff?.id ?? null,
+      phuong_an_thay_the: preselectedStaff
+        ? REPLACEMENT_OPTION_TO_ENUM[replacementOption]
+        : null,
+      is_giu_nhan_vien: false,
+      tong_so_buoi: is247 ? caLamViecList.length : (totalSessions ?? 1),
+      is_lap_lai_hang_tuan: isWeeklyRepeat,
+      cac_ngay_trong_tuan: isMonthly ? selectedWeekDays.join(",") : null,
+      gio_lam_mac_dinh: isMonthly || is247 ? effectiveTime : null,
+      so_thang_goi_thang: isMonthly ? parseInt(monthlyDuration, 10) : null,
+      ca_lam_247: is247 ? SHIFT_247_TO_ENUM[shift247] : null,
+      so_ngay_goi_247: is247 ? (duration247Data?.days ?? null) : null,
+      tld_giam_goi_thang: isMonthly
+        ? (monthlyDurationData?.discount ?? 0)
+        : is247
+          ? (duration247Data?.discount ?? 0)
+          : 0,
+      ngay_bat_dau: ngayBatDau,
+      ngay_ket_thuc: ngayKetThuc,
+      ho_ten_thuc_te: hoTenThucTe,
+      sdt_thuc_te: sdtThucTe,
+      dia_chi_thuc_te: diaChiThucTe,
+      ghi_chu_cho_nhan_vien: staffNote || null,
+      is_cao_cap: premiumStaff,
+      ty_le_phu_phi_cao_cap_snapshot: premiumStaff
+        ? Math.round(premiumRateVal * 100)
+        : 0,
+      phu_phi_cao_cap: premiumFeeTotal,
+      co_thu_cung: hasPet ?? false,
+      uu_tien_nv_yt: staffFavorite,
+      phu_phi_chon_nhan_vien: selfPickFee,
+      don_gia_co_ban: basePrice,
+      tong_tien_ban_dau: subtotal,
+      phu_phi_dat_gap: urgentFee,
+      tong_tien_cuoi_cung: total,
+      tien_giam_giu: total - travelFee,
+      phuong_thuc_tt: PAYMENT_METHOD_TO_ENUM[paymentMethod],
+      ca_lam_viec: caLamViecList,
+      dich_vu_them: apiExtraList
+        .filter((s) => extras.includes(s.id))
+        .map((s) => ({
+          dich_vu_dich_vu_them_id: parseInt(s.id.replace("extra-", ""), 10),
+          so_luong: 1,
+          gia_luc_dat: s.price,
+        })),
+    };
+  };
+
+  // ✅ Gọi API đặt lịch
+  const handleSubmitOrder = async () => {
+    setSubmitting(true);
+    try {
+      const payload = buildDonHangPayload();
+      const res = await khachHangApi.datLich(payload);
+      if (res.success) {
+        setStep(5);
+      } else {
+        alert(res.message || "Đặt lịch thất bại, vui lòng thử lại.");
+      }
+    } catch (err) {
+      alert("Lỗi kết nối, vui lòng thử lại.");
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSaveCalendar = (newDates) => {
     const sortedNew = [...newDates].sort();
@@ -1737,7 +2050,7 @@ const BookingPage = () => {
     errors,
     setErrors,
     isUrgent,
-    urgentFee: URGENT_FEE,
+    urgentFee: urgentFeeVal,
     tick,
     totalHours,
   };
@@ -1783,6 +2096,7 @@ const BookingPage = () => {
     setPromoCode("");
     setPromoApplied(false);
     setPromoDiscount(0);
+    setPromoId(null);
     setErrors({});
   };
 
@@ -1798,11 +2112,15 @@ const BookingPage = () => {
     setMonthlyDuration("1");
     setShift247(null);
     setStartDate247(id === "247" ? 0 : null);
+    // ✅ Gói tháng không cho chọn dịch vụ thêm — nếu lỡ chọn từ Bước 1
+    // (lúc dịch vụ chưa rõ hình thức) thì xóa luôn để khỏi tính nhầm.
+    if (id === "monthly") setExtras([]);
     // ✅ MỚI: Mã khuyến mãi chỉ áp dụng cho "Ca lẻ" — đổi hình thức thì reset luôn,
     // tránh trường hợp đã áp mã rồi đổi sang Gói tháng/24-7 mà mã vẫn âm thầm trừ tiền.
     setPromoCode("");
     setPromoApplied(false);
     setPromoDiscount(0);
+    setPromoId(null);
     setErrors((p) => ({
       ...p,
       frequency: null,
@@ -1813,6 +2131,7 @@ const BookingPage = () => {
   };
 
   const toggleExtra = (id) => {
+    if (isMonthly) return; // Gói tháng không cho chọn dịch vụ thêm
     const extraList = getExtraServicesFromApi(apiPkgData);
     const svc = extraList.find((s) => s.id === id);
     if (!svc) return;
@@ -2662,9 +2981,10 @@ const BookingPage = () => {
                 )}
                 <button
                   onClick={onPrimary}
-                  className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  disabled={confirmMode && submitting}
+                  className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-body-lg shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                 >
-                  {primaryLabel}
+                  {confirmMode && submitting ? "Đang xử lý..." : primaryLabel}
                   <span className="material-symbols-outlined">
                     {confirmMode ? "check" : "arrow_forward"}
                   </span>
@@ -2806,6 +3126,7 @@ const BookingPage = () => {
         return;
       }
 
+      setPromoId(voucher.id);
       setPromoCode(voucher.ma_code);
       setPromoDiscount(discount);
       setPromoApplied(true);
@@ -2922,10 +3243,48 @@ const BookingPage = () => {
                     Chọn gói dịch vụ
                   </SectionTitle>
 
+                  {/* Banner nhân viên đã chọn — chỉ hiện khi có preselectedStaff */}
+                  {preselectedStaff && (
+                    <div className="mb-6 p-4 rounded-xl border-2 border-primary bg-primary/5 flex items-center gap-4">
+                      <img
+                        src={preselectedStaff.avatar}
+                        alt={preselectedStaff.name}
+                        className="w-12 h-12 rounded-xl object-cover border-2 border-surface-container shadow"
+                      />
+                      <div className="flex-1">
+                        <p className="font-bold text-on-surface flex items-center gap-2">
+                          {preselectedStaff.name}
+                          <span
+                            className="material-symbols-outlined text-primary text-sm"
+                            style={{ fontVariationSettings: "'FILL' 1" }}
+                          >
+                            verified
+                          </span>
+                        </p>
+                        <p className="text-sm text-on-surface-variant mt-0.5">
+                          Nhân viên đã được chọn · Dịch vụ dọn dẹp nhà
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setPreselectedStaff(null);
+                          setStaffSelfPick(false);
+                          setShowReplacementOptions(false);
+                          setReplacementOption("favorite");
+                        }}
+                        className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all"
+                      >
+                        <span className="material-symbols-outlined text-xl">
+                          close
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
                   <div className="space-y-8">
                     {/* ✅ MỚI: nhóm "Phổ biến" ảo (is_noi_bat) luôn ở đầu, sau đó các nhóm thật theo thu_tu_hien_thi */}
                     {(() => {
-                      const popularServices = apiServices.filter(
+                      const popularServices = availableServices.filter(
                         (s) => s.is_noi_bat,
                       );
                       const popularIds = new Set(
@@ -2942,7 +3301,7 @@ const BookingPage = () => {
                       }
                       apiGroups.forEach((g) => {
                         // ✅ FIX: loại bỏ dịch vụ đã hiện ở nhóm "Phổ biến" để tránh trùng card + trùng state
-                        const servicesInGroup = apiServices.filter(
+                        const servicesInGroup = availableServices.filter(
                           (s) =>
                             s.nhom_dich_vu_id === g.id && !popularIds.has(s.id),
                         );
@@ -3131,8 +3490,8 @@ const BookingPage = () => {
                   </section>
                 )}
 
-                {/* ✅ MỚI: "Dịch vụ Cao cấp" chỉ hiện khi cap_do_dich_vu === 'CaoCap' */}
-                {pkgData.capDoDichVu === "CaoCap" && (
+                {/* ✅ MỚI: "Dịch vụ Cao cấp" chỉ hiện khi cap_do_dich_vu === 'CaoCap' VÀ chưa chọn nhân viên riêng */}
+                {showPremium && (
                   <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                     <SectionTitle icon="workspace_premium">
                       Dịch vụ Cao cấp
@@ -3201,7 +3560,7 @@ const BookingPage = () => {
                 {/* ✅ MỚI: "Dịch vụ thêm (tùy chọn)" chỉ hiện khi service có dich_vu_them */}
                 {(() => {
                   const extraList = getExtraServicesFromApi(apiPkgData);
-                  if (extraList.length === 0) return null;
+                  if (extraList.length === 0 || isMonthly) return null;
                   return (
                     <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                       <SectionTitle icon="add_circle">
@@ -3557,7 +3916,7 @@ const BookingPage = () => {
                           </span>
                           <div>
                             <p className="font-semibold text-error text-sm">
-                              Đặt hôm nay — áp dụng phí gấp +{fmt(URGENT_FEE)}
+                              Đặt hôm nay — áp dụng phí gấp +{fmt(urgentFeeVal)}
                             </p>
                             <p className="text-sm text-error/80 mt-0.5">
                               Tất cả lịch đặt trong ngày hôm nay đều tính thêm
@@ -4194,7 +4553,7 @@ const BookingPage = () => {
                 </SectionTitle>
                 <div className="grid grid-cols-1 gap-3">
                   {PAYMENT_METHODS.filter(
-                    (method) => !(isMonthly && method.id === "cash"),
+                    (method) => !((isMonthly || is247) && method.id === "cash"),
                   ).map((method) => {
                     const isSelected = paymentMethod === method.id;
                     return (
@@ -4269,74 +4628,74 @@ const BookingPage = () => {
               </section>
 
               {isSingle && (
-              <section className="glass-card bg-surface-container-item rounded-2xl p-8">
-                <SectionTitle icon="redeem">Mã khuyến mãi</SectionTitle>
-                <div
-                  onClick={() => setShowVoucherModal(true)}
-                  className={`w-full p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between gap-4 ${
-                    promoApplied
-                      ? "border-primary bg-primary/5"
-                      : "border-outline-variant hover:border-primary/50 bg-surface"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${promoApplied ? "bg-primary/10" : "bg-surface-container"}`}
-                    >
-                      <span
-                        className={`material-symbols-outlined text-xl ${promoApplied ? "text-primary" : "text-on-surface-variant"}`}
+                <section className="glass-card bg-surface-container-item rounded-2xl p-8">
+                  <SectionTitle icon="redeem">Mã khuyến mãi</SectionTitle>
+                  <div
+                    onClick={() => setShowVoucherModal(true)}
+                    className={`w-full p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between gap-4 ${
+                      promoApplied
+                        ? "border-primary bg-primary/5"
+                        : "border-outline-variant hover:border-primary/50 bg-surface"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${promoApplied ? "bg-primary/10" : "bg-surface-container"}`}
                       >
-                        loyalty
+                        <span
+                          className={`material-symbols-outlined text-xl ${promoApplied ? "text-primary" : "text-on-surface-variant"}`}
+                        >
+                          loyalty
+                        </span>
+                      </div>
+                      <div>
+                        {promoApplied ? (
+                          <>
+                            <p className="font-bold text-on-surface flex items-center gap-2">
+                              {promoCode}
+                              <span className="material-symbols-outlined text-primary text-sm">
+                                check_circle
+                              </span>
+                            </p>
+                            <p className="text-sm text-primary font-medium mt-0.5">
+                              Giảm {fmt(actualPromoDiscount)}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-semibold text-on-surface">
+                              Chọn mã khuyến mãi
+                            </p>
+                            <p className="text-sm text-on-surface-variant mt-0.5">
+                              Nhấn để xem các ưu đãi có sẵn
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {promoApplied ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPromoCode("");
+                          setPromoApplied(false);
+                          setPromoDiscount(0);
+                        }}
+                        className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all flex items-center justify-center"
+                        title="Bỏ chọn"
+                      >
+                        <span className="material-symbols-outlined text-xl">
+                          close
+                        </span>
+                      </button>
+                    ) : (
+                      <span className="material-symbols-outlined text-on-surface-variant">
+                        chevron_right
                       </span>
-                    </div>
-                    <div>
-                      {promoApplied ? (
-                        <>
-                          <p className="font-bold text-on-surface flex items-center gap-2">
-                            {promoCode}
-                            <span className="material-symbols-outlined text-primary text-sm">
-                              check_circle
-                            </span>
-                          </p>
-                          <p className="text-sm text-primary font-medium mt-0.5">
-                            Giảm {fmt(actualPromoDiscount)}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-semibold text-on-surface">
-                            Chọn mã khuyến mãi
-                          </p>
-                          <p className="text-sm text-on-surface-variant mt-0.5">
-                            Nhấn để xem các ưu đãi có sẵn
-                          </p>
-                        </>
-                      )}
-                    </div>
+                    )}
                   </div>
-                  {promoApplied ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPromoCode("");
-                        setPromoApplied(false);
-                        setPromoDiscount(0);
-                      }}
-                      className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all flex items-center justify-center"
-                      title="Bỏ chọn"
-                    >
-                      <span className="material-symbols-outlined text-xl">
-                        close
-                      </span>
-                    </button>
-                  ) : (
-                    <span className="material-symbols-outlined text-on-surface-variant">
-                      chevron_right
-                    </span>
-                  )}
-                </div>
-                <ErrorMsg message={errors.promo} />
-              </section>
+                  <ErrorMsg message={errors.promo} />
+                </section>
               )}
             </div>
             {renderOrderSummary({
@@ -4753,7 +5112,7 @@ const BookingPage = () => {
                       <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wide">
                         Thông tin liên hệ
                       </p>
-                      {contactMode === "saved" ? (
+                      {contactMode === "saved" && savedContacts.length > 0 ? (
                         <>
                           <div className="flex justify-between">
                             <span className="text-sm text-on-surface-variant">
@@ -4811,7 +5170,7 @@ const BookingPage = () => {
                       <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wide">
                         Địa chỉ
                       </p>
-                      {addressMode === "saved" ? (
+                      {addressMode === "saved" && savedAddresses.length > 0 ? (
                         <>
                           <div className="flex justify-between">
                             <span className="text-sm text-on-surface-variant">
@@ -4903,7 +5262,7 @@ const BookingPage = () => {
             </div>
             {renderOrderSummary({
               primaryLabel: "Xác nhận đặt lịch",
-              onPrimary: () => setStep(5),
+              onPrimary: handleSubmitOrder,
               onBack: () => setStep(3),
               confirmMode: true,
             })}
@@ -4998,7 +5357,7 @@ const BookingPage = () => {
             <button
               onClick={() => {
                 setStep(1);
-                setSelectedPackage("basic-single");
+                setSelectedPackage(null);
                 setSelectedArea(null);
                 setExtras([]);
                 setHasPet(null);

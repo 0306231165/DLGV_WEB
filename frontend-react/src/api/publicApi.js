@@ -2,6 +2,9 @@
 import axiosClient from './axiosClient';
 
 const publicApi = {
+
+    getPhuPhi: () => axiosClient.get('/phu-phi'),
+
     getServices: () => {
         return axiosClient.get('/dich-vu');
     },

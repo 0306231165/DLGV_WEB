@@ -56,7 +56,7 @@ Route::middleware(['auth:sanctum', 'ability:role:khach-hang'])->prefix('khach-ha
 Route::get('/nhan-vien-da-lam', [NhanVienController::class, 'getNhanVienDaLam']);
 
     // ─── Đặt lịch ─────────────────────────────────────────────────────────────
-    Route::post('/don-hang/dat-lich', [DonHangController::class, 'store']);
+    Route::post('/dat-lich', [DonHangController::class, 'store']);
 
     // ─── Phòng chat ───────────────────────────────────────────────────────────
     Route::get('/phong-chat/{id}/tin-nhan', [PhongChatController::class, 'getMessages']);
