@@ -60,6 +60,9 @@ Route::middleware(['auth:sanctum', 'ability:role:khach-hang'])->prefix('khach-ha
     Route::post('/dat-lich', [DonHangController::class, 'store']);
     Route::post('/don-hang/ca-lam/{id}/doi-lich', [DonHangController::class, 'doiLich']);
     Route::post('/don-hang/ca-lam/{id}/huy', [DonHangController::class, 'huyCa']);
+    Route::post('/don-hang/ca-lam/{id}/danh-gia', [DonHangController::class, 'danhGiaCaLamViec']);
+    Route::post('/don-hang/ca-lam/{id}/bao-cao', [DonHangController::class, 'baoCaoSuCo']);
+    Route::post('/don-hang/{id}/huy', [DonHangController::class, 'huyDonHang']);
     Route::get('/don-hang', [DonHangController::class, 'index']);
     Route::get('/don-hang/{id}', [DonHangController::class, 'show']);
 

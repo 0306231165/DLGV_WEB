@@ -35,6 +35,8 @@ const MyBookingsLayout = () => {
 
   const filteredData = useMemo(() => {
     return rawMappedData.filter(b => {
+      if (b.rawStatus === 'DaHuy' || b.rawStatus === 'DaHoanThanh') return false;
+      
       if (activeFilter === 'all') return true;
       if (activeFilter === 'single') return b.loaiGoiId === 1 && !b.isLapLaiHangTuan;
       if (activeFilter === 'monthly') return b.loaiGoiId === 2;

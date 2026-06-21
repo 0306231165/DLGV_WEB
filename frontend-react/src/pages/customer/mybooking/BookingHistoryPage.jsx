@@ -1,65 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-// ─── 1. BỘ DỮ LIỆU GIỮ NGUYÊN ĐỂ BẠN TEST CHÍNH XÁC ───
-const HISTORY_DATA = [
-  { id: 'DH001', title: 'Tổng vệ sinh căn hộ (Deep Clean)', icon: 'home', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '15/10/2023', time: '08:00 - 12:00', location: 'Vinhomes Central Park, Q.Bình Thạnh', price: '1.250.000đ', hasDetail: true },
-  { id: 'DH002', title: 'Vệ sinh định kỳ (Regular Clean)', icon: 'cleaning_services', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '14/10/2023', time: '09:00 - 11:00', location: 'Chung cư Sunrise City, Quận 7', price: '450.000đ', hasDetail: true },
-  { id: 'DH003', title: 'Giặt sofa và thảm phòng khách', icon: 'chair', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '12/10/2023', time: '14:00 - 16:00', location: 'Masteri Thảo Điền, Quận 2', price: '750.000đ', hasDetail: true },
-  { id: 'DH004', title: 'Vệ sinh kính mặt ngoài chung cư', icon: 'window', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '10/10/2023', time: '08:00 - 11:30', location: 'Đảo Kim Cương, Quận 2', price: '1.500.000đ', hasDetail: true },
-  { id: 'DH005', title: 'Dọn dẹp văn phòng công ty nhỏ', icon: 'corporate_fare', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '08/10/2023', time: '13:00 - 17:00', location: 'Tòa nhà Bitexco, Quận 1', price: '2.200.000đ', hasDetail: true },
-  { id: 'DH006', title: 'Khử khuẩn môi trường định kỳ', icon: 'vaccines', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '05/10/2023', time: '15:00 - 16:00', location: 'Khu đô thị Sala, Quận 2', price: '600.000đ', hasDetail: true },
-  { id: 'DH007', title: 'Vệ sinh máy lạnh Inverter', icon: 'ac_unit', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '03/10/2023', time: '09:00 - 10:30', location: 'Chung cư Hà Đô, Quận 10', price: '350.000đ', hasDetail: true },
-  { id: 'DH008', title: 'Dọn nhà trống đón Tết sớm', icon: 'local_shipping', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '01/10/2023', time: '08:00 - 16:00', location: 'Mỹ Mỹ Villa, Quận 7', price: '4.000.000đ', hasDetail: true },
-  { id: 'DH009', title: 'Ủi đồ và dọn dẹp tủ quần áo', icon: 'iron', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '28/09/2023', time: '14:00 - 17:00', location: 'The Manor, Q.Bình Thạnh', price: '500.000đ', hasDetail: true },
-  { id: 'DH010', title: 'Hút bụi nội thất xe ô tô 7 chỗ', icon: 'directions_car', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '25/09/2023', time: '10:00 - 12:00', location: 'Vinhomes Golden River, Quận 1', price: '850.000đ', hasDetail: true },
-  { id: 'DH011', title: 'Vệ sinh định kỳ (Regular Clean)', icon: 'cleaning_services', status: 'cancelled', statusLabel: 'ĐÃ HỦY', statusClass: 'bg-red-50 text-red-600 border border-red-200/50', date: '02/10/2023', time: '14:00 - 17:00', location: 'Masteri Thảo Điền, Quận 2', price: '450.000đ', hasDetail: false },
-  { id: 'DH012', title: 'Vệ sinh nhà mới (Move-in Clean)', icon: 'local_shipping', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '20/09/2023', time: '09:00 - 16:00', location: 'Khu đô thị Sala, Quận 2', price: '2.800.000đ', hasDetail: true },
-  { id: 'DH013', title: 'Giặt ghế Sofa & Thảm trải sàn', icon: 'styler', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '05/09/2023', time: '13:30 - 16:30', location: 'Estella Heights, Quận 2', price: '750.000đ', hasDetail: true },
-  { id: 'DH014', title: 'Vệ sinh kính mặt ngoài tòa nhà', icon: 'window', status: 'cancelled', statusLabel: 'ĐÃ HỦY', statusClass: 'bg-red-50 text-red-600 border border-red-200/50', date: '28/08/2023', time: '08:00 - 11:30', location: 'Phú Mỹ Hưng, Quận 7', price: '1.900.000đ', hasDetail: false },
-  { id: 'DH015', title: 'Khử khuẩn & Diệt côn trùng định kỳ', icon: 'vaccines', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '12/08/2023', time: '15:00 - 17:00', location: 'Landmark 81, Q.Bình Thạnh', price: '600.000đ', hasDetail: true },
-  { id: 'DH016', title: 'Vệ sinh máy lạnh & Máy giặt', icon: 'ac_unit', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '01/08/2023', time: '09:00 - 11:00', location: 'Sunrise City, Quận 7', price: '350.000đ', hasDetail: true },
-  { id: 'DH017', title: 'Tổng vệ sinh văn phòng công ty', icon: 'corporate_fare', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '25/07/2023', time: '07:30 - 12:00', location: 'Bitexco Financial Tower, Quận 1', price: '4.500.000đ', hasDetail: true },
-  { id: 'DH018', title: 'Dọn dẹp nội thất ô tô tại nhà', icon: 'directions_car', status: 'cancelled', statusLabel: 'ĐÃ HỦY', statusClass: 'bg-red-50 text-red-600 border border-red-200/50', date: '18/07/2023', time: '14:00 - 16:30', location: 'Chung cư Miếu Nổi, Q.Bình Thạnh', price: '850.000đ', hasDetail: false },
-  { id: 'DH019', title: 'Vệ sinh định kỳ (Regular Clean)', icon: 'cleaning_services', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '10/07/2023', time: '08:00 - 11:00', location: 'Masteri Thảo Điền, Quận 2', price: '450.000đ', hasDetail: true },
-  { id: 'DH020', title: 'Ủi quần áo & Sắp xếp tủ đồ', icon: 'iron', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '02/07/2023', time: '13:00 - 16:00', location: 'Vinhomes Golden River, Quận 1', price: '500.000đ', hasDetail: true },
-  { id: 'DH021', title: 'Vệ sinh bể bơi gia đình', icon: 'pool', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '25/06/2023', time: '08:00 - 12:00', location: 'Château Villa, Quận 7', price: '3.200.000đ', hasDetail: true },
-  { id: 'DH022', title: 'Vệ sinh sofa da cao cấp', icon: 'chair', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '15/06/2023', time: '14:00 - 16:00', location: 'The Manor, Q.Bình Thạnh', price: '900.000đ', hasDetail: true },
-  { id: 'DH023', title: 'Dọn nhà theo giờ chuyên sâu', icon: 'schedule', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '08/06/2023', time: '08:00 - 12:00', location: 'Hà Đô Centrosa, Quận 10', price: '650.000đ', hasDetail: true },
-  { id: 'DH024', title: 'Vệ sinh rèm cửa & Thảm sàn', icon: 'texture', status: 'cancelled', statusLabel: 'ĐÃ HỦY', statusClass: 'bg-red-50 text-red-600 border border-red-200/50', date: '01/06/2023', time: '10:00 - 12:30', location: 'Chung cư Carina, Quận 8', price: '550.000đ', hasDetail: false },
-  { id: 'DH025', title: 'Tổng vệ sinh sau xây dựng', icon: 'construction', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '24/05/2023', time: '08:00 - 17:00', location: 'Khu biệt thự Thảo Điền, Quận 2', price: '5.800.000đ', hasDetail: true },
-  { id: 'DH026', title: 'Vệ sinh định kỳ (Regular Clean)', icon: 'cleaning_services', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '17/05/2023', time: '13:00 - 16:00', location: 'Masteri Thảo Điền, Quận 2', price: '450.000đ', hasDetail: true },
-  { id: 'DH027', title: 'Thông nghẹt & Vệ sinh bồn cầu', icon: 'plumbing', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '10/05/2023', time: '09:00 - 10:30', location: 'Chung cư Lê Thành, Quận Bình Tân', price: '300.000đ', hasDetail: true },
-  { id: 'DH028', title: 'Vệ sinh kho bãi hàng hóa', icon: 'warehouse', status: 'cancelled', statusLabel: 'ĐÃ HỦY', statusClass: 'bg-red-50 text-red-600 border border-red-200/50', date: '02/05/2023', time: '08:00 - 15:00', location: 'KCN Tân Bình, Q.Tân Phú', price: '4.200.000đ', hasDetail: false },
-  { id: 'DH029', title: 'Vệ sinh hệ thống hút mùi bếp', icon: 'cooking', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '25/04/2023', time: '14:00 - 16:30', location: 'Saigon Pearl, Q.Bình Thạnh', price: '800.000đ', hasDetail: true },
-  { id: 'DH030', title: 'Đánh bóng sàn đá Marble phòng khách', icon: 'layers', status: 'completed', statusLabel: 'ĐÃ HOÀN THÀNH', statusClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/50', date: '14/02/2023', time: '08:00 - 15:00', location: 'Biệt thự Mỹ Mỹ, Quận 2', price: '3.500.000đ', hasDetail: true }
-];
+import khachHangApi from '../../../api/khachHangApi';
 
-// Danh sách lựa chọn thời gian (Dựa trên cục data giả năm 2023 để test được luôn)
+const SERVICE_ICONS = {
+  1: 'cleaning_services',  // Dọn dẹp hằng ngày
+  2: 'calendar_month',     // Dọn dẹp định kỳ
+  3: 'cleaning',           // Tổng vệ sinh chuyên sâu
+  4: 'elderly',            // Chăm sóc người lớn tuổi
+  5: 'baby_changing_station', // Trông trẻ
+  6: 'medical_services',   // Chăm sóc người bệnh
+  7: 'construction',       // Dọn sau xây dựng
+  8: 'ac_unit',            // Vệ sinh máy lạnh
+  9: 'chair',              // Giặt ghế sofa
+  10: 'bed',               // Giặt nệm
+  11: 'soup_kitchen',      // Vệ sinh bếp chuyên sâu
+  12: 'layers',            // Giặt thảm
+  13: 'corporate_fare',    // Dọn văn phòng
+};
+
+const mapToHistoryFormat = (dh) => {
+  let title = dh.dich_vu_loai_goi?.dich_vu?.ten_dich_vu || 'Dịch vụ vệ sinh';
+  const priceFormatted = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dh.tong_tien_cuoi_cung || 0).replace('₫', 'đ');
+
+  let statusLabel = 'ĐÃ HOÀN THÀNH';
+  let statusClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200/50';
+  let status = 'completed';
+
+  if (dh.trang_thai_don === 'DaHuy') {
+    status = 'cancelled';
+    statusLabel = 'ĐÃ HỦY';
+    statusClass = 'bg-red-50 text-red-600 border border-red-200/50';
+  }
+
+  // Lấy ra ngày của ca đầu tiên hoặc ngày bắt đầu
+  let date = '';
+  let time = '';
+  let location = dh.dia_chi_lam_viec || '';
+  if (dh.ca_lam_viec && dh.ca_lam_viec.length > 0) {
+    const firstCa = dh.ca_lam_viec[0];
+    date = firstCa.ngay_lam ? firstCa.ngay_lam.split('-').reverse().join('/') : '';
+    time = firstCa.gio_bat_dau ? firstCa.gio_bat_dau.slice(0, 5) : '';
+  }
+
+  return {
+    id: `DH${dh.id.toString().padStart(4, '0')}`,
+    originalId: dh.id,
+    title,
+    icon: SERVICE_ICONS[dh.dich_vu_loai_goi?.dich_vu_id] || 'cleaning_services',
+    status,
+    statusLabel,
+    statusClass,
+    date,
+    time,
+    location,
+    price: priceFormatted,
+    hasDetail: true,
+  };
+};
+
+// Danh sách lựa chọn thời gian
 const TIME_OPTIONS = [
   { id: 'all', label: 'Tất cả thời gian' },
-  { id: '10-2023', label: 'Tháng 10 / 2023' },
-  { id: '09-2023', label: 'Tháng 09 / 2023' },
-  { id: '08-2023', label: 'Tháng 08 / 2023' },
-  { id: '07-2023', label: 'Tháng 07 / 2023' },
-  { id: '06-2023', label: 'Tháng 06 / 2023' },
-  { id: '05-2023', label: 'Tháng 05 / 2023' },
-  { id: '04-2023', label: 'Tháng 04 / 2023' },
-  { id: '02-2023', label: 'Tháng 02 / 2023' },
+  { id: '2026', label: 'Năm 2026' },
+  { id: '2025', label: 'Năm 2025' },
 ];
 
 const BookingHistoryPage = () => {
   const [activeTab, setActiveTab] = useState('all');
-  const [searchTerm, setSearchTerm] = useState(''); // State tìm kiếm
-  const [timeFilter, setTimeFilter] = useState('all'); // State lọc thời gian
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // State đóng mở dropdown thời gian
+  const [searchTerm, setSearchTerm] = useState('');
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
+  const [historyData, setHistoryData] = useState([]);
+
   // Trạng thái phân trang
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 3; 
+  const itemsPerPage = 5; 
 
-  // ─── BỘ LỌC TỔNG HỢP (KẾT HỢP BIẾN TÌM KIẾM + TAB TRẠNG THÁI + THỜI GIAN) ───
-  const filteredData = HISTORY_DATA.filter((item) => {
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await khachHangApi.getMyBookings();
+        if (res.success && res.data) {
+          const history = res.data
+            .filter(dh => dh.trang_thai_don === 'DaHuy' || dh.trang_thai_don === 'DaHoanThanh')
+            .map(mapToHistoryFormat);
+          setHistoryData(history);
+        }
+      } catch (err) {
+        console.error("Lỗi lấy lịch sử:", err);
+      }
+    };
+    fetchHistory();
+  }, []);
+
+  // ─── BỘ LỌC TỔNG HỢP ───
+  const filteredData = historyData.filter((item) => {
     // 1. Lọc theo Tab trạng thái
     const matchesTab = activeTab === 'all' || item.status === activeTab;
 
@@ -70,11 +107,10 @@ const BookingHistoryPage = () => {
 
     // 3. Lọc theo thời gian được chọn
     let matchesTime = true;
-    if (timeFilter !== 'all') {
-      // Tách chuỗi '15/10/2023' lấy Tháng và Năm
-      const [, month, year] = item.date.split('/'); 
-      const itemMonthYear = `${month}-${year}`; // Kết quả dạng '10-2023'
-      matchesTime = itemMonthYear === timeFilter;
+    if (timeFilter !== 'all' && item.date) {
+      // timeFilter format '2026'
+      const year = item.date.split('/')[2]; 
+      matchesTime = year === timeFilter;
     }
 
     return matchesTab && matchesSearch && matchesTime;
@@ -332,10 +368,10 @@ const BookingHistoryPage = () => {
                 </span>
                 
                 {item.hasDetail ? (
-                  <button className="flex items-center gap-0.5 text-sm font-semibold text-primary hover:text-primary-dark transition-colors mt-1 group/btn">
+                  <Link to={`/my-bookings/${item.originalId}`} className="flex items-center gap-0.5 text-sm font-semibold text-primary hover:text-primary-dark transition-colors mt-1 group/btn">
                     <span>Chi tiết</span>
                     <span className="material-symbols-outlined text-[16px] transition-transform group-hover/btn:translate-x-0.5">chevron_right</span>
-                  </button>
+                  </Link>
                 ) : (
                   <button className="px-4 py-1.5 bg-secondary-container text-on-secondary-fixed-variant hover:bg-secondary-fixed text-xs font-bold rounded-lg transition-all border border-outline-variant/10 shadow-2xs active:scale-[0.97]">
                     Đặt lại

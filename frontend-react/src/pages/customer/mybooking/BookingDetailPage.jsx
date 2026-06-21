@@ -97,6 +97,7 @@ const PackageSessionPanel = ({
   renderSessionSubInfo,
   handleOpenActionModal,
   setBooking,
+  fetchBookingDetail,
 }) => {
   const { startDate, endDate } = booking.packageInfo;
   const [, sm, sy] = startDate.split('/').map(Number);
@@ -283,6 +284,7 @@ const PackageSessionPanel = ({
                 renderSessionSubInfo={renderSessionSubInfo}
                 onReschedule={() => handleOpenActionModal('reschedule', displaySession.id)}
                 onCancel={() => handleOpenActionModal('cancel', displaySession.id)}
+                fetchBookingDetail={fetchBookingDetail}
               />
             );
           })}
@@ -293,69 +295,263 @@ const PackageSessionPanel = ({
 };
 
 // ─── SessionRow ──────────────────────────────────────────────────────────────
-const SessionRow = ({ session, renderSessionTitle, renderSessionSubInfo, onReschedule, onCancel }) => {
+const SessionRow = ({ session, renderSessionTitle, renderSessionSubInfo, onReschedule, onCancel, fetchBookingDetail }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [activeForm, setActiveForm] = useState(null); // 'rating' | 'report' | null
+
   return (
-    <div
-      className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300
-        ${session.status === 'completed' ? 'bg-primary/5 border-primary/20'
-        : session.status === 'cancelled' ? 'bg-red-50/50 border-red-100 opacity-60'
-        : session.status === 'active' ? 'bg-surface border-blue-200 shadow-md shadow-blue-500/10'
-        : session.status === 'awaiting_confirm' ? 'bg-amber-50 border-amber-200 shadow-sm shadow-amber-100'
-        : session.isExtended ? 'bg-orange-50/60 border-orange-200 hover:border-orange-300'
-        : 'bg-surface hover:border-primary/30 border-outline-variant/20 hover:shadow-md'}`}
-    >
-      <div className="flex items-start gap-4 flex-1 min-w-0">
-        <div
-          className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm mt-0.5
-            ${session.status === 'completed' ? 'bg-primary text-white shadow-primary/20'
-            : session.status === 'cancelled' ? 'bg-red-100 text-red-500'
-            : session.status === 'active' ? 'bg-blue-600 text-white shadow-blue-600/30 animate-pulse'
-            : session.status === 'awaiting_confirm' ? 'bg-amber-100 text-amber-600'
-            : session.isExtended ? 'bg-orange-100 text-orange-600'
-            : 'bg-primary/10 text-primary'}`}
-        >
-          <span className="material-symbols-outlined text-xl">
-            {session.status === 'completed' ? 'check'
-            : session.status === 'cancelled' ? 'close'
-            : session.status === 'active' ? 'motion_photos_on'
-            : session.status === 'awaiting_confirm' ? 'hourglass_empty'
-            : session.isExtended ? 'event_available'
-            : 'event'}
-          </span>
+    <div className="flex flex-col gap-2">
+      <div
+        className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300
+          ${session.status === 'completed' ? 'bg-primary/5 border-primary/20'
+          : session.status === 'cancelled' ? 'bg-red-50/50 border-red-100 opacity-60'
+          : session.status === 'active' ? 'bg-surface border-blue-200 shadow-md shadow-blue-500/10'
+          : session.status === 'awaiting_confirm' ? 'bg-amber-50 border-amber-200 shadow-sm shadow-amber-100'
+          : session.isExtended ? 'bg-orange-50/60 border-orange-200 hover:border-orange-300'
+          : 'bg-surface hover:border-primary/30 border-outline-variant/20 hover:shadow-md'}`}
+      >
+        <div className="flex items-start gap-4 flex-1 min-w-0">
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm mt-0.5
+              ${session.status === 'completed' ? 'bg-primary text-white shadow-primary/20'
+              : session.status === 'cancelled' ? 'bg-red-100 text-red-500'
+              : session.status === 'active' ? 'bg-blue-600 text-white shadow-blue-600/30 animate-pulse'
+              : session.status === 'awaiting_confirm' ? 'bg-amber-100 text-amber-600'
+              : session.isExtended ? 'bg-orange-100 text-orange-600'
+              : 'bg-primary/10 text-primary'}`}
+          >
+            <span className="material-symbols-outlined text-xl">
+              {session.status === 'completed' ? 'check'
+              : session.status === 'cancelled' ? 'close'
+              : session.status === 'active' ? 'motion_photos_on'
+              : session.status === 'awaiting_confirm' ? 'hourglass_empty'
+              : session.isExtended ? 'event_available'
+              : 'event'}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            {renderSessionTitle(session)}
+            {renderSessionSubInfo(session)}
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          {renderSessionTitle(session)}
-          {renderSessionSubInfo(session)}
-        </div>
+
+        {session.status === 'upcoming' && (
+          <div className="flex gap-2 w-full sm:w-auto shrink-0 sm:self-center">
+            <button
+              onClick={onReschedule}
+              className="flex-1 sm:flex-none px-4 py-2 bg-white border border-outline-variant/30 text-primary text-sm font-bold rounded-xl hover:bg-primary/5 active:scale-95 transition-all shadow-sm"
+            >
+              Dời lịch
+            </button>
+            <button
+              onClick={onCancel}
+              className="flex-1 sm:flex-none px-4 py-2 bg-white border border-error/20 text-error text-sm font-bold rounded-xl hover:bg-error/5 active:scale-95 transition-all shadow-sm"
+            >
+              Hủy ca
+            </button>
+          </div>
+        )}
+
+        {session.status === 'awaiting_confirm' && (
+          <div className="flex gap-2 w-full sm:w-auto shrink-0 sm:self-center">
+            <button
+              onClick={onCancel}
+              className="flex-1 sm:flex-none px-4 py-2 bg-error/10 border border-error/20 text-error text-sm font-bold rounded-xl hover:bg-error/15 active:scale-95 transition-all shadow-sm"
+            >
+              Hủy ca
+            </button>
+          </div>
+        )}
+
+        {session.status === 'completed' && (
+          <div className="flex gap-2 w-full sm:w-auto shrink-0 sm:self-center">
+            <button
+              onClick={() => { setIsExpanded(!isExpanded); setActiveForm(null); }}
+              className="flex-1 sm:flex-none px-4 py-2 bg-white border border-outline-variant/30 text-primary text-sm font-bold rounded-xl hover:bg-primary/5 active:scale-95 transition-all shadow-sm"
+            >
+              {isExpanded ? 'Đóng' : 'Chi tiết'}
+            </button>
+          </div>
+        )}
       </div>
 
-      {session.status === 'upcoming' && (
-        <div className="flex gap-2 w-full sm:w-auto shrink-0 sm:self-center">
-          <button
-            onClick={onReschedule}
-            className="flex-1 sm:flex-none px-4 py-2 bg-white border border-outline-variant/30 text-primary text-sm font-bold rounded-xl hover:bg-primary/5 active:scale-95 transition-all shadow-sm"
-          >
-            Dời lịch
-          </button>
-          <button
-            onClick={onCancel}
-            className="flex-1 sm:flex-none px-4 py-2 bg-white border border-error/20 text-error text-sm font-bold rounded-xl hover:bg-error/5 active:scale-95 transition-all shadow-sm"
-          >
-            Hủy ca
-          </button>
-        </div>
-      )}
+      {isExpanded && session.status === 'completed' && (
+        <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant/30 flex flex-col md:flex-row gap-4 animate-in slide-in-from-top-2">
+          {/* Left Buttons */}
+          <div className="flex flex-col gap-2 w-full md:w-1/3 shrink-0">
+            <button 
+              onClick={() => setActiveForm(activeForm === 'rating' ? null : 'rating')}
+              className={`w-full py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${activeForm === 'rating' ? 'bg-primary text-on-primary shadow-md' : 'bg-white border border-outline-variant/30 text-primary hover:bg-primary/5'}`}
+            >
+              <span className="material-symbols-outlined text-base">star_rate</span>
+              {session.sao_danh_gia ? 'Đã đánh giá' : 'Đánh giá dịch vụ'}
+            </button>
+            <button 
+              onClick={() => setActiveForm(activeForm === 'report' ? null : 'report')}
+              className={`w-full py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${activeForm === 'report' ? 'bg-error text-white shadow-md' : 'bg-white border border-error/30 text-error hover:bg-error/5'}`}
+            >
+              {session.khieu_nai ? 'Đã báo cáo sự cố' : 'Báo cáo sự cố'}
+            </button>
+          </div>
 
-      {session.status === 'awaiting_confirm' && (
-        <div className="flex gap-2 w-full sm:w-auto shrink-0 sm:self-center">
-          <button
-            onClick={onCancel}
-            className="flex-1 sm:flex-none px-4 py-2 bg-error/10 border border-error/20 text-error text-sm font-bold rounded-xl hover:bg-error/15 active:scale-95 transition-all shadow-sm"
-          >
-            Hủy ca
-          </button>
+          {/* Right Form Content */}
+          <div className="flex-1 min-w-0">
+            {activeForm === 'rating' ? (
+              <RatingForm 
+                session={session} 
+                onSuccess={() => { setActiveForm(null); setIsExpanded(false); if(fetchBookingDetail) fetchBookingDetail(); }} 
+                onCancel={() => setActiveForm(null)} 
+              />
+            ) : activeForm === 'report' ? (
+              <ReportForm 
+                session={session} 
+                onSuccess={() => { setActiveForm(null); setIsExpanded(false); if(fetchBookingDetail) fetchBookingDetail(); }} 
+                onCancel={() => setActiveForm(null)} 
+              />
+            ) : (
+              <div className="h-full min-h-[100px] flex items-center justify-center text-on-surface-variant text-sm p-4 bg-white rounded-xl border border-dashed border-outline-variant/50">
+                Chọn một chức năng bên trái để thao tác.
+              </div>
+            )}
+          </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// ─── Forms ───────────────────────────────────────────────────────────────────
+const RatingForm = ({ session, onSuccess, onCancel }) => {
+  const [stars, setStars] = useState(5);
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      await khachHangApi.rateSession(session.id, { sao_danh_gia: stars, noi_dung_danh_gia: content });
+      onSuccess();
+    } catch (err) {
+      alert("Có lỗi xảy ra khi gửi đánh giá.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (session.sao_danh_gia) {
+    return (
+      <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col items-center justify-center text-center">
+        <div className="flex gap-1 mb-2">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <span key={star} className={`material-symbols-outlined text-2xl ${star <= session.sao_danh_gia ? 'text-amber-400' : 'text-gray-200'}`}>
+              star
+            </span>
+          ))}
+        </div>
+        <p className="text-sm text-on-surface-variant font-medium">Bạn đã đánh giá {session.sao_danh_gia} sao cho ca này.</p>
+        {session.noi_dung_danh_gia && (
+          <p className="text-xs text-on-surface-variant mt-2 italic">"{session.noi_dung_danh_gia}"</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 animate-in fade-in slide-in-from-top-2">
+      <h4 className="font-bold text-sm mb-3">Đánh giá chất lượng dịch vụ</h4>
+      <div className="flex items-center gap-2 mb-4">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button key={star} onClick={() => setStars(star)} className="focus:outline-none transition-transform hover:scale-110 active:scale-95">
+            <span className={`material-symbols-outlined text-3xl ${star <= stars ? 'text-amber-400' : 'text-gray-200'}`}>
+              star
+            </span>
+          </button>
+        ))}
+      </div>
+      <textarea
+        placeholder="Chia sẻ trải nghiệm của bạn (không bắt buộc)..."
+        value={content}
+        onChange={e => setContent(e.target.value)}
+        className="w-full p-3 bg-white border border-outline-variant/50 rounded-xl text-sm focus:outline-none focus:border-primary/50 resize-none mb-3"
+        rows={3}
+      />
+      <div className="flex justify-end gap-2">
+        {onCancel && (
+          <button onClick={onCancel} className="px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container rounded-lg transition-all">
+            Hủy
+          </button>
+        )}
+        <button onClick={handleSubmit} disabled={loading} className="px-4 py-2 text-sm font-bold bg-primary text-on-primary rounded-lg shadow-md hover:bg-primary/90 transition-all disabled:opacity-50">
+          {loading ? 'Đang gửi...' : 'Gửi đánh giá'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ReportForm = ({ session, onSuccess, onCancel }) => {
+  const [reason, setReason] = useState('');
+  const [details, setDetails] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) return alert("Vui lòng nhập lý do sự cố.");
+    setLoading(true);
+    try {
+      await khachHangApi.reportSession(session.id, { ly_do_khieu_nai: reason, mo_ta_chi_tiet: details });
+      alert("Đã gửi báo cáo sự cố thành công. Chúng tôi sẽ xử lý sớm nhất.");
+      onSuccess();
+    } catch (err) {
+      alert("Có lỗi xảy ra khi gửi báo cáo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (session.khieu_nai) {
+    const kn = session.khieu_nai;
+    return (
+      <div className="p-4 bg-error/5 rounded-xl border border-error/20 flex flex-col items-center justify-center text-center">
+        <span className="material-symbols-outlined text-3xl text-error mb-2">report</span>
+        <p className="text-sm text-error font-bold mb-1">Bạn đã gửi báo cáo sự cố.</p>
+        <p className="text-xs text-on-surface-variant font-medium">Lý do: {kn.ly_do_khieu_nai}</p>
+        {kn.mo_ta_chi_tiet && (
+          <p className="text-xs text-on-surface-variant mt-2 italic">Chi tiết: "{kn.mo_ta_chi_tiet}"</p>
+        )}
+        <div className={`mt-3 px-3 py-1 text-xs font-bold rounded-full ${kn.trang_thai_xu_ly === 'DangXuLy' ? 'bg-amber-100 text-amber-700' : kn.trang_thai_xu_ly === 'DaGiaiQuyet' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+          Trạng thái: {kn.trang_thai_xu_ly === 'DangXuLy' ? 'Đang xử lý' : kn.trang_thai_xu_ly === 'DaGiaiQuyet' ? 'Đã giải quyết' : 'Từ chối'}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-error/5 rounded-xl border border-error/20 animate-in fade-in slide-in-from-top-2">
+      <h4 className="font-bold text-sm text-error mb-3">Báo cáo sự cố phát sinh</h4>
+      <input
+        type="text"
+        placeholder="Lý do ngắn gọn (VD: Nhân viên đến muộn, Hư hỏng đồ đạc...)"
+        value={reason}
+        onChange={e => setReason(e.target.value)}
+        className="w-full p-3 mb-3 bg-white border border-error/30 rounded-xl text-sm focus:outline-none focus:border-error/50"
+      />
+      <textarea
+        placeholder="Mô tả chi tiết sự việc..."
+        value={details}
+        onChange={e => setDetails(e.target.value)}
+        className="w-full p-3 bg-white border border-error/30 rounded-xl text-sm focus:outline-none focus:border-error/50 resize-none mb-3"
+        rows={3}
+      />
+      <div className="flex justify-end gap-2">
+        {onCancel && (
+          <button onClick={onCancel} className="px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container rounded-lg transition-all">
+            Hủy
+          </button>
+        )}
+        <button onClick={handleSubmit} disabled={loading} className="px-4 py-2 text-sm font-bold bg-error text-white rounded-lg shadow-md shadow-error/20 hover:bg-error/90 transition-all disabled:opacity-50">
+          {loading ? 'Đang gửi...' : 'Gửi báo cáo'}
+        </button>
+      </div>
     </div>
   );
 };
@@ -366,6 +562,7 @@ const BookingDetailPage = () => {
   const [booking, setBooking] = useState(null);
 
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activeForm, setActiveForm] = useState(null);
   const [inputMessage, setInputMessage] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
   const [previewImageModal, setPreviewImageModal] = useState(null);
@@ -434,7 +631,20 @@ const BookingDetailPage = () => {
       const usedAmount = booking.packageInfo.completedSessions * booking.payment.sessionPrice;
       const refund = booking.payment.total - usedAmount;
       setRefundData({ usedAmount, refundAmount: refund > 0 ? refund : 0 });
-      setIsCancelModalOpen(true);
+    } else {
+      setRefundData({ usedAmount: 0, refundAmount: booking.payment.total });
+    }
+    setIsCancelModalOpen(true);
+  };
+
+  const handleConfirmCancelOrder = async () => {
+    try {
+      await khachHangApi.cancelOrder(id);
+      setIsCancelModalOpen(false);
+      fetchBookingDetail();
+    } catch (err) {
+      console.error("Lỗi khi hủy đơn hàng:", err);
+      alert("Có lỗi xảy ra khi yêu cầu hủy đơn hàng.");
     }
   };
 
@@ -1136,6 +1346,7 @@ const BookingDetailPage = () => {
                   renderSessionSubInfo={renderSessionSubInfo}
                   handleOpenActionModal={handleOpenActionModal}
                   setBooking={setBooking}
+                  fetchBookingDetail={fetchBookingDetail}
                 />
 
                 {booking.status === 'active' && booking.packageInfo.allowExtraSession && (
@@ -1295,7 +1506,10 @@ const BookingDetailPage = () => {
             {/* Action Buttons */}
             <div className="space-y-3 pt-2">
               {(isPending || isConfirmed) && (
-                <button className="w-full py-4 bg-error/10 text-error font-bold rounded-xl hover:bg-error/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm shadow-sm">
+                <button 
+                  onClick={handleOpenCancelPackage}
+                  className="w-full py-4 bg-error/10 text-error font-bold rounded-xl hover:bg-error/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
+                >
                   <span className="material-symbols-outlined text-base">cancel</span>
                   Hủy lịch hẹn này
                 </button>
@@ -1309,16 +1523,46 @@ const BookingDetailPage = () => {
                   </div>
                 </div>
               )}
-              {isCompleted && (
-                <>
-                  <button className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined text-base">star_rate</span>
-                    Đánh giá dịch vụ
-                  </button>
-                  <button className="w-full py-3 bg-white text-error font-bold rounded-xl border border-error/30 hover:bg-error/5 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm">
-                    Báo cáo sự cố phát sinh
-                  </button>
-                </>
+              {isCompleted && !booking.isPackage && (
+                <div className="flex flex-col gap-3">
+                  {activeForm === null ? (
+                    <>
+                      {!booking.sessions[0]?.sao_danh_gia && (
+                        <button onClick={() => setActiveForm('rating')} className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                          <span className="material-symbols-outlined text-base">star_rate</span>
+                          Đánh giá dịch vụ
+                        </button>
+                      )}
+                      {booking.sessions[0]?.sao_danh_gia && (
+                        <div className="mb-2">
+                           <RatingForm session={booking.sessions[0]} onSuccess={() => {}} onCancel={null} />
+                        </div>
+                      )}
+                      {!booking.sessions[0]?.khieu_nai && (
+                        <button onClick={() => setActiveForm('report')} className="w-full py-3 bg-white text-error font-bold rounded-xl border border-error/30 hover:bg-error/5 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm">
+                          Báo cáo sự cố phát sinh
+                        </button>
+                      )}
+                      {booking.sessions[0]?.khieu_nai && (
+                        <div className="mb-2">
+                           <ReportForm session={booking.sessions[0]} onSuccess={() => {}} onCancel={null} />
+                        </div>
+                      )}
+                    </>
+                  ) : activeForm === 'rating' ? (
+                    <RatingForm 
+                      session={booking.sessions[0]} 
+                      onSuccess={() => { setActiveForm(null); fetchBookingDetail(); }} 
+                      onCancel={() => setActiveForm(null)} 
+                    />
+                  ) : (
+                    <ReportForm 
+                      session={booking.sessions[0]} 
+                      onSuccess={() => { setActiveForm(null); fetchBookingDetail(); }} 
+                      onCancel={() => setActiveForm(null)} 
+                    />
+                  )}
+                </div>
               )}
               {isCancelled && (
                 <Link to="/booking" className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2">
@@ -1349,8 +1593,8 @@ const BookingDetailPage = () => {
                 <span className="material-symbols-outlined">warning</span>
               </div>
               <div>
-                <h3 className="font-h3 text-lg text-error font-bold leading-tight">Xác nhận hủy Gói</h3>
-                <p className="text-xs text-error/80 font-medium">Bạn sắp hủy toàn bộ hợp đồng gói dịch vụ.</p>
+                <h3 className="font-h3 text-lg text-error font-bold leading-tight">{booking.isPackage ? 'Xác nhận hủy Gói' : 'Xác nhận hủy lịch hẹn'}</h3>
+                <p className="text-xs text-error/80 font-medium">{booking.isPackage ? 'Bạn sắp hủy toàn bộ hợp đồng gói dịch vụ.' : 'Bạn sắp hủy lịch hẹn này.'}</p>
               </div>
             </div>
             <div className="p-6 space-y-5">
@@ -1381,7 +1625,7 @@ const BookingDetailPage = () => {
                 Đóng
               </button>
               <button
-                onClick={() => { alert('Đã gửi yêu cầu hủy gói thành công!'); setIsCancelModalOpen(false); }}
+                onClick={handleConfirmCancelOrder}
                 className="flex-1 py-3 bg-error text-white font-bold rounded-xl hover:bg-error/90 active:scale-95 transition-all shadow-md shadow-error/30"
               >
                 Xác nhận hủy

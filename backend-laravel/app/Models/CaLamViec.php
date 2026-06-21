@@ -30,4 +30,11 @@ class CaLamViec extends Model
                     ->where('trang_thai_duyet', 'ChoXuLy')
                     ->latest('thoi_gian');
     }
+
+    public function khieuNai()
+    {
+        return $this->hasOne(KhieuNai::class, 'ca_lam_viec_id')
+                    ->where('nguoi_khieu_nai_loai', 'KhachHang')
+                    ->latest('ngay_tao');
+    }
 }

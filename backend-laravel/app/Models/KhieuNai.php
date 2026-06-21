@@ -17,9 +17,9 @@ class KhieuNai extends Model
         'ngay_dong' => 'datetime',
     ];
 
-    public function donHang()
+    public function caLamViec()
     {
-        return $this->belongsTo(DonHang::class, 'don_hang_id');
+        return $this->belongsTo(CaLamViec::class, 'ca_lam_viec_id');
     }
     public function adminXuLy()
     {

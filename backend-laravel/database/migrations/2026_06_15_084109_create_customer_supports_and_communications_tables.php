@@ -14,7 +14,7 @@ return new class extends Migration
         // 30. KhieuNai
         Schema::create('KhieuNai', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('don_hang_id')->constrained('DonHang');
+            $table->foreignId('ca_lam_viec_id')->constrained('CaLamViec');
             // CHUYỂN SANG ENUM: Phân loại nhóm đối tượng phát đơn khiếu nại
             $table->enum('nguoi_khieu_nai_loai', ['KhachHang', 'NhanVien']);
             $table->integer('nguoi_khieu_nai_id');

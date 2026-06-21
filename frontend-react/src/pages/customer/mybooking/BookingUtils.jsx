@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
+import khachHangApi from '../../../api/khachHangApi';
 
 const SERVICE_ICONS = {
   1: 'cleaning_services',  // Dọn dẹp hằng ngày
@@ -23,7 +24,6 @@ export const BookingTabs = () => {
     { label: 'Tất cả', to: '/my-bookings', end: true },
     { label: 'Sắp tới', to: '/my-bookings/upcoming' },
     { label: 'Đang thực hiện', to: '/my-bookings/active' },
-    { label: 'Đã hoàn thành', to: '/my-bookings/completed' },
   ];
 
   return (
@@ -182,6 +182,18 @@ export const mapDonHangToBookingCard = (dh) => {
 };
 
 export const BookingCard = ({ booking }) => {
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  const handleConfirmCancelOrder = async () => {
+    try {
+      await khachHangApi.cancelOrder(booking.id);
+      setShowCancelModal(false);
+      window.location.reload();
+    } catch (err) {
+      console.error("Lỗi khi hủy đơn hàng:", err);
+      alert("Có lỗi xảy ra khi yêu cầu hủy đơn hàng.");
+    }
+  };
   const {
     title,
     price,
@@ -276,7 +288,14 @@ export const BookingCard = ({ booking }) => {
               );
             }
             return (
-              <button key={i} className={commonClass}>
+              <button 
+                key={i} 
+                className={commonClass}
+                onClick={() => {
+                  if (action.label === 'Hủy lịch') setShowCancelModal(true);
+                  else if (action.onClick) action.onClick();
+                }}
+              >
                 {action.icon && <span className="material-symbols-outlined text-[16px]">{action.icon}</span>}
                 {action.label}
               </button>
@@ -284,6 +303,43 @@ export const BookingCard = ({ booking }) => {
           })}
         </div>
       </div>
+
+      {/* Modal hủy lịch */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 bg-error/10 flex items-center gap-3 border-b border-error/20">
+              <div className="w-10 h-10 bg-white text-error rounded-full flex items-center justify-center shadow-sm">
+                <span className="material-symbols-outlined">warning</span>
+              </div>
+              <div>
+                <h3 className="font-h3 text-lg text-error font-bold leading-tight">Xác nhận hủy lịch</h3>
+                <p className="text-xs text-error/80 font-medium">Bạn sắp hủy toàn bộ lịch hẹn / gói dịch vụ này.</p>
+              </div>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="bg-error/5 p-4 rounded-xl border border-error/20 text-sm text-on-surface-variant font-medium leading-relaxed">
+                Sau khi hủy, hệ thống sẽ ngừng cung cấp dịch vụ và không thể khôi phục lại đơn hàng này.
+                Bạn có chắc chắn muốn tiếp tục không?
+              </div>
+            </div>
+            <div className="p-4 border-t border-outline-variant/30 flex gap-3 bg-surface-container-lowest">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 py-3 bg-surface text-on-surface font-bold rounded-xl border border-outline-variant/30 hover:bg-surface-container active:scale-95 transition-all"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={handleConfirmCancelOrder}
+                className="flex-1 py-3 bg-error text-white font-bold rounded-xl hover:bg-error/90 active:scale-95 transition-all shadow-md shadow-error/30"
+              >
+                Xác nhận hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -474,6 +530,9 @@ export const mapApiToBookingDetailFormat = (dh) => {
         time: computeTimeRange(ca.gio_bat_dau, ca.thoi_gian_lam_phut),
         staff: ca.nhan_vien?.tai_khoan?.ho_ten || null,
         rescheduleDate: rDate,
+        sao_danh_gia: ca.sao_danh_gia,
+        noi_dung_danh_gia: ca.noi_dung_danh_gia,
+        khieu_nai: ca.khieu_nai || null,
       };
     });
 
@@ -516,6 +575,9 @@ export const mapApiToBookingDetailFormat = (dh) => {
   } else if (firstCa) {
     base.schedule.date = parseDMYHelper(firstCa.ngay_lam);
     base.schedule.time = computeTimeRange(firstCa.gio_bat_dau, firstCa.thoi_gian_lam_phut);
+    base.sessions = [firstCa];
+  } else {
+    base.sessions = [];
   }
 
   return base;

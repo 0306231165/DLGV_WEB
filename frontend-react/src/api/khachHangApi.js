@@ -131,7 +131,12 @@ const khachHangApi = {
     // POST /api/khach-hang/don-hang/ca-lam/{id}/huy
     cancelSession: (caLamViecId) =>
         axiosClient.post(`/khach-hang/don-hang/ca-lam/${caLamViecId}/huy`),
-
+    cancelOrder: (donHangId) =>
+        axiosClient.post(`/khach-hang/don-hang/${donHangId}/huy`),
+    rateSession: (caLamViecId, data) =>
+        axiosClient.post(`/khach-hang/don-hang/ca-lam/${caLamViecId}/danh-gia`, data),
+    reportSession: (caLamViecId, data) =>
+        axiosClient.post(`/khach-hang/don-hang/ca-lam/${caLamViecId}/bao-cao`, data),
 };
 
 export default khachHangApi;
