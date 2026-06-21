@@ -358,8 +358,22 @@ const AppRouter = () => {
         {/* ========================================================= */}
         {/* TOÀN BỘ PHÂN VÙNG ADMIN                                  */}
         {/* ========================================================= */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route 
+          path="/admin/login" 
+          element={
+            <AlreadyLoggedInGuard>
+              <AdminLogin />
+            </AlreadyLoggedInGuard>
+          } 
+        />
+        <Route 
+          path="/admin" 
+          element={
+            <RequireAuth allowedRoles={["admin"]} redirectTo="/admin/login">
+              <AdminLayout />
+            </RequireAuth>
+          }
+        >
           <Route index element={<Navigate to="/admin/login" replace />} />
 
           {/* SỬA CHÍNH XÁC DÒNG NÀY: GỌI COMPONENT AdminDashboard VÀO ĐÂY */}

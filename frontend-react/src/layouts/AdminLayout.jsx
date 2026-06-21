@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   
   // Khai báo các trang không cần layout (ví dụ: đăng nhập admin)
   const isMinimalLayoutPage = ['/admin/login'].includes(location.pathname);
@@ -12,21 +14,18 @@ const AdminLayout = () => {
   const [pendingApprovalsCount] = useState(12); // Hồ sơ chờ duyệt
 
   // ================= HÀM XỬ LÝ ĐĂNG XUẤT =================
- // ================= HÀM XỬ LÝ ĐĂNG XUẤT =================
-const handleLogout = (e) => {
-  e.preventDefault();
+  const handleLogout = async (e) => {
+    e.preventDefault();
 
-  const isConfirm = window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?");
+    const isConfirm = window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?");
 
-  if (isConfirm) {
-    // Xóa đúng các key mà axiosClient và hệ thống đang dùng
-    localStorage.removeItem('token'); 
-    localStorage.removeItem('role');
-    localStorage.removeItem('ADMIN_USER'); 
+    if (isConfirm) {
+      await logout();
+      localStorage.removeItem('ADMIN_USER'); 
 
-    navigate('/admin/login');
-  }
-};
+      navigate('/admin/login');
+    }
+  };
 
   // ================= DANH MỤC MENU DÀNH CHO ADMIN =================
   const menuItems = [
