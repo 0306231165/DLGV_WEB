@@ -10,6 +10,7 @@ export const useAccount = () => useContext(AccountContext);
 const navItems = [
   { to: '/account/profile',   icon: 'person',                   label: 'Thông tin cá nhân' },
   { to: '/account/addresses', icon: 'location_on',              label: 'Địa chỉ đã lưu' },
+  { to: '/account/contacts', icon: 'contacts', label: 'Liên hệ đã lưu' },
   { to: '/account/payment',   icon: 'account_balance_wallet',   label: 'Thanh toán & Ưu đãi' },
   { to: '/account/vouchers',  icon: 'local_offer',              label: 'Mã giảm giá của tôi' },
 ];

@@ -1,16 +1,18 @@
 import React from "react";
 
-const VoucherCard = ({ voucher, onSave }) => {
+const VoucherCard = ({ voucher, onSave, context = "account" }) => {
   const isExpired = voucher.status === "expired";
   const isSaved = voucher.status === "saved";
+  const isUsed = voucher.status === "used";
+  const isDimmed = isExpired || isUsed;
 
   return (
     <div
-      className={`flex flex-row rounded-xl overflow-hidden border ${isExpired ? "border-outline-variant/50 opacity-70" : "border-outline-variant/30"} shadow-sm bg-surface`}
+      className={`flex flex-row rounded-xl overflow-hidden border ${isDimmed ? "border-outline-variant/50 opacity-60" : "border-outline-variant/30"} shadow-sm bg-surface`}
     >
       {/* Left side */}
       <div
-        className={`w-[130px] flex-shrink-0 flex flex-col justify-center items-center text-white p-4 relative ${voucher.colorClass}`}
+        className="w-[130px] flex-shrink-0 flex flex-col justify-center items-center text-white p-4 relative bg-[#1a368d]"
       >
         <span
           className={`text-wrap font-black leading-tight ${
@@ -43,7 +45,7 @@ const VoucherCard = ({ voucher, onSave }) => {
           <span
             className={`text-[10px] font-bold px-2 py-0.5 rounded-sm ${isExpired ? "bg-surface-variant text-on-surface-variant" : "bg-[#eaf0fb] text-[#1a368d] dark:bg-primary-container dark:text-on-primary-container"}`}
           >
-            {voucher.badge}
+            {voucher.type}
           </span>
         </div>
         <h3 className="font-bold text-on-surface text-[15px] mb-1 leading-tight">
@@ -62,17 +64,17 @@ const VoucherCard = ({ voucher, onSave }) => {
             </span>
           </div>
           <button
-            onClick={() => !isExpired && !isSaved && onSave(voucher.id)}
-            disabled={isExpired || isSaved}
+            onClick={() => !isExpired && !isSaved && !isUsed && onSave(voucher.id)}
+            disabled={isExpired || isSaved || isUsed}
             className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-              isExpired
+              isExpired || isUsed
                 ? "bg-surface-variant text-on-surface-variant cursor-not-allowed"
                 : isSaved
                   ? "bg-[#eaf0fb] text-[#1a368d] cursor-not-allowed"
                   : "bg-[#1a368d] text-white hover:bg-[#1a368d]/90 shadow-sm"
             }`}
           >
-            {isSaved ? "Sẵn sàng" : isExpired ? "Đã hết hạn" : "Lưu mã"}
+            {isUsed ? "Đã dùng" : isSaved ? (context === "public" ? "Đã lưu" : "Sẵn sàng") : isExpired ? "Đã hết hạn" : "Lưu mã"}
           </button>
         </div>
       </div>

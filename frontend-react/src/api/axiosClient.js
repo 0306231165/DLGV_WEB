@@ -62,7 +62,7 @@ axiosClient.interceptors.response.use(
         }
 
         if (status === 403) {
-            window.location.href = '/';
+            // window.location.href = '/';
             return Promise.reject({ message: 'Bạn không có quyền truy cập.' });
         }
 

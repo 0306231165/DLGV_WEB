@@ -256,6 +256,38 @@ class KhachHangController extends Controller
     }
 
     /**
+     * PUT /api/khach-hang/lien-he/{id}
+     */
+    public function updateContact(Request $request, int $id)
+    {
+        $request->validate([
+            'ten_nguoi_nhan' => 'required|string|max:150',
+            'sdt_nhan'       => 'required|string|max:15',
+        ]);
+
+        $khachHang = $request->user()->khachHang;
+        if (!$khachHang) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy khách hàng.'], 404);
+        }
+
+        $contact = $khachHang->lienHeDaLuu()->findOrFail($id);
+        $contact->update([
+            'ten_nguoi_nhan' => $request->ten_nguoi_nhan,
+            'sdt_nhan'       => $request->sdt_nhan,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật liên hệ thành công.',
+            'data'    => [
+                'id'             => $contact->id,
+                'ten_nguoi_nhan' => $contact->ten_nguoi_nhan,
+                'sdt_nhan'       => $contact->sdt_nhan,
+            ],
+        ]);
+    }
+
+    /**
      * DELETE /api/khach-hang/lien-he/{id}
      */
     public function deleteContact(Request $request, int $id)
