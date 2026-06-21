@@ -3,6 +3,7 @@ import axiosClient from '../../../api/axiosClient';
 
 const AdminApprovals = () => {
   const [candidates, setCandidates] = useState([]);
+  const [stats, setStats] = useState({ approvedThisWeek: 0, avgResponseTime: 0 });
   const [selectedId, setSelectedId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -11,9 +12,18 @@ const AdminApprovals = () => {
     try {
       setIsLoading(true);
       const data = await axiosClient.get('/admin/approvals');
-      setCandidates(data);
-      if (data.length > 0) {
-        setSelectedId(data[0].id);
+      
+      let cands = [];
+      if (Array.isArray(data)) {
+        cands = data;
+      } else {
+        cands = data.candidates || [];
+        setStats(data.stats || { approvedThisWeek: 0, avgResponseTime: 0 });
+      }
+      
+      setCandidates(cands);
+      if (cands.length > 0) {
+        setSelectedId(cands[0].id);
       } else {
         setSelectedId(null);
       }
@@ -54,7 +64,7 @@ const AdminApprovals = () => {
       try {
         await axiosClient.put(`/admin/approvals/${selectedCandidate.id}/approve`);
         alert(`✅ Đã phê duyệt thành công: ${selectedCandidate.name}`);
-        removeCandidateFromList(selectedCandidate.id);
+        fetchCandidates(); // Tự động load lại toàn bộ dữ liệu & thống kê mới nhất
       } catch (error) {
         alert('Có lỗi xảy ra khi phê duyệt.');
       }
@@ -72,7 +82,7 @@ const AdminApprovals = () => {
       try {
         await axiosClient.put(`/admin/approvals/${selectedCandidate.id}/reject`, { reason });
         alert(`❌ Đã từ chối: ${selectedCandidate.name}.\nLý do: ${reason}`);
-        removeCandidateFromList(selectedCandidate.id);
+        fetchCandidates(); // Tự động load lại toàn bộ dữ liệu & thống kê mới nhất
       } catch (error) {
         alert('Có lỗi xảy ra khi từ chối.');
       }
@@ -107,7 +117,7 @@ const AdminApprovals = () => {
           </div>
           <div>
             <p className="text-[13px] font-bold text-slate-500">Đã phê duyệt tuần này</p>
-            <h3 className="text-2xl font-black text-slate-800">48</h3>
+            <h3 className="text-2xl font-black text-slate-800">{stats.approvedThisWeek}</h3>
           </div>
         </div>
 
@@ -117,7 +127,7 @@ const AdminApprovals = () => {
           </div>
           <div>
             <p className="text-[13px] font-bold text-slate-500">Thời gian TB phản hồi</p>
-            <h3 className="text-2xl font-black text-slate-800">4.2 <span className="text-base font-bold text-slate-500">giờ</span></h3>
+            <h3 className="text-2xl font-black text-slate-800">{stats.avgResponseTime} <span className="text-base font-bold text-slate-500">giờ</span></h3>
           </div>
         </div>
       </div>
