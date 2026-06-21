@@ -22,4 +22,12 @@ class CaLamViec extends Model
     {
         return $this->belongsTo(DichVu::class, 'dich_vu_id');
     }
+
+    public function yeuCauDoiLich()
+    {
+        return $this->hasOne(YeuCauXuLy::class, 'ca_lam_viec_id')
+                    ->where('loai_yeu_cau', 'DoiLich')
+                    ->where('trang_thai_duyet', 'ChoXuLy')
+                    ->latest('thoi_gian');
+    }
 }

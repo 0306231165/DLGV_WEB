@@ -104,6 +104,7 @@ return new class extends Migration
                 'ChoNhanVienChiDinhXacNhan', 
                 'ChoNhanVienTuDoNhan', 
                 'DaNhan', 
+                'DangThucHien',
                 'NhanVienHuy', 
                 'KhachHuy', 
                 'NhanVienKhongDenLam', 

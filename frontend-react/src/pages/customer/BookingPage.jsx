@@ -1449,6 +1449,11 @@ const BookingPage = () => {
       setStaffSelfPick(true);
       setReplacementOption("none");
       setPremiumStaff(false);
+
+      setPromoCode("");
+      setPromoApplied(false);
+      setPromoDiscount(0);
+      setPromoId(null);
     }
   }, [preselectedStaff]);
 
@@ -4629,7 +4634,7 @@ const BookingPage = () => {
                 )}
               </section>
 
-              {isSingle && (
+              {isSingle && !preselectedStaff && (
                 <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                   <SectionTitle icon="redeem">Mã khuyến mãi</SectionTitle>
                   <div

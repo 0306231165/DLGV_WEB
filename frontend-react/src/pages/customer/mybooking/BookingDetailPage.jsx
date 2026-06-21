@@ -1,497 +1,34 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getBookingSnapshotById, saveBookingSnapshot } from './BookingUtils';
+import { mapApiToBookingDetailFormat } from './BookingUtils';
+import khachHangApi from '../../../api/khachHangApi';
 
-// ─────────────────────────────────────────────────────────────────────────
-// FAKE "HÔM NAY" DÙNG ĐỂ TEST — vì dữ liệu mock nằm trong năm 2024 nhưng
-// ngày thực tế của hệ thống đã qua năm 2026, nếu dùng new Date() thật thì
-// TẤT CẢ session sẽ rơi vào "đã hoàn thành" (quá khứ), không còn ca nào
-// ở trạng thái "sắp tới / đang thực hiện" để test các nút Dời lịch, Hủy ca...
-//
-// ĐỔI GIÁ TRỊ NÀY ĐỂ TEST CÁC GÓI Ở CÁC GIAI ĐOẠN KHÁC NHAU:
-//   - Gói 4 (24/05 - 24/08/2024): nên đặt khoảng giữa, ví dụ '21/06/2024'
-//   - Gói 5 (20/05 - 20/06/2024): nên đặt khoảng giữa, ví dụ '30/05/2024'
-//   - Gói 6 (12/06 - 28/12/2024): nên đặt khoảng giữa, ví dụ '08/09/2024'
-//
-// Khi đưa lên production, set FAKE_TODAY = null để dùng ngày hệ thống thật.
-const FAKE_TODAY = '21/06/2024'; // 'DD/MM/YYYY' hoặc null
 
+// ─── Helpers ─────────────────────────────────────────────────────────────
 const getToday = () => {
-  if (FAKE_TODAY) {
-    const [d, m, y] = FAKE_TODAY.split('/').map(Number);
-    const dt = new Date(y, m - 1, d);
-    dt.setHours(0, 0, 0, 0);
-    return dt;
-  }
   const dt = new Date();
   dt.setHours(0, 0, 0, 0);
   return dt;
 };
 
-const mergeBookingData = (base, override) => {
-  if (!base && !override) return null;
-  if (!base) return override;
-  if (!override) return base;
+const formatDMY = (dt) =>
+  `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
 
-  return {
-    ...base,
-    ...override,
-    service: {
-      ...(base.service || {}),
-      ...(override.service || {}),
-    },
-    schedule: {
-      ...(base.schedule || {}),
-      ...(override.schedule || {}),
-    },
-    location: {
-      ...(base.location || {}),
-      ...(override.location || {}),
-    },
-    payment: {
-      ...(base.payment || {}),
-      ...(override.payment || {}),
-    },
-    packageInfo: base.packageInfo || override.packageInfo
-      ? {
-          ...(base.packageInfo || {}),
-          ...(override.packageInfo || {}),
-          sessions: override.packageInfo?.sessions || base.packageInfo?.sessions || [],
-        }
-      : undefined,
-  };
-};
-// ─────────────────────────────────────────────────────────────────────────
-
-// ─── Helper: parse 'DD/MM/YYYY' → Date ──────────────────────────────────
 const parseDMY = (str) => {
   const [d, m, y] = str.split('/').map(Number);
   return new Date(y, m - 1, d);
 };
 
-// ─── Helper: format Date → 'DD/MM/YYYY' ─────────────────────────────────
-const formatDMY = (dt) =>
-  `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
 
-// ─── Helper: tạo danh sách sessions đầy đủ cho gói theo lịch lặp ────────────
-const generateSessions = (startDate, endDate, patternDays, time, staffName, overrides = {}) => {
-  const [sd, sm, sy] = startDate.split('/').map(Number);
-  const [ed, em, ey] = endDate.split('/').map(Number);
-  const start = new Date(sy, sm - 1, sd);
-  const end = new Date(ey, em - 1, ed);
-
-  const today = getToday();
-
-  const sessions = [];
-  let counter = 1;
-  let cur = new Date(start);
-
-  while (cur <= end) {
-    if (patternDays.includes(cur.getDay())) {
-      const d = cur.getDate();
-      const m = cur.getMonth() + 1;
-      const y = cur.getFullYear();
-      const dateStr = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
-      const overrideKey = `${y}-${m}-${d}`;
-
-      let status;
-      const curNoTime = new Date(y, m - 1, d);
-      if (curNoTime.getTime() < today.getTime()) {
-        status = 'completed';
-      } else if (curNoTime.getTime() === today.getTime()) {
-        status = 'active';
-      } else {
-        status = 'upcoming';
-      }
-
-      const session = {
-        id: 's' + counter,
-        date: dateStr,
-        time,
-        status,
-        staff: staffName,
-      };
-
-      if (overrides[overrideKey]) {
-        Object.assign(session, overrides[overrideKey]);
-      }
-
-      sessions.push(session);
-      counter++;
-    }
-    cur.setDate(cur.getDate() + 1);
-  }
-
-  return sessions;
-};
-
-// ─── Mock Data ───────────────────────────────────────────────────────────────
-const MOCK_BOOKINGS = {
-  '1': {
-    id: '1',
-    code: 'CLN-20240001',
-    createdAt: '20/05/2024 14:30',
-    status: 'confirmed',
-    statusLabel: 'ĐÃ XÁC NHẬN',
-    statusColor: 'text-primary bg-surface-container-high border-primary/20',
-    service: {
-      title: 'Vệ sinh nhà cửa định kỳ',
-      icon: 'cleaning_services',
-      packageType: 'Gói tháng • Dọn dẹp cơ bản',
-      duration: '3 giờ',
-      staffCount: 1,
-      details: 'Quét lau sàn, lau bụi nội thất, dọn rác và vệ sinh bếp, toilet cơ bản.',
-      extras: ['Ủi quần áo (+1 giờ)', 'Lau kính (+1 giờ)'],
-      areaSize: 'Dưới 55m² (1–2 phòng)',
-    },
-    schedule: {
-      date: 'Thứ Tư, 24 Tháng 5, 2024',
-      time: '08:00 – 11:00',
-      recurringInfo: 'Mỗi Thứ 4 hàng tuần (Gói 1 tháng)',
-      note: 'Nhà có chó nhỏ, các bạn vào nhớ bấm chuông đợi mình xích chó lại nhé.',
-    },
-    location: {
-      name: 'Nguyễn Văn Khách',
-      phone: '0901 234 567',
-      address: '123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
-    },
-    staff: {
-      name: 'Nguyễn Thu Hà',
-      rating: 4.9,
-      jobs: 120,
-      avatar: 'https://i.pravatar.cc/150?u=ha',
-    },
-    hasPet: true,
-    payment: {
-      method: 'Tiền mặt',
-      methodIcon: 'payments',
-      status: 'Chưa thanh toán',
-      basePrice: 200000,
-      extrasPrice: 230000,
-      travelFee: 15000,
-      discount: 20000,
-      total: 425000,
-    },
-  },
-  '2': {
-    id: '2',
-    code: 'CLN-20240002',
-    createdAt: '22/05/2024 09:15',
-    status: 'active',
-    statusLabel: 'ĐANG THỰC HIỆN',
-    statusColor: 'text-white bg-surface-tint border-surface-tint/30',
-    service: {
-      title: 'Tổng vệ sinh chuyên sâu',
-      icon: 'auto_awesome',
-      packageType: 'Ca lẻ • Vệ sinh chuyên sâu',
-      duration: '4 giờ',
-      staffCount: 2,
-      details: 'Làm sạch toàn diện mọi ngóc ngách: chà sàn, tẩy ố nhà vệ sinh, lau kính cửa sổ.',
-      extras: [],
-      areaSize: '60 – 80m² (2–3 phòng)',
-    },
-    schedule: {
-      date: 'Hôm nay, 22 Tháng 5, 2024',
-      time: '13:30 – 17:30',
-      recurringInfo: null,
-      note: 'Cửa chính mã khóa 2580, bấm rồi đẩy cửa vào.',
-    },
-    location: {
-      name: 'Trần Văn Bình',
-      phone: '0912 345 678',
-      address: '456 Đường Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM',
-    },
-    staff: {
-      name: 'Đội CleanTrust Team 04',
-      rating: 4.8,
-      jobs: 350,
-      avatar: 'https://i.pravatar.cc/150?u=team04',
-    },
-    hasPet: false,
-    payment: {
-      method: 'Ví MoMo',
-      methodIcon: 'smartphone',
-      status: 'Đã thanh toán',
-      basePrice: 1100000,
-      extrasPrice: 0,
-      travelFee: 20000,
-      discount: 0,
-      total: 1120000,
-    },
-  },
-  '3': {
-    id: '3',
-    code: 'CLN-20240003',
-    createdAt: '25/05/2024 20:45',
-    status: 'pending',
-    statusLabel: 'CHỜ XÁC NHẬN',
-    statusColor: 'text-on-surface-variant bg-surface-container-high border-outline-variant/30',
-    service: {
-      title: 'Vệ sinh văn phòng',
-      icon: 'domain',
-      packageType: 'Ca lẻ • Doanh nghiệp',
-      duration: '3 giờ',
-      staffCount: 1,
-      details: 'Lau dọn bàn làm việc, phòng họp, khu vực sinh hoạt chung của công ty.',
-      extras: ['Vệ sinh bếp chuyên sâu (+2 giờ)'],
-      areaSize: 'Văn phòng vừa (50–100m²)',
-    },
-    schedule: {
-      date: 'Thứ Hai, 29 Tháng 5, 2024',
-      time: '09:00 – 12:00',
-      recurringInfo: null,
-      note: '',
-    },
-    location: {
-      name: 'Công ty ABC Corp',
-      phone: '028 1234 5678',
-      address: '789 Đường Võ Văn Tần, Phường 6, Quận 3, TP.HCM',
-    },
-    staff: null,
-    hasPet: false,
-    payment: {
-      method: 'Visa / Mastercard',
-      methodIcon: 'credit_card',
-      status: 'Chưa thanh toán',
-      basePrice: 280000,
-      extrasPrice: 220000,
-      travelFee: 20000,
-      discount: 50000,
-      total: 470000,
-    },
-  },
-  '4': (() => {
-    const sessions = generateSessions(
-      '24/05/2024',
-      '24/08/2024',
-      [5],
-      '08:00 - 11:00',
-      'Nguyễn Thu Hà',
-      { '2024-6-28': { status: 'cancelled' } }
-    );
-    const completedSessions = sessions.filter((s) => s.status === 'completed').length;
-    const cancelledSessions = sessions.filter((s) => s.status === 'cancelled').length;
-    const totalSessions = sessions.length;
-    return {
-      id: '4',
-      code: 'PKG-20240004',
-      createdAt: '20/05/2024 10:00',
-      status: 'active',
-      statusLabel: 'GÓI 3 THÁNG • ĐANG THỰC HIỆN',
-      statusColor: 'text-white bg-secondary border-secondary/30 shadow-md shadow-secondary/30',
-      isPackage: true,
-      patternDays: [5],
-      packageInfo: {
-        type: 'Gói Dọn dẹp Hàng tháng (3 tháng)',
-        totalSessions,
-        completedSessions,
-        cancelledSessions,
-        startDate: '24/05/2024',
-        endDate: '24/08/2024',
-        allowExtraSession: true,
-        sessions,
-      },
-      service: {
-        title: 'Gói Dọn dẹp Hàng tháng',
-        icon: 'event_available',
-        packageType: 'Gói tháng • Dọn dẹp cơ bản',
-        duration: '3 giờ / ca',
-        staffCount: 1,
-        details: 'Quét lau sàn, lau bụi nội thất, dọn rác và vệ sinh bếp, toilet cơ bản.',
-        extras: [],
-        areaSize: 'Dưới 55m² (1–2 phòng)',
-      },
-      schedule: {
-        date: 'Mỗi Thứ 6 hàng tuần',
-        time: '08:00 – 11:00',
-        recurringInfo: 'Hợp đồng 3 tháng (1 ca / tuần)',
-        note: 'Ưu tiên cho một bạn nhân viên cố định.',
-      },
-      location: {
-        name: 'Nguyễn Văn Khách',
-        phone: '0901 234 567',
-        address: '123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
-      },
-      staff: {
-        name: 'Đội CleanTrust Team 01',
-        rating: 4.9,
-        jobs: 210,
-        avatar: 'https://i.pravatar.cc/150?u=team01',
-      },
-      hasPet: true,
-      payment: {
-        method: 'Chuyển khoản',
-        methodIcon: 'account_balance',
-        status: 'Đã thanh toán',
-        basePrice: 3600000,
-        extrasPrice: 0,
-        travelFee: 0,
-        discount: 200000,
-        total: 3400000,
-        sessionPrice: 300000,
-      },
-    };
-  })(),
-  '5': (() => {
-    const sessions = generateSessions(
-      '20/05/2024',
-      '20/06/2024',
-      [0, 1, 2, 3, 4, 5, 6],
-      '08:00 - 20:00',
-      'Trần Thị Mai',
-      { '2024-5-25': { status: 'cancelled' } }
-    );
-    const completedSessions = sessions.filter((s) => s.status === 'completed').length;
-    const cancelledSessions = sessions.filter((s) => s.status === 'cancelled').length;
-    const totalSessions = sessions.length;
-    return {
-      id: '5',
-      code: 'PKG-20240005',
-      createdAt: '18/05/2024 14:00',
-      status: 'active',
-      statusLabel: 'GÓI 24/7 • ĐANG THỰC HIỆN',
-      statusColor: 'text-white bg-blue-600 border-blue-600/30',
-      isPackage: true,
-      patternDays: [0, 1, 2, 3, 4, 5, 6],
-      packageInfo: {
-        type: 'Gói Tạp vụ 24/7 (1 tháng)',
-        totalSessions,
-        completedSessions,
-        cancelledSessions,
-        startDate: '20/05/2024',
-        endDate: '20/06/2024',
-        allowExtraSession: false,
-        sessions,
-      },
-      service: {
-        title: 'Gói Tạp vụ 24/7',
-        icon: 'support_agent',
-        packageType: 'Gói 24/7 • Toàn thời gian',
-        duration: '12 giờ / ngày',
-        staffCount: 1,
-        details: 'Nhân viên ở lại nhà hoặc làm 12 tiếng liên tục mỗi ngày trong vòng 1 tháng.',
-        extras: [],
-        areaSize: 'Tất cả kích thước',
-      },
-      schedule: {
-        date: 'Làm mỗi ngày',
-        time: '08:00 – 20:00',
-        recurringInfo: 'Hợp đồng 1 tháng (30 ngày liên tục)',
-        note: 'Nhà có người lớn tuổi cần chăm sóc.',
-      },
-      location: {
-        name: 'Lê Thị Cẩm',
-        phone: '0933 444 555',
-        address: 'Biệt thự khu Chateau, Quận 7, TP.HCM',
-      },
-      staff: {
-        name: 'Trần Thị Mai',
-        rating: 5.0,
-        jobs: 54,
-        avatar: 'https://i.pravatar.cc/150?u=mai',
-      },
-      hasPet: false,
-      payment: {
-        method: 'Tiền mặt',
-        methodIcon: 'payments',
-        status: 'Đã thanh toán',
-        basePrice: 12500000,
-        extrasPrice: 0,
-        travelFee: 0,
-        discount: 0,
-        total: 12500000,
-        sessionPrice: 416666,
-      },
-    };
-  })(),
-  '6': (() => {
-    const sessions = generateSessions(
-      '12/06/2024',
-      '28/12/2024',
-      [1, 4, 5, 0],
-      '14:00 - 17:00',
-      'Lê Hữu Bằng',
-      { '2024-6-16': { status: 'cancelled' } }
-    );
-    const completedSessions = sessions.filter((s) => s.status === 'completed').length;
-    const cancelledSessions = sessions.filter((s) => s.status === 'cancelled').length;
-    const totalSessions = sessions.length;
-    return {
-      id: '6',
-      code: 'PKG-20240006',
-      createdAt: '10/06/2024 08:30',
-      status: 'active',
-      statusLabel: 'GÓI 6 THÁNG • ĐANG THỰC HIỆN',
-      statusColor: 'text-white bg-secondary border-none shadow-md shadow-secondary/30',
-      isPackage: true,
-      patternDays: [1, 4, 5, 0],
-      packageInfo: {
-        type: 'Gói Dọn dẹp Hàng tháng (6 tháng)',
-        totalSessions,
-        completedSessions,
-        cancelledSessions,
-        startDate: '12/06/2024',
-        endDate: '28/12/2024',
-        allowExtraSession: true,
-        sessions,
-      },
-      service: {
-        title: 'Gói Dọn dẹp Hàng tháng',
-        icon: 'event_available',
-        packageType: 'Gói 6 tháng • Dọn dẹp cơ bản',
-        duration: '3 giờ / ca',
-        staffCount: 1,
-        details: 'Làm sạch cơ bản khu vực sinh hoạt chung và phòng ngủ.',
-        extras: [],
-        areaSize: 'Dưới 55m² (1–2 phòng)',
-      },
-      schedule: {
-        date: 'T2, T5, T6, CN',
-        time: '14:00 – 17:00',
-        recurringInfo: 'Hợp đồng 6 tháng (4 ca / tuần)',
-        note: 'Nhà có em bé.',
-      },
-      location: {
-        name: 'Vũ Đức Minh',
-        phone: '0988 777 666',
-        address: 'Landmark 81, Quận Bình Thạnh, TP.HCM',
-      },
-      staff: {
-        name: 'Lê Hữu Bằng',
-        rating: 4.8,
-        jobs: 145,
-        avatar: 'https://i.pravatar.cc/150?u=bang',
-      },
-      hasPet: false,
-      payment: {
-        method: 'Ví MoMo',
-        methodIcon: 'smartphone',
-        status: 'Đã thanh toán',
-        basePrice: 18500000,
-        extrasPrice: 0,
-        travelFee: 0,
-        discount: 0,
-        total: 18500000,
-        sessionPrice: 192700,
-      },
-    };
-  })(),
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ── StaffSimulator: Giả lập nhân viên xem & phản hồi yêu cầu dời/thêm ca ──
-// ⚠️  CHỈ DÙNG KHI DEVELOPMENT / TEST — xóa component này khi lên production
-// ─────────────────────────────────────────────────────────────────────────────
 const getOriginalPackageEndDate = (booking) =>
-  MOCK_BOOKINGS[booking.id]?.packageInfo?.endDate || booking.packageInfo.endDate;
+  booking.packageInfo?.endDate;
 
 const getExtensionLimitDate = (booking) => {
   const contractEndDate = parseDMY(getOriginalPackageEndDate(booking));
   return new Date(contractEndDate.getFullYear(), contractEndDate.getMonth() + 2, 0);
 };
 
-const getMonthEndDate = (date) =>
-  new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
 
 const SESSION_STATUS_ORDER = {
   awaiting_confirm: 0,
@@ -525,12 +62,6 @@ const sortPackageSessions = (sessions = []) =>
     return String(a.id || '').localeCompare(String(b.id || ''), 'vi');
   });
 
-const getRequestTypeLabel = (session) => {
-  if (session?.isAddedExtra) return 'ca mới';
-  if (isRescheduleRequest(session)) return 'lịch dời';
-  return 'yêu cầu';
-};
-
 const addDays = (date, days) => {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -558,241 +89,6 @@ const getTransferStatusLabel = (label) =>
       ? `${label} • CHỜ XÁC NHẬN`
       : 'CHỜ XÁC NHẬN';
 
-const StaffSimulator = ({ booking, setBooking }) => {
-  const [collapsed, setCollapsed] = useState(false);
-
-  if (!booking?.isPackage) return null;
-
-  const pendingSessions = sortPackageSessions(
-    (booking.packageInfo.sessions || []).filter((s) => s.status === 'awaiting_confirm')
-  );
-  if (pendingSessions.length === 0) return null;
-
-  // Khi nhân viên chấp nhận yêu cầu dời/thêm ca
-  const handleAccept = (session) => {
-    setBooking((prev) => {
-      const { endDate, sessions } = prev.packageInfo;
-      const contractEnd = parseDMY(getOriginalPackageEndDate(prev));
-      const extensionLimitDate = getExtensionLimitDate(prev);
-      const isReschedule = isRescheduleRequest(session);
-      const targetDate = getSessionDisplayDate(session);
-      const newDate = parseDMY(targetDate);
-
-      if (newDate > extensionLimitDate) return prev;
-
-      const isOutOfContract = newDate > contractEnd;
-
-      const newSessions = sortPackageSessions(
-        sessions.map((s) =>
-          s.id === session.id
-            ? {
-                ...s,
-                status: 'upcoming',
-                date: targetDate,
-                staff: s.staff || (prev.staff ? prev.staff.name : '?ang ch? ph?n c?ng'),
-                rescheduleDate: undefined,
-                rescheduleStaffOption: undefined,
-                isRescheduled: isReschedule || s.isRescheduled || undefined,
-                rescheduledFromDate: isReschedule ? s.date : s.rescheduledFromDate,
-                isAddedExtra: s.isAddedExtra || (!isReschedule ? true : undefined),
-                isExtended: isOutOfContract || undefined,
-              }
-            : s
-        )
-      );
-
-      let newEndDate = endDate;
-      if (isOutOfContract) {
-        const lastDayOfExtend = getMonthEndDate(newDate);
-        const currentEnd = parseDMY(endDate);
-        newEndDate = lastDayOfExtend > currentEnd ? formatDMY(lastDayOfExtend) : endDate;
-      }
-
-      const completedSessions = newSessions.filter((s) => s.status === 'completed').length;
-      const cancelledSessions = newSessions.filter((s) => s.status === 'cancelled').length;
-
-      return {
-        ...prev,
-        packageInfo: {
-          ...prev.packageInfo,
-          sessions: newSessions,
-          totalSessions: newSessions.length,
-          completedSessions,
-          cancelledSessions,
-          endDate: newEndDate,
-        },
-      };
-    });
-  };
-
-  // Khi nhân viên từ chối -> tùy staffOption
-  const handleReject = (session) => {
-    setBooking((prev) => {
-      const opt = session.rescheduleStaffOption;
-      const isReschedule = isRescheduleRequest(session);
-      const targetDate = getSessionDisplayDate(session);
-      const newStatus = opt === 'none' ? 'cancelled' : 'upcoming';
-      const replacementStaff =
-        opt === 'favorite'
-          ? 'Nhân viên yêu thích (được phân bổ lại)'
-          : 'Nhân viên tiêu chuẩn (được phân bổ lại)';
-
-      const newSessions = sortPackageSessions(
-        prev.packageInfo.sessions.map((s) =>
-          s.id === session.id
-            ? {
-                ...s,
-                status: newStatus,
-                date: newStatus === 'upcoming' ? targetDate : s.date,
-                staff: newStatus === 'upcoming' && opt !== 'none' ? replacementStaff : s.staff,
-                isRescheduled: newStatus === 'upcoming' ? s.isRescheduled || isReschedule || undefined : s.isRescheduled,
-                rescheduledFromDate:
-                  newStatus === 'upcoming' && isReschedule
-                    ? s.date
-                    : s.rescheduledFromDate,
-                isAddedExtra: newStatus === 'upcoming' ? s.isAddedExtra || (!isReschedule ? true : undefined) : s.isAddedExtra,
-                rescheduleDate: undefined,
-                rescheduleStaffOption: undefined,
-                isExtended: s.isExtended || undefined,
-              }
-            : s
-        )
-      );
-
-      const cancelledSessions = newSessions.filter((s) => s.status === 'cancelled').length;
-
-      return {
-        ...prev,
-        packageInfo: {
-          ...prev.packageInfo,
-          sessions: newSessions,
-          cancelledSessions,
-        },
-      };
-    });
-  };
-
-  return (
-    <div className="fixed bottom-6 left-6 z-[9998] max-w-[320px] w-[calc(100vw-48px)] sm:w-80">
-      {/* Header */}
-      <button
-        onClick={() => setCollapsed((c) => !c)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-amber-500 text-white rounded-t-2xl shadow-lg font-bold text-sm"
-      >
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[18px]">engineering</span>
-          <span>Giả lập Nhân viên</span>
-          <span className="bg-white/30 text-white text-xs font-black px-1.5 py-0.5 rounded-full">
-            {pendingSessions.length}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded-full uppercase tracking-wide">Dev only</span>
-          <span className="material-symbols-outlined text-[18px]">
-            {collapsed ? 'expand_less' : 'expand_more'}
-          </span>
-        </div>
-      </button>
-
-      {/* Body */}
-      {!collapsed && (
-        <div className="bg-amber-50 border border-amber-200 border-t-0 rounded-b-2xl shadow-xl overflow-hidden">
-          <div className="p-3 bg-amber-100/60 border-b border-amber-200 text-[11px] text-amber-800 font-medium leading-relaxed flex items-start gap-1.5">
-            <span className="material-symbols-outlined text-[13px] mt-0.5 shrink-0">info</span>
-            Xóa component này khi lên production. Dùng để test luồng nhân viên chấp nhận / từ chối yêu cầu.
-          </div>
-
-          <div className="divide-y divide-amber-200/60 max-h-[360px] overflow-y-auto">
-            {pendingSessions.map((session) => {
-              const isReschedule = isRescheduleRequest(session);
-              const displayDate = getSessionDisplayDate(session);
-              const newDate = parseDMY(displayDate);
-              const contractEnd = parseDMY(booking.packageInfo.endDate);
-              const isOut = newDate > contractEnd;
-              const requestKind = getRequestTypeLabel(session);
-
-              return (
-                <div key={session.id} className="p-3 space-y-2">
-                  <div className="text-xs text-amber-900 font-bold flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[13px]">edit_calendar</span>
-                    {isReschedule ? (
-                      <>
-                        Ca gốc: <span className="text-amber-700">{session.date}</span>
-                        <span className="text-amber-500">→</span>
-                        <span className="text-amber-900">{session.rescheduleDate}</span>
-                      </>
-                    ) : (
-                      <>
-                        Ca mới: <span className="text-amber-700">{session.date}</span>
-                      </>
-                    )}
-                  </div>
-
-                  {session.isAddedExtra && (
-                    <div className="flex items-center gap-1.5 text-[10px] font-black bg-primary/10 border border-primary/20 text-primary px-2 py-1 rounded-lg">
-                      <span className="material-symbols-outlined text-[12px]">playlist_add_check</span>
-                      Ca bổ sung đang chờ nhân viên xác nhận
-                    </div>
-                  )}
-
-                  {isOut && (
-                    <div className="flex items-center gap-1.5 text-[10px] font-black bg-orange-100 border border-orange-300 text-orange-700 px-2 py-1 rounded-lg">
-                      <span className="material-symbols-outlined text-[12px]">warning</span>
-                      Ngoài hợp đồng — chờ xác nhận ca tháng {newDate.getMonth() + 1}/{newDate.getFullYear()}
-                    </div>
-                  )}
-
-                  <div className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[11px]">person_search</span>
-                    Phương án nếu từ chối:
-                    <span className="font-bold text-amber-800">
-                      {session.rescheduleStaffOption === 'favorite'
-                        ? 'Tìm NV yêu thích'
-                        : session.rescheduleStaffOption === 'standard'
-                        ? 'Tìm NV tiêu chuẩn'
-                        : 'Hủy ca luôn'}
-                    </span>
-                  </div>
-
-                  {!session.isAddedExtra && !isReschedule && (
-                    <div className="text-[10px] text-amber-700 font-medium flex items-start gap-1.5 leading-relaxed">
-                      <span className="material-symbols-outlined text-[11px] mt-0.5">schedule_send</span>
-                      Yêu cầu {requestKind} đang đợi nhân viên xác nhận.
-                    </div>
-                  )}
-
-                  {isReschedule && (
-                    <div className="text-[10px] text-amber-700 font-medium flex items-start gap-1.5 leading-relaxed">
-                      <span className="material-symbols-outlined text-[11px] mt-0.5">schedule_send</span>
-                      Lịch dời này vấn giữ trong hệ thống cho tới khi có nhân viên nhận.
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => handleAccept(session)}
-                      className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                      Chấp nhận
-                    </button>
-                    <button
-                      onClick={() => handleReject(session)}
-                      className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-black rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">cancel</span>
-                      Từ chối
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const PackageSessionPanel = ({
   booking,
@@ -823,7 +119,7 @@ const PackageSessionPanel = ({
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
 
-  const now = getToday();
+  const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
 
@@ -987,28 +283,6 @@ const PackageSessionPanel = ({
                 renderSessionSubInfo={renderSessionSubInfo}
                 onReschedule={() => handleOpenActionModal('reschedule', displaySession.id)}
                 onCancel={() => handleOpenActionModal('cancel', displaySession.id)}
-                onCancelReschedule={() => {
-                  setBooking((prev) => {
-                    const newSessions = sortPackageSessions(
-                      prev.packageInfo.sessions.map((s) =>
-                        s.id === displaySession.id
-                          ? displaySession.isAddedExtra
-                            ? { ...s, status: 'cancelled' }
-                            : {
-                                ...s,
-                                status: 'upcoming',
-                                rescheduleDate: undefined,
-                                rescheduleStaffOption: undefined,
-                                isRescheduled: undefined,
-                                rescheduledFromDate: undefined,
-                              }
-                          : s
-                      )
-                    );
-                    const cancelledSessions = newSessions.filter((s) => s.status === 'cancelled').length;
-                    return { ...prev, packageInfo: { ...prev.packageInfo, sessions: newSessions, cancelledSessions } };
-                  });
-                }}
               />
             );
           })}
@@ -1019,7 +293,7 @@ const PackageSessionPanel = ({
 };
 
 // ─── SessionRow ──────────────────────────────────────────────────────────────
-const SessionRow = ({ session, renderSessionTitle, renderSessionSubInfo, onReschedule, onCancel, onCancelReschedule }) => {
+const SessionRow = ({ session, renderSessionTitle, renderSessionSubInfo, onReschedule, onCancel }) => {
   return (
     <div
       className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300
@@ -1075,10 +349,10 @@ const SessionRow = ({ session, renderSessionTitle, renderSessionSubInfo, onResch
       {session.status === 'awaiting_confirm' && (
         <div className="flex gap-2 w-full sm:w-auto shrink-0 sm:self-center">
           <button
-            onClick={onCancelReschedule}
-            className="flex-1 sm:flex-none px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold rounded-xl hover:bg-amber-100 active:scale-95 transition-all shadow-sm"
+            onClick={onCancel}
+            className="flex-1 sm:flex-none px-4 py-2 bg-error/10 border border-error/20 text-error text-sm font-bold rounded-xl hover:bg-error/15 active:scale-95 transition-all shadow-sm"
           >
-            {session.isAddedExtra ? 'Hủy yêu cầu thêm ca' : 'Hủy yêu cầu dời'}
+            Hủy ca
           </button>
         </div>
       )}
@@ -1116,18 +390,23 @@ const BookingDetailPage = () => {
     staffOption: 'favorite',
   });
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    const baseData = MOCK_BOOKINGS[id] || MOCK_BOOKINGS['1'];
-    const snapshotData = getBookingSnapshotById(id);
-    setBooking(mergeBookingData(baseData, snapshotData));
+  const fetchBookingDetail = useCallback(() => {
+    khachHangApi.getBookingDetail(id)
+      .then((res) => {
+        if (res.success && res.data) {
+          const formattedData = mapApiToBookingDetailFormat(res.data);
+          setBooking(formattedData);
+        }
+      })
+      .catch((err) => {
+        console.error("Lỗi khi tải chi tiết đơn hàng:", err);
+      });
   }, [id]);
 
   useEffect(() => {
-    if (booking) {
-      saveBookingSnapshot(booking);
-    }
-  }, [booking]);
+    window.scrollTo(0, 0);
+    fetchBookingDetail();
+  }, [fetchBookingDetail]);
 
   useEffect(() => {
     if (isChatOpen) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1414,60 +693,30 @@ const BookingDetailPage = () => {
     );
   };
 
-  const handleConfirmAction = () => {
+  const handleConfirmAction = async () => {
     const { type, sessionId, data, staffOption } = actionModal;
 
     if ((type === 'reschedule' || type === 'add') && !data) {
-      alert('Vui l?ng ch?n ng?y tr??c khi x?c nh?n.');
+      alert('Vui lòng chọn ngày trước khi xác nhận.');
       return;
     }
 
     if (type === 'reschedule') {
-      const [y, mo, d] = data.split('-');
-      const rescheduleDateFormatted = d + '/' + mo + '/' + y;
-      const selectedDate = new Date(parseInt(y), parseInt(mo) - 1, parseInt(d));
-      const contractEnd = parseDMY(getOriginalPackageEndDate(booking));
-      const isOutOfContract = selectedDate > contractEnd;
-
-      setBooking((prev) => {
-        const newSessions = sortPackageSessions(
-          prev.packageInfo.sessions.map((s) =>
-            s.id === sessionId
-              ? {
-                  ...s,
-                  status: 'awaiting_confirm',
-                  rescheduleDate: rescheduleDateFormatted,
-                  rescheduleStaffOption: staffOption,
-                  isExtended: isOutOfContract || s.isExtended || undefined,
-                }
-              : s
-          )
-        );
-        const nextPackageInfo = {
-          ...prev.packageInfo,
-          sessions: newSessions,
-        };
-
-        if (isOutOfContract) {
-          nextPackageInfo.endDate = formatDMY(getMonthEndDate(selectedDate));
-        }
-
-        return { ...prev, packageInfo: nextPackageInfo };
-      });
+      try {
+        await khachHangApi.rescheduleSession(sessionId, { ngay_moi: data });
+        fetchBookingDetail();
+      } catch (err) {
+        console.error("Lỗi khi dời lịch:", err);
+        alert("Có lỗi xảy ra khi yêu cầu dời lịch.");
+      }
     } else if (type === 'cancel') {
-      setBooking((prev) => {
-        const newSessions = prev.packageInfo.sessions.map((s) =>
-          s.id === sessionId ? { ...s, status: 'cancelled' } : s
-        );
-        return {
-          ...prev,
-          packageInfo: {
-            ...prev.packageInfo,
-            sessions: sortPackageSessions(newSessions),
-            cancelledSessions: prev.packageInfo.cancelledSessions + 1,
-          },
-        };
-      });
+      try {
+        await khachHangApi.cancelSession(sessionId);
+        fetchBookingDetail();
+      } catch (err) {
+        console.error("Lỗi khi hủy ca:", err);
+        alert("Có lỗi xảy ra khi yêu cầu hủy ca.");
+      }
     } else if (type === 'add') {
       const [y, mo, d] = data.split('-');
       const formattedDate = d + '/' + mo + '/' + y;
@@ -1751,7 +1000,6 @@ const BookingDetailPage = () => {
                   <span className="inline-block text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full mt-2">
                     {booking.service.packageType}
                   </span>
-                  <p className="text-on-surface-variant text-sm mt-4 leading-relaxed">{booking.service.details}</p>
                 </div>
                 <div className="text-right shrink-0 flex sm:flex-col gap-2">
                   <div className="text-sm font-bold text-on-surface bg-surface-container-low px-4 py-2 rounded-xl inline-block whitespace-nowrap border border-outline-variant/10">
@@ -1768,7 +1016,7 @@ const BookingDetailPage = () => {
                 <div className="bg-surface p-4 rounded-xl border border-outline-variant/20 flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>straighten</span>
                   <div>
-                    <div className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Diện tích</div>
+                    <div className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Tùy chọn chi tiết</div>
                     <div className="font-bold text-on-surface text-sm">{booking.service.areaSize}</div>
                   </div>
                 </div>
@@ -1876,15 +1124,8 @@ const BookingDetailPage = () => {
                 </div>
                 <div className="flex justify-between text-xs text-on-surface-variant font-medium mb-8">
                   <span>Bắt đầu: {booking.packageInfo.startDate}</span>
-                  <span className={`flex items-center gap-1 ${
-                    booking.packageInfo.endDate !== MOCK_BOOKINGS[booking.id]?.packageInfo?.endDate
-                      ? 'text-orange-600 font-bold'
-                      : ''
-                  }`}>
+                  <span className="flex items-center gap-1">
                     Kết thúc: {booking.packageInfo.endDate}
-                    {booking.packageInfo.endDate !== MOCK_BOOKINGS[booking.id]?.packageInfo?.endDate && (
-                      <span className="text-[9px] bg-orange-100 border border-orange-200 text-orange-600 font-black px-1.5 py-0.5 rounded-full uppercase">Mở rộng</span>
-                    )}
                   </span>
                 </div>
 
@@ -2448,8 +1689,6 @@ const BookingDetailPage = () => {
         </div>
       )}
 
-      {/* ─── StaffSimulator — DEV ONLY ─── */}
-      <StaffSimulator booking={booking} setBooking={setBooking} />
     </div>
   );
 };

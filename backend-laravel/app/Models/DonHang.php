@@ -46,4 +46,9 @@ class DonHang extends Model
         return $this->belongsToMany(DichVuDichVuThem::class, 'DonHang_DichVuThem', 'don_hang_id', 'dich_vu_dich_vu_them_id')
             ->withPivot('so_luong', 'gia_luc_dat');
     }
+
+    public function tuyChonBienThe()
+    {
+        return $this->belongsTo(TuyChonBienTheDichVu::class, 'tuy_chon_bien_the_id');
+    }
 }

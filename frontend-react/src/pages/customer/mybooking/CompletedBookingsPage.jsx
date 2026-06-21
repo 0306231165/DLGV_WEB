@@ -1,13 +1,16 @@
 import React from 'react';
-import { BookingTabs, BookingCard, getBookingsSnapshot } from './BookingUtils';
+import { BookingTabs, BookingCard } from './BookingUtils';
+import { useBookingFilter } from './MyBookingsLayout';
 
 const CompletedBookingsPage = () => {
-  const bookings = getBookingsSnapshot();
+  const { bookings, loading } = useBookingFilter();
 
   return (
     <>
       <BookingTabs />
-      {bookings.completed.length === 0 ? (
+      {loading ? (
+        <div className="py-20 text-center text-on-surface-variant">Đang tải dữ liệu...</div>
+      ) : bookings.completed.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-gutter">

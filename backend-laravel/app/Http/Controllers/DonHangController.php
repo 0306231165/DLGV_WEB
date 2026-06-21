@@ -213,4 +213,210 @@ class DonHangController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * GET /api/khach-hang/don-hang
+     * Lấy danh sách đơn hàng của khách hàng hiện tại
+     */
+    public function index(Request $request): \Illuminate\Http\JsonResponse
+    {
+        try {
+            $khachHang = $request->user()->khachHang;
+            if (!$khachHang) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy hồ sơ khách hàng.',
+                ], 404);
+            }
+
+            $donHangs = DonHang::with([
+                'caLamViec.nhanVien.taiKhoan',
+                'dichVuLoaiGoi.dichVu',
+                'nhanVienYeuCau.taiKhoan',
+                'dichVuThemDaChon'
+            ])
+            ->where('khach_hang_id', $khachHang->id)
+            ->orderBy('ngay_tao', 'desc')
+            ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $donHangs
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi lấy danh sách đơn hàng: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/khach-hang/don-hang/{id}
+     * Lấy chi tiết đơn hàng
+     */
+    public function show(Request $request, $id): \Illuminate\Http\JsonResponse
+    {
+        try {
+            $khachHang = $request->user()->khachHang;
+            if (!$khachHang) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy hồ sơ khách hàng.',
+                ], 404);
+            }
+
+            $donHang = DonHang::with([
+                'caLamViec.nhanVien.taiKhoan',
+                'caLamViec.yeuCauDoiLich',
+                'dichVuLoaiGoi.dichVu',
+                'dichVuLoaiGoi.loaiGoi',
+                'nhanVienYeuCau.taiKhoan',
+                'dichVuThemDaChon.dichVuThem',
+                'khuyenMai',
+                'tuyChonBienThe'
+            ])
+            ->where('khach_hang_id', $khachHang->id)
+            ->where('id', $id)
+            ->first();
+
+            if (!$donHang) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy đơn hàng.',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $donHang
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi lấy chi tiết đơn hàng: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/khach-hang/don-hang/ca-lam/{id}/doi-lich
+     * Khách hàng yêu cầu dời lịch 1 ca làm việc
+     */
+    public function doiLich(Request $request, $caLamViecId)
+    {
+        try {
+            $khachHang = $request->user()->khachHang;
+            if (!$khachHang) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy hồ sơ khách hàng.',
+                ], 404);
+            }
+
+            $validated = $request->validate([
+                'ngay_moi' => 'required|string'
+            ]);
+
+            $caLamViec = \App\Models\CaLamViec::where('id', $caLamViecId)
+                ->whereHas('donHang', function($q) use ($khachHang) {
+                    $q->where('khach_hang_id', $khachHang->id);
+                })->first();
+
+            if (!$caLamViec) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy ca làm việc hoặc không có quyền.',
+                ], 404);
+            }
+
+            // Update trạng thái ca
+            $caLamViec->trang_thai_ca = 'ChoXacNhan';
+            $caLamViec->save();
+
+            // Tạo yêu cầu
+            $lyDoStr = 'Yêu cầu dời lịch sang ngày mới: ' . $validated['ngay_moi'];
+
+            \App\Models\YeuCauXuLy::create([
+                'loai_cap_do_yeu_cau' => 'CaLam',
+                'ca_lam_viec_id'      => $caLamViec->id,
+                'nguoi_yeu_cau_loai'  => 'KhachHang',
+                'nguoi_yeu_cau_id'    => $khachHang->id,
+                'loai_yeu_cau'        => 'DoiLich',
+                'trang_thai_duyet'    => 'ChoXuLy',
+                'ly_do'               => $lyDoStr,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã gửi yêu cầu dời lịch thành công'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/khach-hang/don-hang/ca-lam/{id}/huy
+     * Khách hàng chủ động hủy 1 ca làm việc
+     */
+    public function huyCa(Request $request, $caLamViecId)
+    {
+        try {
+            $khachHang = $request->user()->khachHang;
+            if (!$khachHang) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy hồ sơ khách hàng.',
+                ], 404);
+            }
+
+            $caLamViec = \App\Models\CaLamViec::where('id', $caLamViecId)
+                ->whereHas('donHang', function($q) use ($khachHang) {
+                    $q->where('khach_hang_id', $khachHang->id);
+                })->first();
+
+            if (!$caLamViec) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy ca làm việc hoặc không có quyền.',
+                ], 404);
+            }
+
+            // Hủy các yêu cầu xử lý đang chờ (như yêu cầu dời lịch cũ)
+            \App\Models\YeuCauXuLy::where('ca_lam_viec_id', $caLamViec->id)
+                ->where('trang_thai_duyet', 'ChoXuLy')
+                ->delete();
+
+            // Cập nhật trạng thái ca
+            $caLamViec->trang_thai_ca = 'KhachHuy';
+            $caLamViec->save();
+
+            // Lưu log lịch sử hủy
+            \App\Models\YeuCauXuLy::create([
+                'loai_cap_do_yeu_cau' => 'CaLam',
+                'ca_lam_viec_id'      => $caLamViec->id,
+                'nguoi_yeu_cau_loai'  => 'KhachHang',
+                'nguoi_yeu_cau_id'    => $khachHang->id,
+                'loai_yeu_cau'        => 'HuyCaLe',
+                'trang_thai_duyet'    => 'DaDuyet',
+                'ly_do'               => 'Khách hàng chủ động hủy ca',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã hủy ca thành công'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
