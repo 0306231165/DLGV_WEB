@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import nhanVienApi from '../../../api/nhanVienApi';
 
 const PartnerWallet = () => {
-  const [balance, setBalance] = useState(2500000); 
+  const [balance, setBalance] = useState(0); 
+  const [transactionHistory, setTransactionHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const MIN_RETAINED_BALANCE = 500000; 
   const MIN_WITHDRAW_AMOUNT = 500000;  
 
@@ -14,19 +18,27 @@ const PartnerWallet = () => {
   // State quản lý bộ lọc ngày của Lịch sử giao dịch (Mặc định chọn 'all' - Tất cả)
   const [dateFilter, setDateFilter] = useState('all');
 
-  // Danh sách lịch sử giao dịch mở rộng để kiểm tra tính năng cuộn (Scrollbar)
-  const transactionHistory = [
-    { id: 'TXN001', type: 'withdraw', amount: 1000000, date: '2026-06-09', status: 'Thành công', description: 'Rút tiền về MB Bank' },
-    { id: 'TXN002', type: 'income', amount: 350000, date: '2026-06-09', status: 'Thành công', description: 'Thu nhập đơn hàng #DH9921' },
-    { id: 'TXN003', type: 'deposit', amount: 500000, date: '2026-06-05', status: 'Thành công', description: 'Nạp tiền qua MoMo' },
-    { id: 'TXN004', type: 'penalty', amount: 50000, date: '2026-06-01', status: 'Thành công', description: 'Phí hủy lịch đơn hàng #DH9811' },
-    { id: 'TXN005', type: 'income', amount: 450000, date: '2026-05-20', status: 'Thành công', description: 'Thu nhập đơn hàng #DH9541' },
-    { id: 'TXN006', type: 'withdraw', amount: 500000, date: '2026-05-15', status: 'Thành công', description: 'Rút tiền về Vietcombank' },
-  ];
+  useEffect(() => {
+    const fetchWallet = async () => {
+      try {
+        const response = await nhanVienApi.getWallet();
+        if (response.success) {
+          setBalance(response.data.balance || 0);
+          setTransactionHistory(response.data.transactions || []);
+        }
+      } catch (error) {
+        console.error('Lỗi lấy dữ liệu ví:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWallet();
+  }, []);
 
   // Logic lọc dữ liệu theo ngày
   const getFilteredTransactions = () => {
-    const today = new Date('2026-06-09'); // Giả định ngày hiện tại của hệ thống là 09/06/2026
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     return transactionHistory.filter(txn => {
       const txnDate = new Date(txn.date);
@@ -80,9 +92,16 @@ const PartnerWallet = () => {
 
   // Hàm format ngày hiển thị từ YYYY-MM-DD sang DD/MM/YYYY
   const displayDate = (dateStr) => {
-    const [year, month, day] = dateStr.split('-');
+    if (!dateStr) return '';
+    const parts = dateStr.split(' ')[0].split('-');
+    if (parts.length !== 3) return dateStr;
+    const [year, month, day] = parts;
     return `${day}/${month}/${year}`;
   };
+
+  if (loading) {
+    return <div className="p-6 text-slate-500 animate-pulse text-center w-full">Đang tải dữ liệu ví...</div>;
+  }
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen flex justify-center items-start">
@@ -95,8 +114,8 @@ const PartnerWallet = () => {
               <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900">Ví & Thu nhập đối tác</h1>
-              <p className="text-xs text-slate-400">Quản lý số dư công việc, nạp/rút tiền và dòng tiền của bạn.</p>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Ví & Thu nhập</h1>
+              <p className="text-sm text-slate-500">Quản lý số dư công việc, nạp/rút tiền và dòng tiền của bạn.</p>
             </div>
           </div>
           

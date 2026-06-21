@@ -1,14 +1,17 @@
 import React from 'react';
-import { BookingTabs, BookingCard, getBookingsSnapshot } from './BookingUtils';
+import { BookingTabs, BookingCard } from './BookingUtils';
+import { useBookingFilter } from './MyBookingsLayout';
 
 const ActiveBookingsPage = () => {
-  const bookings = getBookingsSnapshot();
+  const { bookings, loading } = useBookingFilter();
 
   return (
     <>
       <BookingTabs />
-      {bookings.active.length === 0 ? (
-        <EmptyState message="Hiá»‡n khÃ´ng cÃ³ Ä‘Æ¡n nÃ o Ä‘ang Ä‘Æ°á»£c thá»±c hiá»‡n." />
+      {loading ? (
+        <div className="py-20 text-center text-on-surface-variant">Đang tải dữ liệu...</div>
+      ) : bookings.active.length === 0 ? (
+        <EmptyState message="Hiện không có đơn nào đang được thực hiện." />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
           {bookings.active.map((booking) => (
@@ -25,7 +28,7 @@ const EmptyState = ({ message }) => (
     <div className="w-24 h-24 bg-surface-container-low rounded-full flex items-center justify-center mb-6 border border-outline-variant/30">
       <span className="material-symbols-outlined text-5xl text-outline">hourglass_empty</span>
     </div>
-    <h2 className="font-h2 text-h2 text-on-surface mb-2">KhÃ´ng cÃ³ Ä‘Æ¡n Ä‘ang thá»±c hiá»‡n</h2>
+    <h2 className="font-h2 text-h2 text-on-surface mb-2">Không có đơn đang thực hiện</h2>
     <p className="text-on-surface-variant max-w-md mx-auto font-body-md">{message}</p>
   </div>
 );

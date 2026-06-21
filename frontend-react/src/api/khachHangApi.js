@@ -111,11 +111,26 @@ const khachHangApi = {
     // DELETE /api/khach-hang/lien-he/{id}
     deleteContact: (id) => axiosClient.delete(`/khach-hang/lien-he/${id}`),
 
-    // ─── Đặt lịch ──────────────────────────────────────────────
-    // POST /api/khach-hang/don-hang/dat-lich
-    datLich: (data) => {
-        return axiosClient.post('/khach-hang/dat-lich', data);
-    },
+    // ─── Đặt lịch ─────────────────────────────────────────────────────────────
+    // POST /api/khach-hang/dat-lich
+    datLich: (data) =>
+        axiosClient.post('/khach-hang/dat-lich', data),
+
+    // GET /api/khach-hang/don-hang
+    getMyBookings: () =>
+        axiosClient.get('/khach-hang/don-hang'),
+
+    // GET /api/khach-hang/don-hang/{id}
+    getBookingDetail: (id) =>
+        axiosClient.get(`/khach-hang/don-hang/${id}`),
+
+    // POST /api/khach-hang/don-hang/ca-lam/{id}/doi-lich
+    rescheduleSession: (caLamViecId, payload) =>
+        axiosClient.post(`/khach-hang/don-hang/ca-lam/${caLamViecId}/doi-lich`, payload),
+
+    // POST /api/khach-hang/don-hang/ca-lam/{id}/huy
+    cancelSession: (caLamViecId) =>
+        axiosClient.post(`/khach-hang/don-hang/ca-lam/${caLamViecId}/huy`),
 
 };
 

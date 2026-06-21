@@ -12,6 +12,16 @@ const nhanVienApi = {
         return axiosClient.get(`/nhan-vien/${id}`);
     },
 
+    // GET /api/nhan-vien/dashboard
+    getDashboard: () => {
+        return axiosClient.get('/nhan-vien/dashboard');
+    },
+
+    // GET /api/nhan-vien/wallet
+    getWallet: () => {
+        return axiosClient.get('/nhan-vien/wallet');
+    },
+
     // ─── Yêu thích (cần auth: khách hàng) ────────────────────────────────────
  
     // GET /api/khach-hang/nhan-vien-yeu-thich

@@ -1,14 +1,17 @@
 import React from 'react';
-import { BookingTabs, BookingCard, getBookingsSnapshot } from './BookingUtils';
+import { BookingTabs, BookingCard } from './BookingUtils';
+import { useBookingFilter } from './MyBookingsLayout';
 
 const UpcomingBookingsPage = () => {
-  const bookings = getBookingsSnapshot();
+  const { bookings, loading } = useBookingFilter();
 
   return (
     <>
       <BookingTabs />
-      {bookings.upcoming.length === 0 ? (
-        <EmptyState message="Báº¡n khÃ´ng cÃ³ Ä‘Æ¡n sáº¯p tá»›i nÃ o." />
+      {loading ? (
+        <div className="py-20 text-center text-on-surface-variant">Đang tải dữ liệu...</div>
+      ) : bookings.upcoming.length === 0 ? (
+        <EmptyState message="Bạn không có đơn sắp tới nào." />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
           {bookings.upcoming.map((booking) => (
@@ -25,10 +28,10 @@ const EmptyState = ({ message }) => (
     <div className="w-24 h-24 bg-surface-container-low rounded-full flex items-center justify-center mb-6 border border-outline-variant/30">
       <span className="material-symbols-outlined text-5xl text-outline">event_busy</span>
     </div>
-    <h2 className="font-h2 text-h2 text-on-surface mb-2">KhÃ´ng cÃ³ lá»‹ch háº¹n</h2>
+    <h2 className="font-h2 text-h2 text-on-surface mb-2">Không có lịch hẹn</h2>
     <p className="text-on-surface-variant max-w-md mx-auto mb-8 font-body-md">{message}</p>
     <button className="px-10 py-4 bg-primary text-on-primary rounded-2xl font-h3 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all active:translate-y-0">
-      Äáº·t lá»‹ch ngay
+      Đặt lịch ngay
     </button>
   </div>
 );

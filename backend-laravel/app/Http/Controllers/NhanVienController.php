@@ -211,4 +211,114 @@ class NhanVienController extends Controller
             'experience'   => 'Chuyên gia',
         ];
     }
+
+    public function dashboard(Request $request)
+    {
+        try {
+            $taiKhoan = $request->user();
+            $nhanVien = $taiKhoan->nhanVien;
+
+            if (!$nhanVien) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin nhân viên.'], 404);
+            }
+
+            $thuNhapThangNay = DB::table('CaLamViec')
+                ->where('nhan_vien_id', $nhanVien->id)
+                ->where('trang_thai_ca', 'DaHoanThanh')
+                ->whereMonth('ngay_lam', now()->month)
+                ->whereYear('ngay_lam', now()->year)
+                ->sum('thuc_nhan_nv');
+
+            $caTiepTheo = \App\Models\CaLamViec::with(['donHang.khachHang'])
+                ->where('nhan_vien_id', $nhanVien->id)
+                ->whereIn('trang_thai_ca', ['DaNhan', 'ChoXacNhan', 'ChoNhanVienChiDinhXacNhan'])
+                ->where(function($query) {
+                    $query->where('ngay_lam', '>', now()->toDateString())
+                          ->orWhere(function($q) {
+                              $q->where('ngay_lam', now()->toDateString())
+                                ->where('gio_bat_dau', '>', now()->toTimeString());
+                          });
+                })
+                ->orderBy('ngay_lam', 'asc')
+                ->orderBy('gio_bat_dau', 'asc')
+                ->first();
+
+            $caTiepTheoData = null;
+            if ($caTiepTheo) {
+                $gio_bat_dau = \Carbon\Carbon::parse($caTiepTheo->gio_bat_dau)->format('H:i');
+                $ngay_lam = \Carbon\Carbon::parse($caTiepTheo->ngay_lam);
+                $ngayHienThi = $ngay_lam->isToday() ? "Hôm nay" : ($ngay_lam->isTomorrow() ? "Ngày mai" : $ngay_lam->format('d/m/Y'));
+                
+                $caTiepTheoData = [
+                    'thoi_gian_hien_thi' => "$gio_bat_dau $ngayHienThi",
+                    'dia_chi' => $caTiepTheo->dia_chi_lam_viec,
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'thu_nhap_thang_nay' => $thuNhapThangNay,
+                    'ca_hoan_thanh' => $nhanVien->tong_so_ca_hoan_thanh,
+                    'danh_gia_sao' => (float)$nhanVien->danh_gia_sao_trung_binh,
+                    'ca_tiep_theo' => $caTiepTheoData
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Dashboard Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], 500);
+        }
+    }
+
+    public function wallet(Request $request)
+    {
+        try {
+            $taiKhoan = $request->user();
+            \Illuminate\Support\Facades\Log::info("Wallet endpoint called by user: " . ($taiKhoan ? $taiKhoan->id : 'null'));
+            if (!$taiKhoan) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy tài khoản.'], 404);
+            }
+
+            $viTien = \App\Models\ViTien::where('tai_khoan_id', $taiKhoan->id)->first();
+            if (!$viTien) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'balance' => 0,
+                        'transactions' => []
+                    ]
+                ]);
+            }
+
+            $transactions = \App\Models\GiaoDichVi::where('vi_tien_id', $viTien->id)
+                ->orderBy('thoi_gian', 'desc')
+                ->get()
+                ->map(function($txn) {
+                    $type = 'deposit';
+                    if ($txn->loai_giao_dich === 'RutTien') $type = 'withdraw';
+                    elseif (in_array($txn->loai_giao_dich, ['NhanLuongCaLam', 'HoanTien'])) $type = 'income';
+                    elseif (in_array($txn->loai_giao_dich, ['ThanhToanDonHang', 'PhatHuyDon'])) $type = 'penalty';
+
+                    return [
+                        'id' => $txn->ma_giao_dich,
+                        'type' => $type,
+                        'amount' => (float)$txn->so_tien,
+                        'date' => \Carbon\Carbon::parse($txn->thoi_gian)->format('Y-m-d'),
+                        'status' => $txn->trang_thai,
+                        'description' => $txn->noi_dung
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'balance' => (float)$viTien->so_du,
+                    'transactions' => $transactions
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Wallet Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], 500);
+        }
+    }
 }

@@ -1,5 +1,7 @@
-import React, { useState, createContext, useContext } from 'react';
+import React, { useState, useEffect, useMemo, createContext, useContext } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import khachHangApi from '../../../api/khachHangApi';
+import { mapDonHangToBookingCard } from './BookingUtils';
 
 // Context
 const BookingFilterContext = createContext();
@@ -8,7 +10,49 @@ export const useBookingFilter = () => useContext(BookingFilterContext);
 
 const MyBookingsLayout = () => {
   const [activeFilter, setActiveFilter] = useState('all');
+  const [rawMappedData, setRawMappedData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        setLoading(true);
+        const response = await khachHangApi.getMyBookings();
+        if (response.success) {
+          const rawData = response.data || [];
+          const mappedData = rawData.map(mapDonHangToBookingCard);
+          setRawMappedData(mappedData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch bookings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBookings();
+  }, []);
+
+  const filteredData = useMemo(() => {
+    return rawMappedData.filter(b => {
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'single') return b.loaiGoiId === 1 && !b.isLapLaiHangTuan;
+      if (activeFilter === 'monthly') return b.loaiGoiId === 2;
+      if (activeFilter === 'recurring') return b.loaiGoiId === 1 && b.isLapLaiHangTuan;
+      if (activeFilter === '247') return b.loaiGoiId === 3;
+      return true;
+    });
+  }, [rawMappedData, activeFilter]);
+
+  const bookings = useMemo(() => {
+    return {
+      upcoming: filteredData.filter(b => b.rawStatus === 'ChoXuLy'),
+      active: filteredData.filter(b => b.rawStatus === 'DangThucHien'),
+      completed: filteredData.filter(b => b.rawStatus === 'DaHoanThanh' || b.rawStatus === 'DaHuy'),
+      all: filteredData
+    };
+  }, [filteredData]);
+
 
   const handleFilter = (type) => {
     setActiveFilter(type);
@@ -20,7 +64,7 @@ const MyBookingsLayout = () => {
   };
 
   return (
-    <BookingFilterContext.Provider value={{ activeFilter, setActiveFilter }}>
+    <BookingFilterContext.Provider value={{ activeFilter, setActiveFilter, bookings, loading }}>
       <main className="pt-32 pb-section-padding px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-screen">
         <div className="mb-10">
           <h1 className="font-h1 text-h1 text-on-surface text-primary mb-2">Quản lý lịch hẹn</h1>
@@ -37,21 +81,17 @@ const MyBookingsLayout = () => {
               <div className="font-h3 text-h3 mb-4 text-on-surface px-2">Loại dịch vụ</div>
 
               {/* TẤT CẢ */}
-              <NavLink
-                to="/my-bookings"
-                end
-                onClick={() => setActiveFilter('all')}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-label-sm ${
-                    (isActive && activeFilter === 'all')
-                      ? 'bg-surface-container-low text-primary font-semibold shadow-sm border-l-4 border-primary'
-                      : 'text-on-surface-variant hover:bg-surface-container hover:text-primary'
-                  }`
-                }
+              <button
+                onClick={() => handleFilter('all')}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-label-sm w-full text-left ${
+                  activeFilter === 'all'
+                    ? 'bg-surface-container-low text-primary font-semibold shadow-sm border-l-4 border-primary'
+                    : 'text-on-surface-variant hover:bg-surface-container hover:text-primary'
+                }`}
               >
                 <span className="material-symbols-outlined">list_alt</span>
                 Tất cả
-              </NavLink>
+              </button>
 
               {/* Divider */}
               <div className="mt-3 mb-1 px-2">
@@ -97,6 +137,19 @@ const MyBookingsLayout = () => {
               >
                 <span className="material-symbols-outlined">autorenew</span>
                 Gói lặp lại
+              </button>
+
+              {/* Gói 24/7 */}
+              <button
+                onClick={() => handleFilter('247')}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-label-sm w-full text-left ${
+                  activeFilter === '247'
+                    ? 'bg-surface-container-low text-primary font-semibold shadow-sm border-l-4 border-primary'
+                    : 'text-on-surface-variant hover:bg-surface-container hover:text-primary'
+                }`}
+              >
+                <span className="material-symbols-outlined">home_work</span>
+                Gói 24/7
               </button>
 
               {/* Support Card */}

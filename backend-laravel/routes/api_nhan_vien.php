@@ -8,6 +8,12 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
 
     // Hồ sơ nhân viên
     Route::get('/profile', [NhanVienController::class, 'profile']);
+    
+    // Dashboard (Thống kê & lịch làm việc)
+    Route::get('/dashboard', [NhanVienController::class, 'dashboard']);
+
+    // Ví và Thu nhập
+    Route::get('/wallet', [NhanVienController::class, 'wallet']);
 
     // Quản lý ca làm việc (Nhận ca / Cập nhật tiến độ dọn dẹp)
     Route::get('/ca-lam/cho-nhan', [CaLamViecController::class, 'getAvailableJobs']); 
