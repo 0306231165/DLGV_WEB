@@ -1604,7 +1604,7 @@ const BookingDetailPage = () => {
                   <span className="text-on-surface font-bold">{fmt(booking.payment.total)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm font-medium">
-                  <span className="text-on-surface-variant">Đã dùng ({booking.packageInfo.completedSessions} ca):</span>
+                  <span className="text-on-surface-variant">Đã dùng ({booking.isPackage ? booking.packageInfo.completedSessions : 0} ca):</span>
                   <span className="text-on-surface font-bold">-{fmt(refundData.usedAmount)}</span>
                 </div>
                 <div className="h-px w-full bg-outline-variant/20 border-dashed" />
