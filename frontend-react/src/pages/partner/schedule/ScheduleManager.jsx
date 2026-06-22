@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-
+import nhanVienApi from "../../../api/nhanVienApi";
 // ===== PORTAL ROOT (singleton) =====
 let _portalRoot = null;
 const getPortalRoot = () => {
@@ -13,10 +13,10 @@ const getPortalRoot = () => {
   return _portalRoot;
 };
 
-const TODAY = new Date("2026-06-08");
+const TODAY = new Date();
 
 // ===== CUSTOM DATE PICKER =====
-const CustomDatePicker = ({ value, onChange, min, max, label }) => {
+const CustomDatePicker = ({ value, onChange, min, max, label, disabled }) => {
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(null);
   const [viewMonth, setViewMonth] = useState(null);
@@ -196,8 +196,9 @@ const CustomDatePicker = ({ value, onChange, min, max, label }) => {
       )}
       <button
         type="button"
+        disabled={disabled}
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 border border-slate-200 rounded-xl px-3 py-2.5 bg-white hover:border-emerald-400 transition-all shadow-sm text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+        className={`w-full flex items-center justify-between gap-2 border border-slate-200 rounded-xl px-3 py-2.5 shadow-sm text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-100 ${disabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed opacity-70' : 'bg-white hover:border-emerald-400 transition-all text-slate-700'}`}
       >
         <span className="flex items-center gap-2">
           <span className="material-symbols-outlined text-emerald-500 text-base">calendar_month</span>
@@ -679,24 +680,44 @@ const ScheduleManager = () => {
   const [activeTab, setActiveTab] = useState("calendar");
   const [hasRegisteredContract, setHasRegisteredContract] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [isEditContractMode, setIsEditContractMode] = useState(false);
 
-  const [timelineDays] = useState([
-    { dateStr: "08/06/2026", label: "Thứ 2", isToday: true, status: "has-jobs" },
-    { dateStr: "09/06/2026", label: "Thứ 3", isToday: false, status: "has-jobs" },
-    { dateStr: "10/06/2026", label: "Thứ 4", isToday: false, status: "available" },
-    { dateStr: "11/06/2026", label: "Thứ 5", isToday: false, status: "has-jobs" },
-    { dateStr: "12/06/2026", label: "Thứ 6", isToday: false, status: "available" },
-    { dateStr: "13/06/2026", label: "Thứ 7", isToday: false, status: "available" },
-    { dateStr: "14/06/2026", label: "CN", isToday: false, status: "available" },
-  ]);
+  const generateTimelineDays = () => {
+    const days = [];
+    const t = new Date();
+    const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(t);
+      d.setDate(t.getDate() + i);
+      const dateStr = String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+      days.push({
+        dateStr,
+        label: dayNames[d.getDay()],
+        isToday: i === 0,
+        status: "available",
+      });
+    }
+    return days;
+  };
 
-  const [selectedDate, setSelectedDate] = useState("08/06/2026");
+  const [timelineDays, setTimelineDays] = useState(generateTimelineDays());
+  const [selectedDate, setSelectedDate] = useState(generateTimelineDays()[0].dateStr);
 
-  const [contractForm, setContractForm] = useState({
-    startDate: "2026-06-08",
-    endDate: "2026-08-08",
-    selectedDays: [],
-    timeSlots: [],
+  const [contractForm, setContractForm] = useState(() => {
+    const minStart = new Date(TODAY);
+    minStart.setDate(minStart.getDate() + 4);
+    const minStartStr = minStart.toISOString().split("T")[0];
+
+    const minEnd = new Date(minStart);
+    minEnd.setMonth(minEnd.getMonth() + 2);
+    const minEndStr = minEnd.toISOString().split("T")[0];
+
+    return {
+      startDate: minStartStr,
+      endDate: minEndStr,
+      selectedDays: [],
+      timeSlots: [],
+    };
   });
   const [tempSlotUI, setTempSlotUI] = useState({
     startHour: "08", startMin: "00", endHour: "12", endMin: "00",
@@ -711,32 +732,14 @@ const ScheduleManager = () => {
   const [cancelType, setCancelType] = useState("one_shift");
   const [cancelDateRange, setCancelDateRange] = useState({ from: "", to: "" });
   const [isBlockCalendarOpen, setIsBlockCalendarOpen] = useState(false);
-  const [currentTime] = useState({ dateStr: "08/06/2026", hour: 7, minute: 35 });
+  
+
   const [selectedJob, setSelectedJob] = useState(null);
 
-  const [calendarJobs, setCalendarJobs] = useState([
-    { id: "CAL-901", customer: "Chị Mai Anh", phone: "0901.234.567", dateStr: "08/06/2026", time: "08:00 - 11:00", address: "Phòng 1205, Chung cư Sunrise City, Quận 7", service: "Dọn dẹp nhà theo giờ", bookingType: "MONTHLY", status: "Sắp diễn ra", jobNote: "Nhà có em bé đang ngủ, làm nhẹ nhàng.", area: "55 – 85m²", duration: "3 tiếng", staffCount: 1, totalSessions: 8, sessionIndex: 3, packageDuration: "2 tháng", district: "Quận 7, TP.HCM", addressNote: "Thang máy số 2, bấm tầng 12", staffRequest: null, paymentMethod: "Ví CleanTrust", price: "240.000đ" },
-    { id: "CAL-902", customer: "Anh Tuấn Trần", phone: "0918.889.991", dateStr: "09/06/2026", time: "14:00 - 18:00", address: "Số 45 Đường số 2, Cư xá Chu Văn An, Bình Tân", service: "Tổng vệ sinh chuyên sâu", bookingType: "SINGLE", status: "Sắp diễn ra", jobNote: "Lau kỹ kính ban công.", area: "85 – 120m²", duration: "4 tiếng", staffCount: 1, totalSessions: null, sessionIndex: null, packageDuration: null, district: "Bình Tân, TP.HCM", addressNote: null, staffRequest: null, paymentMethod: "Tiền mặt", price: "350.000đ" },
-    { id: "CAL-903", customer: "Chị Thảo Vy", phone: "0933.445.566", dateStr: "11/06/2026", time: "18:00 - 21:00", address: "Vinhomes Central Park, Bình Thạnh", service: "Hỗ trợ y tế & Nấu ăn gia đình", bookingType: "247", status: "Sắp diễn ra", jobNote: "Yêu cầu nhân sự chuyên môn cao.", area: "Dưới 55m²", duration: "3 tiếng", staffCount: 1, totalSessions: 30, sessionIndex: 7, packageDuration: "1 tháng", district: "Bình Thạnh, TP.HCM", addressNote: "Gửi xe hầm B2, nhắn tin trước khi lên", staffRequest: "Khách yêu cầu nhân viên quen: Chị Hương", paymentMethod: "MoMo / ZaloPay", price: "310.000đ" },
-    { id: "AUTO-301", customer: "Chị Lan Phương", phone: "0909.112.233", dateStr: "13/06/2026", time: "08:00 - 11:00", address: "Chung cư Masteri Thảo Điền, Quận 2", service: "Dọn dẹp định kỳ cuối tuần", bookingType: "MONTHLY", status: "Sắp diễn ra", jobNote: null, autoMatched: true, area: "55 – 85m²", duration: "3 tiếng", staffCount: 1, totalSessions: 12, sessionIndex: 5, packageDuration: "3 tháng", district: "Quận 2, TP.HCM", addressNote: null, staffRequest: null, paymentMethod: "Ví CleanTrust", price: "220.000đ" },
-    { id: "AUTO-302", customer: "Anh Minh Khoa", phone: "0977.654.321", dateStr: "14/06/2026", time: "14:00 - 17:00", address: "Số 12 Nguyễn Thị Minh Khai, Quận 1", service: "Vệ sinh văn phòng", bookingType: "RECURRING", status: "Sắp diễn ra", jobNote: null, autoMatched: true, area: "55 – 85m²", duration: "3 tiếng", staffCount: 1, totalSessions: 12, sessionIndex: 5, packageDuration: "3 tháng", district: "Quận 1, TP.HCM", addressNote: null, staffRequest: null, paymentMethod: "Ví CleanTrust", price: "220.000đ" },
-  ]);
-
-  const [jobOffers, setJobOffers] = useState([
-    { id: "OFF-112", type: "FREELANCE", customer: "Hệ thống điều phối Chợ Việc", dateStr: "10/06/2026", time: "09:00 - 12:00", address: "Tòa Landmark 4, Vinhomes Central Park", district: "Bình Thạnh, TP.HCM", addressNote: null, service: "Vệ sinh máy lạnh & Máy giặt", bookingType: "SINGLE", price: "280.000đ", duration: "3 tiếng", staffCount: 1, deviceCount: 2, deviceType: "1 máy lạnh 1HP + 1 máy giặt cửa trước", totalSessions: null, sessionIndex: null, packageDuration: null, area: null, staffRequest: null, paymentMethod: "Tiền mặt", jobNote: null },
-    { id: "OFF-115", type: "DIRECT", customer: "Cô Thu Thủy (Khách quen đặt định kỳ)", dateStr: "12/06/2026", time: "14:00 - 17:00", address: "120/15A Lê Văn Sỹ, Phú Nhuận", district: "Phú Nhuận, TP.HCM", addressNote: "Nhà mặt tiền, cổng sắt xanh", service: "Chăm sóc người già + Dọn dẹp", bookingType: "RECURRING", price: "220.000đ", duration: "3 tiếng", staffCount: 1, careShift: "Ca chiều (14:00 – 17:00)", totalSessions: 12, sessionIndex: 5, packageDuration: "3 tháng", area: null, staffRequest: "Khách chỉ định: nhân viên quen của hộ", paymentMethod: "Ví CleanTrust", jobNote: "Cụ bà 78 tuổi, đi lại khó khăn. Cần hỗ trợ tắm và nấu cháo." },
-  ]);
-
-  const [acceptedJobs, setAcceptedJobs] = useState([
-    { id: "AUTO-301", type: "AUTO", customer: "Chị Lan Phương", phone: "0909.112.233", dateStr: "13/06/2026", time: "08:00 - 11:00", address: "Chung cư Masteri Thảo Điền, Quận 2", service: "Dọn dẹp định kỳ cuối tuần", bookingType: "MONTHLY", status: "Sắp diễn ra", jobNote: null, autoMatched: true, area: "55 – 85m²", duration: "3 tiếng", staffCount: 1, totalSessions: 12, sessionIndex: 5, packageDuration: "3 tháng", district: "Quận 2, TP.HCM", addressNote: null, staffRequest: null, paymentMethod: "Ví CleanTrust", price: "220.000đ" },
-    { id: "AUTO-302", type: "AUTO", customer: "Anh Minh Khoa", phone: "0977.654.321", dateStr: "14/06/2026", time: "14:00 - 17:00", address: "Số 12 Nguyễn Thị Minh Khai, Quận 1", service: "Vệ sinh văn phòng", bookingType: "RECURRING", status: "Sắp diễn ra", jobNote: null, autoMatched: true, area: "55 – 85m²", duration: "3 tiếng", staffCount: 1, totalSessions: 12, sessionIndex: 5, packageDuration: "3 tháng", district: "Quận 1, TP.HCM", addressNote: null, staffRequest: null, paymentMethod: "Ví CleanTrust", price: "220.000đ" },
-  ]);
-
-  const [jobHistory, setJobHistory] = useState([
-    { id: "CAL-800", customer: "Chị Ngọc Hà", phone: "0912.333.444", dateStr: "05/06/2026", time: "08:00 - 11:00", service: "Dọn dẹp nhà theo giờ", bookingType: "MONTHLY", price: "240.000đ", closedReason: "Hoàn thành", closedBy: "staff", closedAt: "05/06/2026 11:10", address: "Số 12 Lê Lợi, Quận 1" },
-    { id: "CAL-801", customer: "Anh Đức Minh", phone: "0977.111.222", dateStr: "06/06/2026", time: "14:00 - 17:00", service: "Tổng vệ sinh chuyên sâu", bookingType: "SINGLE", price: "350.000đ", closedReason: "Khách hủy", closedBy: "customer", closedAt: "06/06/2026 09:30", address: "Số 12 Lê Lợi, Quận 1" },
-    { id: "CAL-802", customer: "Chị Thanh Loan", phone: "0901.555.666", dateStr: "07/06/2026", time: "09:00 - 12:00", service: "Chăm sóc người già + Dọn dẹp", bookingType: "RECURRING", price: "220.000đ", closedReason: "Nhân viên hủy", closedBy: "staff", closedAt: "07/06/2026 07:15", address: "Số 12 Lê Lợi, Quận 1" },
-  ]);
+  const [calendarJobs, setCalendarJobs] = useState([]);
+  const [jobOffers, setJobOffers] = useState([]);
+  const [acceptedJobs, setAcceptedJobs] = useState([]);
+  const [jobHistory, setJobHistory] = useState([]);
 
   // ── Logic helpers ──────────────────────────────────────────────────────────
   const parseTimeToMinutes = (timeStr) => {
@@ -744,18 +747,163 @@ const ScheduleManager = () => {
     return h * 60 + m;
   };
 
-  const isCheckInAllowed = (job) => {
-    if (job.dateStr !== currentTime.dateStr) return false;
-    const [startStr] = job.time.split(" - ");
-    const jobStartMin = parseTimeToMinutes(startStr);
-    const nowMin = currentTime.hour * 60 + currentTime.minute;
-    return nowMin >= jobStartMin - 30 && nowMin <= jobStartMin + 60;
+  const formatMinutesToTime = (minutes) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   };
+
+
+
+  const mapCaLamViecToFrontend = (ca) => {
+    const parts = ca.ngay_lam ? ca.ngay_lam.split("-") : [];
+    const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : ca.ngay_lam;
+    
+    let district = "TP.HCM";
+    if (ca.dia_chi_lam_viec) {
+      const addrParts = ca.dia_chi_lam_viec.split(',');
+      if (addrParts.length > 1) {
+        district = addrParts[addrParts.length - 2].trim();
+      }
+    }
+
+    return {
+        id: ca.id,
+        don_hang_id: ca.don_hang_id,
+        type: ca.trang_thai_ca === 'ChoNhanVienChiDinhXacNhan' ? 'DIRECT' : (ca.loai_ghep === 'TuDong' ? 'AUTO' : 'FREELANCE'),
+        customer: ca.don_hang?.ho_ten_thuc_te || ca.don_hang?.khach_hang?.tai_khoan?.ho_ten,
+        phone: ca.don_hang?.sdt_thuc_te || ca.don_hang?.khach_hang?.tai_khoan?.so_dien_thoai,
+        dateStr: dateStr,
+        time: ca.gio_bat_dau ? `${ca.gio_bat_dau.slice(0,5)} - ${formatMinutesToTime(parseTimeToMinutes(ca.gio_bat_dau.slice(0,5)) + ca.thoi_gian_lam_phut)}` : "",
+        address: ca.dia_chi_lam_viec,
+        service: ca.dich_vu?.ten_dich_vu || ca.don_hang?.dich_vu_loai_goi?.dich_vu?.ten_dich_vu,
+        bookingType: ca.loai_goi_ca_lam === 'CaLe' ? 'SINGLE' : (ca.loai_goi_ca_lam === 'GoiThang' ? 'MONTHLY' : '247'),
+        status: ca.trang_thai_ca === 'DaNhan' ? 'Sắp diễn ra' : (ca.trang_thai_ca === 'DangThucHien' ? 'Đang làm' : ca.trang_thai_ca),
+        price: `${Number(ca.thuc_nhan_nv).toLocaleString('vi-VN')}đ`,
+        duration: ca.thoi_gian_lam_phut ? `${Math.round(ca.thoi_gian_lam_phut / 60)} tiếng` : "",
+        staffCount: 1, 
+        jobNote: ca.don_hang?.ghi_chu_cho_nhan_vien,
+        totalSessions: ca.don_hang?.tong_so_buoi,
+        district: district,
+        paymentMethod: ca.don_hang?.phuong_thuc_tt,
+        trang_thai_ca: ca.trang_thai_ca
+    };
+  };
+
+  const fetchJobsData = async () => {
+    try {
+      const [resAvail, resAccept, resWork, resHist] = await Promise.all([
+         nhanVienApi.getAvailableJobs(),
+         nhanVienApi.getAcceptedJobs(),
+         nhanVienApi.getWorkingSchedule(),
+         nhanVienApi.getJobHistory()
+      ]);
+      
+      if (resAvail && resAvail.success) {
+         setJobOffers(resAvail.data.map(mapCaLamViecToFrontend));
+      }
+      if (resAccept && resAccept.success) {
+         setAcceptedJobs(resAccept.data.map(mapCaLamViecToFrontend));
+      }
+      if (resWork && resWork.success) {
+         setCalendarJobs(resWork.data.map(mapCaLamViecToFrontend));
+      }
+      if (resHist && resHist.success) {
+         setJobHistory(resHist.data.map(mapCaLamViecToFrontend));
+      }
+    } catch (e) {
+      console.error("Lỗi fetch dữ liệu ca làm việc:", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobsData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch Hợp đồng Lịch Nghỉ khi mount
+  useEffect(() => {
+    const fetchCamKet = async () => {
+      try {
+        const res = await nhanVienApi.getCamKetLichNghi();
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          const list = res.data;
+          const first = list[0];
+          
+          if (first.ngay_ket_thuc_ap_dung) {
+            const endDate = new Date(first.ngay_ket_thuc_ap_dung);
+            const now = new Date(TODAY);
+            endDate.setHours(0, 0, 0, 0);
+            now.setHours(0, 0, 0, 0);
+            
+            if (endDate < now) {
+              setHasRegisteredContract(false);
+              return;
+            }
+          }
+          
+          setHasRegisteredContract(true);
+          
+          // Reverse Parse
+          const dayMapInverse = { 0: "Chủ Nhật", 1: "Thứ 2", 2: "Thứ 3", 3: "Thứ 4", 4: "Thứ 5", 5: "Thứ 6", 6: "Thứ 7" };
+          const offDays = list.filter(x => x.thu_trong_tuan !== null).map(x => x.thu_trong_tuan);
+          const workingDays = [0, 1, 2, 3, 4, 5, 6].filter(d => !offDays.includes(d)).map(d => dayMapInverse[d]);
+          
+          const gapList = list.filter(x => x.gio_bat_dau_nghi !== null).sort((a, b) => {
+            return parseTimeToMinutes(a.gio_bat_dau_nghi.slice(0, 5)) - parseTimeToMinutes(b.gio_bat_dau_nghi.slice(0, 5));
+          });
+          
+          let currentMin = 6 * 60;
+          const timeSlotsParsed = [];
+          
+          gapList.forEach(gap => {
+            const gapStartMin = parseTimeToMinutes(gap.gio_bat_dau_nghi.slice(0, 5));
+            const gapEndMin = parseTimeToMinutes(gap.gio_ket_thuc_nghi.slice(0, 5));
+            
+            if (gapStartMin > currentMin) {
+              timeSlotsParsed.push(`${formatMinutesToTime(currentMin)} - ${formatMinutesToTime(gapStartMin)}`);
+            }
+            currentMin = gapEndMin;
+          });
+          
+          if (currentMin < 23 * 60) {
+             timeSlotsParsed.push(`${formatMinutesToTime(currentMin)} - 23:00`);
+          }
+          
+          setContractForm(prev => ({
+             ...prev,
+             startDate: first.ngay_bat_dau_ap_dung,
+             endDate: first.ngay_ket_thuc_ap_dung,
+             selectedDays: workingDays,
+             timeSlots: timeSlotsParsed
+          }));
+          
+          setContractBlockedDates(
+            generateContractDays(first.ngay_bat_dau_ap_dung, first.ngay_ket_thuc_ap_dung, workingDays, calendarJobs)
+          );
+        } else {
+          setHasRegisteredContract(false);
+        }
+      } catch (err) {
+        console.error("Lỗi fetch hợp đồng:", err);
+      }
+    };
+    fetchCamKet();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // Sync hasActiveJob khi calendarJobs thay đổi
   useEffect(() => {
-    if (Object.keys(contractBlockedDates).length === 0) return;
     const activeJobDates = new Set(calendarJobs.map((j) => j.dateStr));
+    
+    // Đồng bộ cho timelineDays
+    setTimelineDays(prev => prev.map(d => ({
+      ...d,
+      status: activeJobDates.has(d.dateStr) ? "has-jobs" : "available"
+    })));
+
+    if (Object.keys(contractBlockedDates).length === 0) return;
     setContractBlockedDates((prev) => {
       const updated = { ...prev };
       let changed = false;
@@ -774,48 +922,68 @@ const ScheduleManager = () => {
 
 
 
-  const handleCheckIn = (id) => {
-    alert(`[Xác nhận chấm công] Ca làm ${id} đã bắt đầu tính giờ làm việc!`);
-    setCalendarJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: "Đang làm việc" } : j))
-    );
-    setSelectedJob((prev) => (prev ? { ...prev, status: "Đang làm việc" } : null));
+  const handleCancelAcceptedJob = async (id) => {
+    if (window.confirm("Bạn có chắc chắn muốn hủy nhận ca làm này không? Lịch sẽ được đưa trở lại chợ việc.")) {
+      try {
+        const res = await nhanVienApi.cancelAcceptedJob(id);
+        if (res && res.success) {
+          alert(res.message || "Đã hủy ca.");
+          fetchJobsData();
+          setSelectedJob(null);
+        } else {
+          alert(res?.message || "Hủy ca thất bại");
+        }
+      } catch (e) {
+        alert("Lỗi khi hủy ca.");
+      }
+    }
   };
 
-  const handleCompleteJob = (id) => {
-    alert(`[Chúc mừng] Bạn đã hoàn thành xuất sắc ca làm ${id}. Tiền công đã được cộng vào Ví đối tác!`);
-    const job = calendarJobs.find((j) => j.id === id);
-    if (job)
-      setJobHistory((prev) => [
-        { ...job, closedReason: "Hoàn thành", closedBy: "staff", closedAt: `${job.dateStr} (vừa xong)` },
-        ...prev,
-      ]);
-    setCalendarJobs((prev) => prev.filter((j) => j.id !== id));
-    setSelectedJob(null);
+  const handleUpdateProgress = async (id) => {
+    try {
+      const res = await nhanVienApi.updateProgress(id);
+      if (res && res.success) {
+        alert(res.message);
+        fetchJobsData();
+        setSelectedJob(null);
+      } else {
+        alert(res?.message || "Cập nhật tiến độ thất bại");
+      }
+    } catch (e) {
+      alert("Lỗi khi cập nhật tiến độ.");
+    }
   };
 
-  const handleAcceptOffer = (job) => {
-    alert(
-      `[Thành công] Bạn đã nhận đơn lịch ${job.id}.\nĐơn đã được thêm vào "Lịch đã nhận" và đồng bộ sang "Lịch làm việc" ngày ${job.dateStr}.`
-    );
-    const formattedJob = {
-      ...job,
-      customer: job.customer.includes("Khách quen") ? "Cô Thu Thủy" : job.customer,
-      status: "Sắp diễn ra",
-      autoMatched: false,
-    };
-    setAcceptedJobs((prev) => [formattedJob, ...prev]);
-    setCalendarJobs((prev) => [formattedJob, ...prev]);
-    setJobOffers((prev) => prev.filter((o) => o.id !== job.id));
-    setSelectedJob(null);
+  const handleAcceptOffer = async (job) => {
+    try {
+      const res = await nhanVienApi.acceptJob(job.id);
+      if (res && res.success) {
+        alert(`[Thành công] Bạn đã nhận đơn lịch ${job.id}.\nĐơn đã được thêm vào "Lịch đã nhận" và đồng bộ sang "Lịch làm việc".`);
+        fetchJobsData(); // Cập nhật lại 3 danh sách
+        setSelectedJob(null);
+      } else {
+        alert(res?.message || "Nhận lịch thất bại");
+      }
+    } catch (e) {
+      alert("Lỗi khi nhận lịch. Có thể lịch này không còn khả dụng.");
+    }
   };
 
-  const handleRejectOffer = (id) => {
+  const handleRejectOffer = async (id) => {
     const reason = prompt("Vui lòng nhập lý do từ chối đơn lịch này:");
     if (reason !== null) {
-      alert(`Đã từ chối đơn lịch ${id}.`);
-      setJobOffers((prev) => prev.filter((o) => o.id !== id));
-      setSelectedJob(null);
+      try {
+        const res = await nhanVienApi.rejectJob(id);
+        if (res && res.success) {
+          alert(`Đã từ chối đơn lịch ${id}.`);
+          fetchJobsData();
+          setSelectedJob(null);
+        } else {
+          alert(res?.message || "Từ chối lịch thất bại");
+        }
+      } catch (e) {
+        alert("Lỗi khi từ chối lịch.");
+      }
     }
   };
 
@@ -823,8 +991,24 @@ const ScheduleManager = () => {
     setFormError("");
     const startMin = parseInt(tempSlotUI.startHour) * 60 + parseInt(tempSlotUI.startMin);
     const endMin = parseInt(tempSlotUI.endHour) * 60 + parseInt(tempSlotUI.endMin);
+
+    if (startMin < 6 * 60 || endMin > 23 * 60) {
+      setFormError("Thời gian làm việc phải nằm trong khoảng từ 06:00 đến 23:00!");
+      return;
+    }
+
     if (endMin <= startMin) { setFormError("Giờ kết thúc phải sau giờ bắt đầu!"); return; }
     if (contractForm.timeSlots.length >= 2) { setFormError("Đã đủ tối đa 2 khung giờ cam kết!"); return; }
+
+    if (contractForm.timeSlots.length === 1) {
+      const existEnd = contractForm.timeSlots[0].split(" - ")[1];
+      const eEndMin = parseTimeToMinutes(existEnd);
+      if (startMin < eEndMin) {
+        setFormError("Khung giờ thứ 2 phải bắt đầu sau khi khung giờ thứ 1 kết thúc!");
+        return;
+      }
+    }
+
     for (const slot of contractForm.timeSlots) {
       const [existStart, existEnd] = slot.split(" - ");
       const eStartMin = parseTimeToMinutes(existStart);
@@ -912,7 +1096,75 @@ const ScheduleManager = () => {
     setCancelDateRange({ from: "", to: "" });
   };
 
-  const submitContractForm = () => {
+  const calculateLichNghiPayload = (selectedDays, timeSlots, startDate, endDate) => {
+    const payload = [];
+    const dayMap = { "Chủ Nhật": 0, "Thứ 2": 1, "Thứ 3": 2, "Thứ 4": 3, "Thứ 5": 4, "Thứ 6": 5, "Thứ 7": 6 };
+    const allDays = [0, 1, 2, 3, 4, 5, 6];
+    
+    // 1. Tính các ngày nghỉ trọn ngày
+    const workingDays = selectedDays.map(d => dayMap[d]);
+    const offDays = allDays.filter(d => !workingDays.includes(d));
+    
+    offDays.forEach(day => {
+      payload.push({
+        loai_nghi: 'DinhKy',
+        thu_trong_tuan: day,
+        ngay_nghi: null,
+        gio_bat_dau_nghi: null,
+        gio_ket_thuc_nghi: null,
+        ngay_bat_dau_ap_dung: startDate,
+        ngay_ket_thuc_ap_dung: endDate,
+        ly_do: day === 0 ? 'Nghỉ định kỳ Chủ Nhật' : `Nghỉ định kỳ thứ ${day + 1}`
+      });
+    });
+
+    // 2. Tính các khung giờ nghỉ
+    // Sắp xếp timeSlots
+    const sortedSlots = [...timeSlots].sort((a, b) => {
+      return parseTimeToMinutes(a.split(' - ')[0]) - parseTimeToMinutes(b.split(' - ')[0]);
+    });
+
+    let currentMin = 6 * 60; // Bắt đầu từ 06:00
+    const endOfDayMin = 23 * 60; // Kết thúc lúc 23:00
+
+    sortedSlots.forEach((slot, index) => {
+      const [startStr, endStr] = slot.split(' - ');
+      const startMin = parseTimeToMinutes(startStr);
+      const endMin = parseTimeToMinutes(endStr);
+
+      if (startMin > currentMin) {
+        payload.push({
+          loai_nghi: 'DinhKy',
+          thu_trong_tuan: null,
+          ngay_nghi: null,
+          gio_bat_dau_nghi: formatMinutesToTime(currentMin) + ':00',
+          gio_ket_thuc_nghi: startStr + ':00',
+          ngay_bat_dau_ap_dung: startDate,
+          ngay_ket_thuc_ap_dung: endDate,
+          ly_do: 'Nghỉ ngoài khung giờ làm việc'
+        });
+      }
+      currentMin = endMin;
+    });
+
+    if (currentMin < endOfDayMin) {
+      payload.push({
+        loai_nghi: 'DinhKy',
+        thu_trong_tuan: null,
+        ngay_nghi: null,
+        gio_bat_dau_nghi: formatMinutesToTime(currentMin) + ':00',
+        gio_ket_thuc_nghi: '23:00:00',
+        ngay_bat_dau_ap_dung: startDate,
+        ngay_ket_thuc_ap_dung: endDate,
+        ly_do: 'Nghỉ ngoài khung giờ làm việc'
+      });
+    }
+
+    return payload;
+  };
+
+
+  const submitContractForm = async () => {
     if (contractForm.selectedDays.length === 0) {
       alert("Vui lòng chọn ít nhất 1 ngày rảnh trong tuần!");
       return;
@@ -921,11 +1173,44 @@ const ScheduleManager = () => {
       alert("Vui lòng thiết lập ít nhất 1 khung giờ làm việc trước khi kích hoạt!");
       return;
     }
-    setContractBlockedDates(
-      generateContractDays(contractForm.startDate, contractForm.endDate, contractForm.selectedDays, calendarJobs)
+
+    // --- Tính toán dữ liệu insert bảng LichNghi (DinhKy) ---
+    const lichNghiPayload = calculateLichNghiPayload(
+      contractForm.selectedDays, 
+      contractForm.timeSlots, 
+      contractForm.startDate, 
+      contractForm.endDate
     );
-    setHasRegisteredContract(true);
-    setIsContractModalOpen(false);
+
+    try {
+      await nhanVienApi.saveCamKetLichNghi(lichNghiPayload);
+      alert("Lưu hợp đồng cam kết thành công!");
+      
+      setContractBlockedDates(
+        generateContractDays(contractForm.startDate, contractForm.endDate, contractForm.selectedDays, calendarJobs)
+      );
+      setHasRegisteredContract(true);
+      setIsContractModalOpen(false);
+      setIsEditContractMode(false);
+    } catch (error) {
+      console.error(error);
+      alert("Có lỗi xảy ra khi lưu hợp đồng!");
+    }
+  };
+
+  const handleCancelContract = async () => {
+    if (window.confirm("Bạn có chắc chắn muốn hủy hợp đồng cam kết này không?")) {
+      try {
+        await nhanVienApi.cancelCamKetLichNghi();
+        alert("Hủy hợp đồng cam kết thành công!");
+        setHasRegisteredContract(false);
+        setContractBlockedDates({});
+        setContractForm((prev) => ({ ...prev, timeSlots: [], selectedDays: [] }));
+      } catch (error) {
+        console.error(error);
+        alert("Có lỗi xảy ra khi hủy hợp đồng!");
+      }
+    }
   };
 
   const renderBookingBadge = (type) => {
@@ -984,22 +1269,25 @@ const ScheduleManager = () => {
             </div>
             <div className="flex flex-wrap gap-2">
               <button
+                onClick={() => {
+                  setIsEditContractMode(true);
+                  setIsContractModalOpen(true);
+                }}
+                className="flex items-center gap-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-2 rounded-xl transition-all"
+              >
+                <span className="material-symbols-outlined text-sm">edit_calendar</span>Chỉnh sửa Lịch rảnh
+              </button>
+              <button
                 onClick={() => setIsBlockCalendarOpen(true)}
                 className="flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-2 rounded-xl transition-all"
               >
                 <span className="material-symbols-outlined text-sm">event_busy</span>Cài đặt lịch bận
               </button>
               <button
-                onClick={() => {
-                  if (window.confirm("Xóa hợp đồng và đăng ký lại?")) {
-                    setHasRegisteredContract(false);
-                    setContractBlockedDates({});
-                    setContractForm((prev) => ({ ...prev, timeSlots: [], selectedDays: [] }));
-                  }
-                }}
+                onClick={handleCancelContract}
                 className="text-xs font-bold text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 px-3 py-2 rounded-xl transition-all"
               >
-                Xóa làm lại
+                Hủy hợp đồng
               </button>
             </div>
           </div>
@@ -1045,7 +1333,9 @@ const ScheduleManager = () => {
       )}
 
       {/* TABS */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-2">
+      {hasRegisteredContract && (
+        <React.Fragment>
+          <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-2">
         {[
           { id: "calendar", icon: "calendar_view_month", label: "1. Lịch làm việc", badge: 0 },
           { id: "offers", icon: "explore", label: "2. Lịch mới / Đề xuất", badge: jobOffers.length },
@@ -1246,8 +1536,7 @@ const ScheduleManager = () => {
                 </div>
               ) : (
                 jobHistory.map((job) => {
-                  const isCompleted = job.closedReason === "Hoàn thành";
-                  const isCustomerCancel = job.closedReason === "Khách hủy";
+                  const isCompleted = job.status === "DaHoanThanh";
                   return (
                     <div
                       key={job.id}
@@ -1262,7 +1551,7 @@ const ScheduleManager = () => {
                             </span>
                             {renderBookingBadge(job.bookingType)}
                             <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${isCompleted ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
-                              {isCompleted ? "✓ Hoàn thành" : isCustomerCancel ? "Khách hủy" : "Nhân viên hủy"}
+                              {isCompleted ? "✓ Hoàn thành" : "Đã hủy"}
                             </span>
                           </div>
                           <h4 className="font-bold text-slate-700 text-sm">{job.service}</h4>
@@ -1386,32 +1675,25 @@ const ScheduleManager = () => {
               <div className="pt-3 border-t border-slate-100 space-y-2">
                 {selectedJob.origin === "calendar" && (
                   <div className="space-y-2">
-                    {selectedJob.status !== "Đang làm việc" && (
+                    {selectedJob.status === "Sắp diễn ra" && (
                       <button
-                        onClick={() => openCancelWorkflow(selectedJob)}
+                        onClick={() => handleCancelAcceptedJob(selectedJob.id)}
                         className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2 rounded-xl border border-rose-200 transition-all text-xs"
                       >
                         Hủy ca làm đã nhận
                       </button>
                     )}
                     {selectedJob.status === "Sắp diễn ra" && (
-                      isCheckInAllowed(selectedJob) ? (
-                        <button
-                          onClick={() => handleCheckIn(selectedJob.id)}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs"
-                        >
-                          Bấm chấm công (Vào làm)
-                        </button>
-                      ) : (
-                        <div className="w-full bg-slate-100 text-slate-400 font-bold py-2.5 rounded-xl text-xs text-center border border-slate-200 cursor-not-allowed">
-                          <span className="material-symbols-outlined text-xs mr-1 align-middle">schedule</span>
-                          Chấm công mở trước 30 phút giờ làm
-                        </div>
-                      )
-                    )}
-                    {selectedJob.status === "Đang làm việc" && (
                       <button
-                        onClick={() => handleCompleteJob(selectedJob.id)}
+                        onClick={() => handleUpdateProgress(selectedJob.id)}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs"
+                      >
+                        Bấm chấm công (Vào làm)
+                      </button>
+                    )}
+                    {selectedJob.status === "Đang làm" && (
+                      <button
+                        onClick={() => handleUpdateProgress(selectedJob.id)}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs"
                       >
                         Hoàn thành ca làm việc
@@ -1480,15 +1762,18 @@ const ScheduleManager = () => {
           )}
         </div>
       </div>
+        </React.Fragment>
+      )}
+
 
       {/* ===== CONTRACT MODAL ===== */}
-      {isContractModalOpen && !hasRegisteredContract && (
+      {isContractModalOpen && (!hasRegisteredContract || isEditContractMode) && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
             <div className="bg-slate-900 p-4 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 font-bold text-sm tracking-wide">
                 <span className="material-symbols-outlined text-emerald-500 text-xl">edit_calendar</span>
-                <span>ĐĂNG KÝ HỢP ĐỒNG CAM KẾT LỊCH RẢNH CỐ ĐỊNH</span>
+                <span>{isEditContractMode ? "CHỈNH SỬA LỊCH RẢNH HỢP ĐỒNG" : "ĐĂNG KÝ HỢP ĐỒNG CAM KẾT LỊCH RẢNH CỐ ĐỊNH"}</span>
               </div>
               <button
                 type="button"
@@ -1508,7 +1793,12 @@ const ScheduleManager = () => {
                   <CustomDatePicker
                     label="Ngày bắt đầu"
                     value={contractForm.startDate}
-                    min="2026-06-08"
+                    min={(() => {
+                      const d = new Date(TODAY);
+                      d.setDate(d.getDate() + 4);
+                      return d.toISOString().split("T")[0];
+                    })()}
+                    disabled={isEditContractMode}
                     onChange={(val) => {
                       const d = new Date(val);
                       d.setMonth(d.getMonth() + 2);
@@ -1523,6 +1813,7 @@ const ScheduleManager = () => {
                   <CustomDatePicker
                     label="Ngày kết thúc"
                     value={contractForm.endDate}
+                    disabled={isEditContractMode}
                     min={(() => {
                       const d = new Date(contractForm.startDate);
                       d.setMonth(d.getMonth() + 2);
@@ -1567,44 +1858,48 @@ const ScheduleManager = () => {
                     <span className="material-symbols-outlined text-sm">error</span>{formError}
                   </div>
                 )}
-                {contractForm.timeSlots.length < 2 ? (
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <TimePicker
-                        label="Từ giờ"
-                        hour={tempSlotUI.startHour}
-                        minute={tempSlotUI.startMin}
-                        onHourChange={(h) => setTempSlotUI((p) => ({ ...p, startHour: h }))}
-                        onMinuteChange={(m) => setTempSlotUI((p) => ({ ...p, startMin: m }))}
-                      />
-                      <TimePicker
-                        label="Đến giờ"
-                        hour={tempSlotUI.endHour}
-                        minute={tempSlotUI.endMin}
-                        onHourChange={(h) => setTempSlotUI((p) => ({ ...p, endHour: h }))}
-                        onMinuteChange={(m) => setTempSlotUI((p) => ({ ...p, endMin: m }))}
-                      />
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                      <span className="text-[11px] text-slate-500 font-medium">
-                        Dự kiến:{" "}
-                        <strong className="text-slate-700">{tempSlotUI.startHour}:{tempSlotUI.startMin}</strong>
-                        {" → "}
-                        <strong className="text-slate-700">{tempSlotUI.endHour}:{tempSlotUI.endMin}</strong>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={validateAndAddTimeSlot}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1 shadow-md transition-all active:scale-95 text-xs"
-                      >
-                        <span className="material-symbols-outlined text-sm">add_circle</span>Thêm khung giờ
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-amber-700 font-semibold text-[11px] bg-amber-50 p-3 rounded-xl border border-amber-200">
-                    🔒 Đã cấu hình đủ tối đa 2 khung giờ.
-                  </p>
+                {!isEditContractMode && (
+                  <>
+                    {contractForm.timeSlots.length < 2 ? (
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <TimePicker
+                            label="Từ giờ"
+                            hour={tempSlotUI.startHour}
+                            minute={tempSlotUI.startMin}
+                            onHourChange={(h) => setTempSlotUI((p) => ({ ...p, startHour: h }))}
+                            onMinuteChange={(m) => setTempSlotUI((p) => ({ ...p, startMin: m }))}
+                          />
+                          <TimePicker
+                            label="Đến giờ"
+                            hour={tempSlotUI.endHour}
+                            minute={tempSlotUI.endMin}
+                            onHourChange={(h) => setTempSlotUI((p) => ({ ...p, endHour: h }))}
+                            onMinuteChange={(m) => setTempSlotUI((p) => ({ ...p, endMin: m }))}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            Dự kiến:{" "}
+                            <strong className="text-slate-700">{tempSlotUI.startHour}:{tempSlotUI.startMin}</strong>
+                            {" → "}
+                            <strong className="text-slate-700">{tempSlotUI.endHour}:{tempSlotUI.endMin}</strong>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={validateAndAddTimeSlot}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1 shadow-md transition-all active:scale-95 text-xs"
+                          >
+                            <span className="material-symbols-outlined text-sm">add_circle</span>Thêm khung giờ
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-amber-700 font-semibold text-[11px] bg-amber-50 p-3 rounded-xl border border-amber-200">
+                        🔒 Đã cấu hình đủ tối đa 2 khung giờ.
+                      </p>
+                    )}
+                  </>
                 )}
                 <div className="space-y-2">
                   <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Khung giờ đã cấu hình:</p>
@@ -1617,13 +1912,15 @@ const ScheduleManager = () => {
                           <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                           Khung {index + 1}: {slot}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => removeTimeSlot(index)}
-                          className="text-rose-500 hover:text-rose-700 font-bold text-xs transition-colors"
-                        >
-                          Xóa
-                        </button>
+                        {!isEditContractMode && (
+                          <button
+                            type="button"
+                            onClick={() => removeTimeSlot(index)}
+                            className="text-rose-500 hover:text-rose-700 font-bold text-xs transition-colors"
+                          >
+                            Xóa
+                          </button>
+                        )}
                       </div>
                     ))
                   )}
@@ -1633,7 +1930,10 @@ const ScheduleManager = () => {
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-2 justify-end shrink-0">
               <button
                 type="button"
-                onClick={() => setIsContractModalOpen(false)}
+                onClick={() => {
+                  setIsContractModalOpen(false);
+                  setIsEditContractMode(false);
+                }}
                 className="bg-slate-200 text-slate-600 font-bold py-2 px-4 rounded-xl hover:bg-slate-300 text-sm"
               >
                 Đóng lại
@@ -1643,7 +1943,7 @@ const ScheduleManager = () => {
                 onClick={submitContractForm}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2 rounded-xl shadow-md transition-all active:scale-95 text-sm"
               >
-                Kích hoạt & Ký cam kết
+                {isEditContractMode ? "Lưu thay đổi" : "Kích hoạt & Ký cam kết"}
               </button>
             </div>
           </div>

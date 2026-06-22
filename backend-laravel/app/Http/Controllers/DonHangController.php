@@ -123,6 +123,28 @@ class DonHangController extends Controller
                 'trang_thai_don'                 => 'ChoXuLy',
             ]);
 
+            // [Auto-Assignment] Logic gán lịch tự động <= 8km
+            $autoAssignNhanVienId = null;
+            $isCaLe = false;
+            if (!empty($validated['ca_lam_viec'])) {
+                $isCaLe = ($validated['ca_lam_viec'][0]['loai_goi_ca_lam'] ?? 'CaLe') === 'CaLe';
+            }
+
+            if ($isCaLe && empty($validated['nhan_vien_duoc_yeu_cau_id'])) {
+                $activeContractStaff = DB::table('lichnghi')
+                    ->where('loai_nghi', 'DinhKy')
+                    ->whereDate('ngay_ket_thuc_ap_dung', '>=', now())
+                    ->inRandomOrder()
+                    ->first();
+                
+                if ($activeContractStaff) {
+                    $mockDistance = rand(1, 10); // Giả lập khoảng cách 1 -> 10km
+                    if ($mockDistance <= 8) {
+                        $autoAssignNhanVienId = $activeContractStaff->nhan_vien_id;
+                    }
+                }
+            }
+
             // 3. Bulk insert calamviec — chia đều tien_giam_giu cho từng buổi, sau đó tách hoa hồng
             if (!empty($validated['ca_lam_viec'])) {
                 $hoaHongRate = 0.20;
@@ -147,9 +169,23 @@ class DonHangController extends Controller
                     $hoaHong  = round($gia * $hoaHongRate);
                     $thucNhan = $gia - $hoaHong;
 
+                    $trangThaiCa = $ca['trang_thai_ca'] ?? 'ChoNhanVienTuDoNhan';
+                    $ghepNhanVienId = null;
+                    $loaiGhep = 'ThuCong';
+                    
+                    if (!empty($validated['nhan_vien_duoc_yeu_cau_id'])) {
+                        $ghepNhanVienId = $validated['nhan_vien_duoc_yeu_cau_id'];
+                        $trangThaiCa = 'ChoNhanVienChiDinhXacNhan';
+                        $loaiGhep = 'ThuCong';
+                    } elseif ($autoAssignNhanVienId) {
+                        $ghepNhanVienId = $autoAssignNhanVienId;
+                        $trangThaiCa = 'DaNhan';
+                        $loaiGhep = 'TuDong';
+                    }
+
                     $rows[] = [
                         'don_hang_id'           => $donHang->id,
-                        'nhan_vien_id'          => null,
+                        'nhan_vien_id'          => $ghepNhanVienId,
                         'dich_vu_id'            => $ca['dich_vu_id'],
                         'chi_tiet_dich_vu_them' => $ca['chi_tiet_dich_vu_them'] ?? null,
                         'ngay_lam'              => $ca['ngay_lam'],
@@ -160,8 +196,8 @@ class DonHangController extends Controller
                         'gia_ca_nay'            => $gia,
                         'hoa_hong_app'          => $hoaHong,
                         'thuc_nhan_nv'          => $thucNhan,
-                        'trang_thai_ca'         => $ca['trang_thai_ca'] ?? 'ChoNhanVienTuDoNhan',
-                        'loai_ghep'             => $ca['loai_ghep']     ?? 'TuDong',
+                        'trang_thai_ca'         => $trangThaiCa,
+                        'loai_ghep'             => $loaiGhep,
                     ];
                 }
 

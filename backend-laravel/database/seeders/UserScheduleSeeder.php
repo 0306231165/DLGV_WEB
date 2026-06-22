@@ -137,9 +137,6 @@ class UserScheduleSeeder extends Seeder
         // ══════════════════════════════════════════════════════════════════
         // 22. LichNghi
         // ══════════════════════════════════════════════════════════════════
-        DB::table('LichNghi')->insert([
-            ['nhan_vien_id' => 1, 'loai_nghi' => 'DinhKy', 'thu_trong_tuan' => 0, 'ngay_nghi' => null, 'gio_bat_dau_nghi' => '00:00:00', 'gio_ket_thuc_nghi' => '23:59:59', 'ngay_bat_dau_ap_dung' => now(), 'ngay_ket_thuc_ap_dung' => null, 'ly_do' => 'Nghỉ chủ nhật hàng tuần', 'trang_thai_duyet' => 'DaDuyet'],
-            ['nhan_vien_id' => 2, 'loai_nghi' => 'DotXuat', 'thu_trong_tuan' => null, 'ngay_nghi' => now()->addDays(2)->toDateString(), 'gio_bat_dau_nghi' => '08:00:00', 'gio_ket_thuc_nghi' => '17:00:00', 'ngay_bat_dau_ap_dung' => null, 'ngay_ket_thuc_ap_dung' => null, 'ly_do' => 'Việc gia đình', 'trang_thai_duyet' => 'DaDuyet'],
-        ]);
+        
     }
 }

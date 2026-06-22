@@ -103,8 +103,8 @@ export const mapDonHangToBookingCard = (dh) => {
     statusLabel = 'ĐÃ HỦY';
     statusClass = 'bg-error/10 text-error border border-error/20';
   } else if (dh.trang_thai_don === 'ChoXuLy') {
-    // Chỉ "Đã xác nhận" khi có NHÂN VIÊN CA LÀM (tức là đã có nhân viên bấm nút nhận ca)
-    if (nhanVienCaLam) {
+    // Chỉ "Đã xác nhận" khi có NHÂN VIÊN CA LÀM và trạng thái không phải là chờ xác nhận
+    if (nhanVienCaLam && firstCa?.trang_thai_ca !== 'ChoNhanVienChiDinhXacNhan') {
       status = 'confirmed';
       statusLabel = 'ĐÃ XÁC NHẬN';
       statusClass = 'bg-primary/10 text-primary border border-primary/20 font-bold';

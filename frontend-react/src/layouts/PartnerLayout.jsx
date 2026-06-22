@@ -15,7 +15,6 @@ const PartnerLayout = () => {
   ].includes(location.pathname);
 
   // Quản lý trạng thái số lượng của các mục khác
-  const [newJobsCount] = useState(3);
   const [unreadMessages] = useState(4);
 
   // ================= STATE QUẢN LÝ THÔNG BÁO CHUYÊN SÂU =================
@@ -90,7 +89,6 @@ const PartnerLayout = () => {
       path: "/partner/schedule",
       icon: "calendar_month",
       label: "Quản lý lịch làm",
-      badge: newJobsCount,
     },
     {
       path: "/partner/wallet",
@@ -154,12 +152,6 @@ const PartnerLayout = () => {
                 </span>
                 <span className="text-sm tracking-wide">{item.label}</span>
               </div>
-
-              {item.badge > 0 && (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500 text-white ring-2 ring-white">
-                  {item.badge}
-                </span>
-              )}
             </NavLink>
           ))}
         </nav>

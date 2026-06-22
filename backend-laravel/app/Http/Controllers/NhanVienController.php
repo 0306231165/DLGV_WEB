@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\NhanVien;
+use App\Models\LichNghi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class NhanVienController extends Controller
 {
@@ -319,6 +321,91 @@ class NhanVienController extends Controller
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Wallet Error: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], 500);
+        }
+    }
+    public function getCamKetLichNghi()
+    {
+        try {
+            $nhanVienId = Auth::user()->nhanVien->id;
+            
+            $lichNghi = LichNghi::where('nhan_vien_id', $nhanVienId)
+                ->where('loai_nghi', 'DinhKy')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $lichNghi
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Get Cam Ket Lich Nghi Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function saveCamKetLichNghi(Request $request)
+    {
+        try {
+            $nhanVienId = Auth::user()->nhanVien->id;
+            
+            DB::beginTransaction();
+
+            // Xóa tất cả các lịch nghỉ định kỳ cũ của nhân viên này
+            LichNghi::where('nhan_vien_id', $nhanVienId)
+                ->where('loai_nghi', 'DinhKy')
+                ->delete();
+
+            // Thêm lịch nghỉ định kỳ mới
+            $payload = $request->input('lichNghi', []);
+            $insertData = [];
+            foreach ($payload as $item) {
+                $insertData[] = [
+                    'nhan_vien_id' => $nhanVienId,
+                    'loai_nghi' => 'DinhKy',
+                    'thu_trong_tuan' => $item['thu_trong_tuan'] ?? null,
+                    'ngay_nghi' => null,
+                    'gio_bat_dau_nghi' => $item['gio_bat_dau_nghi'] ?? null,
+                    'gio_ket_thuc_nghi' => $item['gio_ket_thuc_nghi'] ?? null,
+                    'ngay_bat_dau_ap_dung' => $item['ngay_bat_dau_ap_dung'] ?? null,
+                    'ngay_ket_thuc_ap_dung' => $item['ngay_ket_thuc_ap_dung'] ?? null,
+                    'ly_do' => $item['ly_do'] ?? null,
+                    'trang_thai_duyet' => 'DaDuyet',
+                ];
+            }
+
+            if (!empty($insertData)) {
+                LichNghi::insert($insertData);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lưu hợp đồng cam kết thành công!'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Save Cam Ket Lich Nghi Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function cancelCamKetLichNghi(Request $request)
+    {
+        try {
+            $nhanVienId = Auth::user()->nhanVien->id;
+
+            // Xóa tất cả các lịch nghỉ định kỳ
+            LichNghi::where('nhan_vien_id', $nhanVienId)
+                ->where('loai_nghi', 'DinhKy')
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Hủy hợp đồng cam kết thành công!'
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Cancel Cam Ket Lich Nghi Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

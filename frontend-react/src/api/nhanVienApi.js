@@ -21,6 +21,44 @@ const nhanVienApi = {
     getWallet: () => {
         return axiosClient.get('/nhan-vien/wallet');
     },
+    // Lịch nghỉ (Cam kết)
+    getCamKetLichNghi: () => {
+        return axiosClient.get('/nhan-vien/lich-nghi/cam-ket');
+    },
+
+    saveCamKetLichNghi: (lichNghi) => {
+        return axiosClient.post('/nhan-vien/lich-nghi/cam-ket', { lichNghi });
+    },
+
+    cancelCamKetLichNghi: () => {
+        return axiosClient.delete('/nhan-vien/lich-nghi/cam-ket');
+    },
+
+    // Quản lý ca làm việc
+    getAvailableJobs: () => {
+        return axiosClient.get('/nhan-vien/ca-lam/cho-nhan');
+    },
+    getAcceptedJobs: () => {
+        return axiosClient.get('/nhan-vien/ca-lam/da-nhan');
+    },
+    getWorkingSchedule: () => {
+        return axiosClient.get('/nhan-vien/ca-lam/lich-lam-viec');
+    },
+    getJobHistory: () => {
+        return axiosClient.get('/nhan-vien/ca-lam/lich-su');
+    },
+    acceptJob: (caLamViecId) => {
+        return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/bam-nhan`);
+    },
+    rejectJob: (caLamViecId) => {
+        return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/tu-choi`);
+    },
+    cancelAcceptedJob: (caLamViecId) => {
+        return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/huy-ca`);
+    },
+    updateProgress: (caLamViecId) => {
+        return axiosClient.put(`/nhan-vien/ca-lam/${caLamViecId}/cap-nhat`);
+    },
 
     // ─── Yêu thích (cần auth: khách hàng) ────────────────────────────────────
  
