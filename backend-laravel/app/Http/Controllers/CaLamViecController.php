@@ -15,20 +15,81 @@ class CaLamViecController extends Controller
     {
         $nhanVienId = Auth::user()->nhanVien->id;
         
+        $lichNghi = \App\Models\LichNghi::where('nhan_vien_id', $nhanVienId)
+            ->where('loai_nghi', 'DinhKy')
+            ->get();
+
+        $startDate = null;
+        $endDate = null;
+        $offDays = [];
+
+        if ($lichNghi->isNotEmpty()) {
+            $startDate = $lichNghi->min('ngay_bat_dau_ap_dung');
+            $endDate = $lichNghi->max('ngay_ket_thuc_ap_dung');
+            $offDays = $lichNghi->pluck('thu_trong_tuan')->filter(function ($val) {
+                return !is_null($val);
+            })->toArray();
+        }
+
         $caLamViecs = CaLamViec::with(['donHang.khachHang.taiKhoan', 'donHang.dichVuLoaiGoi.dichVu', 'dichVu'])
             ->whereIn('trang_thai_ca', ['ChoNhanVienTuDoNhan', 'ChoNhanVienChiDinhXacNhan'])
-            ->where(function($q) use ($nhanVienId) {
-                // Ca tự do, HOẶC ca chỉ định đích danh nhân viên này
-                $q->where('trang_thai_ca', 'ChoNhanVienTuDoNhan')
-                  ->orWhere(function($subQ) use ($nhanVienId) {
-                      $subQ->where('trang_thai_ca', 'ChoNhanVienChiDinhXacNhan')
-                           ->where('nhan_vien_id', $nhanVienId);
-                  });
+            ->where(function($q) use ($nhanVienId, $startDate, $endDate, $offDays) {
+                // Ca tự do: GoiThang, 247 thì luôn lấy; CaLe, GoiLapLai thì check hợp đồng
+                $q->where(function($qTuDo) use ($startDate, $endDate, $offDays) {
+                    $qTuDo->where('trang_thai_ca', 'ChoNhanVienTuDoNhan')
+                          ->where(function($qCondition) use ($startDate, $endDate, $offDays) {
+                                // Gói tháng và 247: luôn thấy
+                                $qCondition->whereIn('loai_goi_ca_lam', ['GoiThang', 'Goi247'])
+                                           ->orWhere(function($qContract) use ($startDate, $endDate, $offDays) {
+                                                $qContract->whereIn('loai_goi_ca_lam', ['CaLe', 'GoiLapLai']);
+                                                if ($startDate && $endDate) {
+                                                    $qContract->whereBetween('ngay_lam', [$startDate, $endDate]);
+                                                    if (!empty($offDays)) {
+                                                        $offDaysStr = implode(',', $offDays);
+                                                        $qContract->whereRaw("(DAYOFWEEK(ngay_lam) - 1) NOT IN ($offDaysStr)");
+                                                    }
+                                                } else {
+                                                    $qContract->whereRaw("1 = 0");
+                                                }
+                                           });
+                          });
+                });
+
+                // HOẶC ca chỉ định đích danh (luôn thấy)
+                $q->orWhere(function($subQ) use ($nhanVienId) {
+                    $subQ->where('trang_thai_ca', 'ChoNhanVienChiDinhXacNhan')
+                         ->where('nhan_vien_id', $nhanVienId);
+                });
             })
             ->orderBy('ngay_lam', 'asc')
             ->get();
-            
-        return response()->json(['success' => true, 'data' => $caLamViecs]);
+
+        $grouped = collect($caLamViecs)->groupBy('don_hang_id');
+        $result = [];
+        
+        foreach ($grouped as $don_hang_id => $cas) {
+            if ($cas->count() == 1) {
+                $result[] = $cas->first()->toArray();
+            } else {
+                $firstCa = $cas->sortBy('ngay_lam')->first();
+                $packageCa = $firstCa->toArray();
+                $packageCa['id'] = 'PACKAGE_' . $don_hang_id;
+                $packageCa['thuc_nhan_nv'] = $cas->sum('thuc_nhan_nv');
+                $packageCa['is_package'] = true;
+                $packageCa['so_ca_kha_dung'] = $cas->count();
+                $packageCa['ngay_lam_end'] = $cas->max('ngay_lam');
+                $packageCa['ngay_lam_start'] = $cas->min('ngay_lam');
+                $result[] = $packageCa;
+            }
+        }
+        
+        usort($result, function($a, $b) {
+            $dateA = isset($a['is_package']) && $a['is_package'] ? $a['ngay_lam_start'] : $a['ngay_lam'];
+            $dateB = isset($b['is_package']) && $b['is_package'] ? $b['ngay_lam_start'] : $b['ngay_lam'];
+            return strtotime($dateA) <=> strtotime($dateB);
+        });
+
+        return response()->json(['success' => true, 'data' => $result]);
     }
 
     /**
@@ -85,6 +146,26 @@ class CaLamViecController extends Controller
     public function acceptJob(Request $request, $id)
     {
         $nhanVienId = Auth::user()->nhanVien->id;
+
+        if (str_starts_with($id, 'PACKAGE_')) {
+            $donHangId = str_replace('PACKAGE_', '', $id);
+            $cas = CaLamViec::where('don_hang_id', $donHangId)
+                ->whereIn('trang_thai_ca', ['ChoNhanVienTuDoNhan', 'ChoNhanVienChiDinhXacNhan'])
+                ->get();
+                
+            if ($cas->isEmpty()) {
+                return response()->json(['success' => false, 'message' => 'Gói lịch này không còn khả dụng'], 400);
+            }
+            
+            foreach ($cas as $ca) {
+                $ca->nhan_vien_id = $nhanVienId;
+                $ca->trang_thai_ca = 'DaNhan';
+                $ca->save();
+            }
+            
+            return response()->json(['success' => true, 'message' => 'Nhận gói lịch thành công']);
+        }
+
         $ca = CaLamViec::findOrFail($id);
         
         if (!in_array($ca->trang_thai_ca, ['ChoNhanVienTuDoNhan', 'ChoNhanVienChiDinhXacNhan'])) {
@@ -104,6 +185,38 @@ class CaLamViecController extends Controller
     public function rejectJob(Request $request, $id)
     {
         $nhanVienId = Auth::user()->nhanVien->id;
+
+        if (str_starts_with($id, 'PACKAGE_')) {
+            $donHangId = str_replace('PACKAGE_', '', $id);
+            $cas = CaLamViec::where('don_hang_id', $donHangId)
+                ->where('trang_thai_ca', 'ChoNhanVienChiDinhXacNhan')
+                ->where('nhan_vien_id', $nhanVienId)
+                ->get();
+                
+            if ($cas->isEmpty()) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy gói lịch để từ chối'], 400);
+            }
+            
+            $donHang = $cas->first()->donHang;
+            
+            if ($donHang && $donHang->phuong_an_thay_the === 'KhongTimThayThe') {
+                foreach ($cas as $ca) {
+                    $ca->trang_thai_ca = 'DaHuy';
+                    $ca->save();
+                }
+                $donHang->trang_thai_don = 'DaHuy';
+                $donHang->save();
+                return response()->json(['success' => true, 'message' => 'Đã từ chối. Đơn hàng bị hủy do khách không muốn đổi nhân viên.']);
+            } else {
+                foreach ($cas as $ca) {
+                    $ca->nhan_vien_id = null;
+                    $ca->trang_thai_ca = 'ChoNhanVienTuDoNhan';
+                    $ca->save();
+                }
+                return response()->json(['success' => true, 'message' => 'Đã từ chối gói lịch. Lịch được đẩy lên chợ việc.']);
+            }
+        }
+
         $ca = CaLamViec::findOrFail($id);
         
         if ($ca->trang_thai_ca == 'ChoNhanVienChiDinhXacNhan' && $ca->nhan_vien_id == $nhanVienId) {
@@ -195,5 +308,35 @@ class CaLamViecController extends Controller
         }
 
         return response()->json(['success' => false, 'message' => 'Chỉ có thể hủy ca khi chưa bắt đầu làm việc'], 400);
+    }
+
+    /**
+     * Hủy toàn bộ hợp đồng (đẩy tất cả ca chưa làm của hợp đồng lên chợ việc)
+     */
+    public function cancelContract(Request $request, $id)
+    {
+        $nhanVienId = Auth::user()->nhanVien->id;
+        $ca = CaLamViec::findOrFail($id);
+
+        if ($ca->nhan_vien_id != $nhanVienId) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền hủy hợp đồng này'], 403);
+        }
+
+        $don_hang_id = $ca->don_hang_id;
+
+        // Cancel all un-worked shifts of this contract assigned to this staff
+        $affectedRows = CaLamViec::where('don_hang_id', $don_hang_id)
+            ->where('nhan_vien_id', $nhanVienId)
+            ->whereIn('trang_thai_ca', ['DaNhan', 'ChoNhanVienChiDinhXacNhan'])
+            ->update([
+                'nhan_vien_id' => null,
+                'trang_thai_ca' => 'ChoNhanVienTuDoNhan'
+            ]);
+
+        if ($affectedRows > 0) {
+            return response()->json(['success' => true, 'message' => "Đã hủy toàn bộ $affectedRows ca làm việc còn lại của hợp đồng. Lịch đã được đẩy lên chợ việc."]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Không có ca làm việc nào chưa bắt đầu để hủy'], 400);
     }
 }

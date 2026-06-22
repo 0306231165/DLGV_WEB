@@ -756,8 +756,16 @@ const ScheduleManager = () => {
 
 
   const mapCaLamViecToFrontend = (ca) => {
-    const parts = ca.ngay_lam ? ca.ngay_lam.split("-") : [];
-    const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : ca.ngay_lam;
+    const formatDateStr = (dateString) => {
+        if (!dateString) return "";
+        const parts = dateString.split("-");
+        return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateString;
+    };
+
+    let dateStr = formatDateStr(ca.ngay_lam);
+    if (ca.is_package) {
+        dateStr = `Từ ${formatDateStr(ca.ngay_lam_start)} đến ${formatDateStr(ca.ngay_lam_end)}`;
+    }
     
     let district = "TP.HCM";
     if (ca.dia_chi_lam_viec) {
@@ -777,16 +785,26 @@ const ScheduleManager = () => {
         time: ca.gio_bat_dau ? `${ca.gio_bat_dau.slice(0,5)} - ${formatMinutesToTime(parseTimeToMinutes(ca.gio_bat_dau.slice(0,5)) + ca.thoi_gian_lam_phut)}` : "",
         address: ca.dia_chi_lam_viec,
         service: ca.dich_vu?.ten_dich_vu || ca.don_hang?.dich_vu_loai_goi?.dich_vu?.ten_dich_vu,
-        bookingType: ca.loai_goi_ca_lam === 'CaLe' ? 'SINGLE' : (ca.loai_goi_ca_lam === 'GoiThang' ? 'MONTHLY' : '247'),
+        bookingType: ca.don_hang?.is_lap_lai_hang_tuan ? 'RECURRING' : (ca.loai_goi_ca_lam === 'CaLe' ? 'SINGLE' : (ca.loai_goi_ca_lam === 'GoiThang' ? 'MONTHLY' : '247')),
         status: ca.trang_thai_ca === 'DaNhan' ? 'Sắp diễn ra' : (ca.trang_thai_ca === 'DangThucHien' ? 'Đang làm' : ca.trang_thai_ca),
         price: `${Number(ca.thuc_nhan_nv).toLocaleString('vi-VN')}đ`,
-        duration: ca.thoi_gian_lam_phut ? `${Math.round(ca.thoi_gian_lam_phut / 60)} tiếng` : "",
+        duration: ca.is_package ? `${ca.so_ca_kha_dung} ca` : (ca.thoi_gian_lam_phut ? `${Math.round(ca.thoi_gian_lam_phut / 60)} tiếng` : ""),
         staffCount: 1, 
         jobNote: ca.don_hang?.ghi_chu_cho_nhan_vien,
         totalSessions: ca.don_hang?.tong_so_buoi,
         district: district,
         paymentMethod: ca.don_hang?.phuong_thuc_tt,
-        trang_thai_ca: ca.trang_thai_ca
+        trang_thai_ca: ca.trang_thai_ca,
+        ca_lam_247: ca.don_hang?.ca_lam_247,
+        dichVuThem: (() => {
+            if (!ca.chi_tiet_dich_vu_them) return null;
+            try {
+                const arr = JSON.parse(ca.chi_tiet_dich_vu_them);
+                return arr.map(item => item.ten).join(', ');
+            } catch (e) {
+                return ca.chi_tiet_dich_vu_them;
+            }
+        })()
     };
   };
 
@@ -935,6 +953,23 @@ const ScheduleManager = () => {
         }
       } catch (e) {
         alert("Lỗi khi hủy ca.");
+      }
+    }
+  };
+
+  const handleCancelAcceptedPackage = async (id) => {
+    if (window.confirm("Bạn có chắc chắn muốn hủy toàn bộ phần còn lại của hợp đồng này? Tất cả các ca chưa làm sẽ được đẩy lên chợ việc.")) {
+      try {
+        const res = await nhanVienApi.cancelContract(id);
+        if (res && res.success) {
+          alert(res.message || "Đã hủy hợp đồng.");
+          fetchJobsData();
+          setSelectedJob(null);
+        } else {
+          alert(res?.message || "Hủy hợp đồng thất bại");
+        }
+      } catch (e) {
+        alert("Lỗi khi hủy hợp đồng.");
       }
     }
   };
@@ -1603,6 +1638,17 @@ const ScheduleManager = () => {
                       <p className="text-slate-600">Chuỗi dịch vụ dài hạn hàng tháng đã ký hợp đồng ràng buộc.</p>
                     </div>
                   )}
+                  {selectedJob.bookingType === "247" && selectedJob.ca_lam_247 && (
+                    <div className="bg-sky-50 border border-sky-200 rounded-xl p-3">
+                      <p className="font-bold text-sky-800 text-[11px] uppercase tracking-wide mb-1">⏰ 24/7 thường trực:</p>
+                      <p className="text-slate-600 font-bold">
+                        {selectedJob.ca_lam_247 === "Ngay" && "Ca ngày (12 tiếng)"}
+                        {selectedJob.ca_lam_247 === "Dem" && "Ca đêm (12 tiếng)"}
+                        {selectedJob.ca_lam_247 === "CaNgay" && "Cả ngày (24 tiếng)"}
+                      </p>
+                      <p className="text-slate-500 text-[10px] mt-0.5">Dịch vụ thường trực, đảm bảo luôn có người.</p>
+                    </div>
+                  )}
                   <div className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                     <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">account_circle</span>
                     <div>
@@ -1655,6 +1701,15 @@ const ScheduleManager = () => {
                       </div>
                     </div>
                   )}
+                  {selectedJob.dichVuThem && (
+                    <div className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                      <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">add_circle</span>
+                      <div>
+                        <p className="text-[10px] text-slate-400 font-medium">Dịch vụ thêm</p>
+                        <p className="font-bold text-slate-800 leading-relaxed">{selectedJob.dichVuThem}</p>
+                      </div>
+                    </div>
+                  )}
                   {selectedJob.jobNote && (
                     <div className="relative rounded-xl overflow-hidden border border-amber-300">
                       <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-yellow-50"></div>
@@ -1681,6 +1736,14 @@ const ScheduleManager = () => {
                         className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2 rounded-xl border border-rose-200 transition-all text-xs"
                       >
                         Hủy ca làm đã nhận
+                      </button>
+                    )}
+                    {selectedJob.status === "Sắp diễn ra" && (selectedJob.bookingType === "MONTHLY" || selectedJob.bookingType === "247") && (
+                      <button
+                        onClick={() => handleCancelAcceptedPackage(selectedJob.id)}
+                        className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold py-2 rounded-xl border border-rose-300 transition-all text-xs"
+                      >
+                        Hủy hết hợp đồng
                       </button>
                     )}
                     {selectedJob.status === "Sắp diễn ra" && (

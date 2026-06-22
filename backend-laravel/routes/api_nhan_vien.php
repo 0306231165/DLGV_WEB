@@ -23,6 +23,7 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
     Route::post('/ca-lam/{id}/bam-nhan', [CaLamViecController::class, 'acceptJob']); 
     Route::post('/ca-lam/{id}/tu-choi', [CaLamViecController::class, 'rejectJob']); 
     Route::post('/ca-lam/{id}/huy-ca', [CaLamViecController::class, 'cancelAcceptedJob']);
+    Route::post('/ca-lam/{id}/huy-hop-dong', [CaLamViecController::class, 'cancelContract']);
     Route::put('/ca-lam/{id}/cap-nhat', [CaLamViecController::class, 'updateProgress']); 
 
     // Chat với khách
