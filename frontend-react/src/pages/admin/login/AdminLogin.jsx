@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios'; // Dùng axios mặc định thay vì axiosClient để test lỗi
+import { useAuth } from '../../../contexts/AuthContext';
 
 const AdminLogin = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -8,6 +9,7 @@ const AdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   // =====================================
   // HÀM XỬ LÝ ĐĂNG NHẬP (ÉP ĐƯỜNG DẪN TUYỆT ĐỐI)
@@ -29,10 +31,8 @@ const AdminLogin = () => {
         password: credentials.password 
       });
 
-      // Lưu Token vào trình duyệt (Với axios thường, dữ liệu nằm trong response.data)
-  // Trong hàm xử lý đăng nhập Admin thành công
-      localStorage.setItem('token', response.data.token); 
-      localStorage.setItem('role', 'admin'); // Phân biệt role để sau này xử lý quyền
+      // Lưu Token vào trình duyệt bằng Context
+      login(response.data.token, 'admin', response.data.user);
       localStorage.setItem('ADMIN_USER', JSON.stringify(response.data.user)); // Key này dùng riêng cho UI Admin thì giữ nguyên cũng được
 
       // Đá văng sang trang Dashboard

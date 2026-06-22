@@ -1,6 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import nhanVienApi from '../../../api/nhanVienApi';
 
 const PartnerDashboard = () => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await nhanVienApi.getDashboard();
+        if (response.success) {
+          setData(response.data);
+        }
+      } catch (error) {
+        console.error('Lỗi lấy dữ liệu dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return <div className="p-6 text-slate-500 animate-pulse">Đang tải dữ liệu tổng quan...</div>;
+  }
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+  };
+
+  const thuNhap = data?.thu_nhap_thang_nay || 0;
+  const caHoanThanh = data?.ca_hoan_thanh || 0;
+  const danhGiaSao = data?.danh_gia_sao || 0;
+  const caTiepTheo = data?.ca_tiep_theo;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
@@ -16,7 +49,7 @@ const PartnerDashboard = () => {
           </div>
           <div>
             <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Thu nhập tháng này</p>
-            <h3 className="text-2xl font-black text-emerald-600 mt-0.5">5.450.000đ</h3>
+            <h3 className="text-2xl font-black text-emerald-600 mt-0.5">{formatCurrency(thuNhap)}</h3>
           </div>
         </div>
 
@@ -26,7 +59,7 @@ const PartnerDashboard = () => {
           </div>
           <div>
             <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Ca hoàn thành</p>
-            <h3 className="text-2xl font-black text-blue-600 mt-0.5">24 ca làm</h3>
+            <h3 className="text-2xl font-black text-blue-600 mt-0.5">{caHoanThanh} ca làm</h3>
           </div>
         </div>
 
@@ -36,21 +69,33 @@ const PartnerDashboard = () => {
           </div>
           <div>
             <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Đánh giá sao</p>
-            <h3 className="text-2xl font-black text-amber-500 mt-0.5">4.9 / 5.0</h3>
+            <h3 className="text-2xl font-black text-amber-500 mt-0.5">{danhGiaSao.toFixed(1)} / 5.0</h3>
           </div>
         </div>
       </div>
 
       {/* Box thông báo lịch thông minh */}
-      <div className="bg-white p-6 rounded-2xl border-2 border-emerald-600/20 shadow-sm bg-gradient-to-r from-white to-emerald-50/10">
-        <h3 className="font-bold text-slate-900 text-base mb-2 flex items-center gap-2">
-          <span className="material-symbols-outlined text-emerald-600 animate-pulse">notification_important</span>
-          Lịch làm việc tiếp theo của bạn
-        </h3>
-        <p className="text-sm text-slate-600 leading-relaxed">
-          Bạn có lịch dọn dẹp vào lúc <strong className="text-emerald-600 font-black">08:00 Sáng mai</strong> tại Quận 7. Hãy vào mục <strong>"Quản lý lịch làm"</strong> để xem chi tiết thông tin khách hàng và chuẩn bị dụng cụ đồ nghề nhé!
-        </p>
-      </div>
+      {caTiepTheo ? (
+        <div className="bg-white p-6 rounded-2xl border-2 border-emerald-600/20 shadow-sm bg-gradient-to-r from-white to-emerald-50/10">
+          <h3 className="font-bold text-slate-900 text-base mb-2 flex items-center gap-2">
+            <span className="material-symbols-outlined text-emerald-600 animate-pulse">notification_important</span>
+            Lịch làm việc tiếp theo của bạn
+          </h3>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Bạn có lịch dọn dẹp vào lúc <strong className="text-emerald-600 font-black">{caTiepTheo.thoi_gian_hien_thi}</strong> tại {caTiepTheo.dia_chi}. Hãy vào mục <strong>"Quản lý lịch làm"</strong> để xem chi tiết thông tin khách hàng và chuẩn bị dụng cụ đồ nghề nhé!
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 className="font-bold text-slate-900 text-base mb-2 flex items-center gap-2">
+            <span className="material-symbols-outlined text-slate-400">calendar_today</span>
+            Lịch làm việc
+          </h3>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            Hiện tại bạn chưa có ca làm việc nào sắp tới. Hãy nghỉ ngơi hoặc kiểm tra mục nhận ca nhé!
+          </p>
+        </div>
+      )}
     </div>
   );
 };

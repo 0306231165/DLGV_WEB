@@ -11,6 +11,7 @@ const AdminServices = () => {
   // ================= 2. STATE DỮ LIỆU DỊCH VỤ & KHUYẾN MÃI =================
   const [services, setServices] = useState([]);
   const [promotions, setPromotions] = useState([]);
+  const [variantOptions, setVariantOptions] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -18,10 +19,11 @@ const AdminServices = () => {
 
   const fetchData = async () => {
     try {
-      const [resServices, resPromos, resPhuPhi] = await Promise.all([
+      const [resServices, resPromos, resPhuPhi, resVariants] = await Promise.all([
         axiosClient.get('/admin/dich-vu'),
         axiosClient.get('/admin/khuyen-mai'),
         axiosClient.get('/admin/quy-dinh-phu-phi'),
+        axiosClient.get('/admin/tuy-chon-bien-the'),
       ]);
       if (resServices.success) setServices(resServices.data);
       if (resPromos.success) setPromotions(resPromos.data);
@@ -31,6 +33,9 @@ const AdminServices = () => {
         const initEdit = {};
         resPhuPhi.data.forEach(pp => { initEdit[pp.id] = String(pp.gia_tri_phu_phi); });
         setEditingPhuPhi(initEdit);
+      }
+      if (resVariants.success) {
+        setVariantOptions(resVariants.data);
       }
     } catch (error) {
       console.error('Lỗi khi fetch dữ liệu:', error);
@@ -150,7 +155,7 @@ const AdminServices = () => {
   // ================= 5. HÀM XỬ LÝ THÊM DỊCH VỤ MỚI (MODAL) =================
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [serviceForm, setServiceForm] = useState({
-    name: '', type: 'TieuChuan', desc: '', price: '', time: '120', groupId: 1, noiDungChiTiet: ''
+    name: '', type: 'TieuChuan', desc: '', price: '', time: '120', groupId: 1, noiDungChiTiet: '', variant: ''
   });
 
   const handleSubmitService = async (e) => {
@@ -164,10 +169,10 @@ const AdminServices = () => {
         thoi_gian_chuan_co_ban: serviceForm.time,
         mo_ta: serviceForm.desc,
         noi_dung_chi_tiet: serviceForm.noiDungChiTiet ? serviceForm.noiDungChiTiet.split('\n').map(item => item.trim()).filter(item => item !== '') : [],
-        co_bien_the: false
+        co_bien_the: serviceForm.variant !== ''
       });
       setShowServiceModal(false);
-      setServiceForm({ name: '', type: 'TieuChuan', desc: '', price: '', time: '120', groupId: 1, noiDungChiTiet: '' });
+      setServiceForm({ name: '', type: 'TieuChuan', desc: '', price: '', time: '120', groupId: 1, noiDungChiTiet: '', variant: '' });
       fetchData();
       alert(`✅ Đã thêm dịch vụ thành công!`);
     } catch (error) {
@@ -210,6 +215,16 @@ const AdminServices = () => {
                     <option value="CaoCap">Cao cấp</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Tùy chọn biến thể</label>
+                <select value={serviceForm.variant} onChange={(e) => setServiceForm({...serviceForm, variant: e.target.value})} className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer transition-all">
+                  <option value="">Không có biến thể</option>
+                  {variantOptions.map((v, idx) => (
+                    <option key={idx} value={v.ten_tuy_chon}>{v.ten_tuy_chon}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

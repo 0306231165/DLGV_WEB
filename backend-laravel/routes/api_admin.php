@@ -42,6 +42,7 @@ Route::middleware(['auth:sanctum', 'ability:role:admin'])->prefix('admin')->grou
     Route::post('/dich-vu/them', [DichVuController::class, 'store']);
     Route::put('/dich-vu/{id}', [DichVuController::class, 'update']);
     Route::delete('/dich-vu/{id}', [DichVuController::class, 'destroy']);
+    Route::get('/tuy-chon-bien-the', [DichVuController::class, 'getAllTuyChonBienThe']);
 
     Route::get('/khuyen-mai', [KhuyenMaiController::class, 'indexAdmin']);
     Route::post('/khuyen-mai/them', [KhuyenMaiController::class, 'store']);

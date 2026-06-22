@@ -4,7 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 const PartnerLayout = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   // 2. CHÈN ĐOẠN LẤY PATHNAME VÀ ĐỊNH NGHĨA BIẾN TẠI ĐÂY
   const location = useLocation();
@@ -180,7 +180,7 @@ const PartnerLayout = () => {
         <header className="h-20 bg-white border-b border-slate-200/60 fixed top-0 right-0 left-72 z-20 flex items-center justify-between px-8 shadow-sm">
           <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
             Xin chào,{" "}
-            <span className="text-emerald-600">Chị Nguyễn Thị Hoa</span> 👋
+            <span className="text-emerald-600">{user?.ho_ten || 'Đối tác'}</span> 👋
           </h2>
 
           <div className="flex items-center gap-5">
@@ -347,16 +347,16 @@ const PartnerLayout = () => {
             <div className="relative group/avatar py-2">
               <button className="flex items-center gap-3 p-1.5 pr-3 rounded-full hover:bg-slate-50 border border-slate-100 transition-colors focus:outline-none shadow-sm cursor-pointer">
                 <img
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150&auto=format&fit=crop"
+                  src={user?.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150&auto=format&fit=crop"}
                   alt="Partner Avatar"
                   className="w-10 h-10 rounded-full object-cover border-2 border-emerald-500"
                 />
                 <div className="hidden md:flex flex-col text-left">
                   <span className="text-xs font-bold text-slate-700 leading-none">
-                    Nguyễn Thị Hoa
+                    {user?.ho_ten || 'Đối tác'}
                   </span>
                   <span className="text-[10px] text-slate-400 mt-1">
-                    Mã: PT-8821
+                    Mã: PT-{user?.id || '8821'}
                   </span>
                 </div>
                 <span className="material-symbols-outlined text-slate-400 text-sm group-hover/avatar:rotate-180 transition-transform duration-200">

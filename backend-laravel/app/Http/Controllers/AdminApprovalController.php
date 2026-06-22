@@ -11,6 +11,36 @@ class AdminApprovalController extends Controller
     // Lấy danh sách hồ sơ chờ duyệt
     public function index()
     {
+        // Giải pháp: Vì tài khoản mới tạo có thể chưa có dịch vụ, ta đếm các tài khoản 'HoatDong' được tạo trong tuần này
+        $approvedThisWeek = DB::table('taikhoan')
+            ->where('loai_tai_khoan', 'NhanVien')
+            ->where('trang_thai', 'HoatDong')
+            ->whereBetween('ngay_tao', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
+            ->count();
+
+        // Chỉ tính thời gian phản hồi cho các hồ sơ được tạo trong vòng 30 ngày gần đây để LOẠI BỎ dữ liệu lỗi (3624 giờ)
+        $approvals = DB::table('nhanvien_dichvu')
+            ->join('nhanvien', 'nhanvien_dichvu.nhan_vien_id', '=', 'nhanvien.id')
+            ->join('taikhoan', 'nhanvien.tai_khoan_id', '=', 'taikhoan.id')
+            ->where('nhanvien_dichvu.trang_thai_duyet', 'DaDuyet')
+            ->whereNotNull('nhanvien_dichvu.ngay_duyet')
+            ->where('taikhoan.ngay_tao', '>=', Carbon::now()->subDays(30))
+            ->select('taikhoan.ngay_tao', 'nhanvien_dichvu.ngay_duyet')
+            ->get();
+
+        $totalHours = 0;
+        $count = 0;
+        foreach ($approvals as $a) {
+            if ($a->ngay_tao && $a->ngay_duyet) {
+                $created = Carbon::parse($a->ngay_tao);
+                $approved = Carbon::parse($a->ngay_duyet);
+                // Dùng abs() để lấy trị tuyệt đối, tránh số âm do data test bị ngược thời gian
+                $totalHours += abs($created->diffInHours($approved, false));
+                $count++;
+            }
+        }
+        $avgResponseTime = $count > 0 ? round($totalHours / $count, 1) : 0;
+
         $candidates = DB::table('taikhoan')
             ->join('nhanvien', 'taikhoan.id', '=', 'nhanvien.tai_khoan_id')
             ->where('taikhoan.loai_tai_khoan', 'NhanVien')
@@ -84,7 +114,13 @@ class AdminApprovalController extends Controller
                 ];
             });
 
-        return response()->json($candidates);
+        return response()->json([
+            'candidates' => $candidates,
+            'stats' => [
+                'approvedThisWeek' => $approvedThisWeek,
+                'avgResponseTime' => $avgResponseTime
+            ]
+        ]);
     }
 
     // Phê duyệt hồ sơ

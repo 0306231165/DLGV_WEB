@@ -165,4 +165,16 @@ class DichVuController extends Controller
             ], 500);
         }
     }
+
+    // thêm hàm lấy tùy chon biến thể trong cn thêm dịch vụ mới
+    public function getAllTuyChonBienThe(): JsonResponse
+    {
+        $tuyChon = \App\Models\TuyChonBienTheDichVu::select('ten_tuy_chon')
+            ->distinct()
+            ->get();
+        return response()->json([
+            'success' => true,
+            'data' => $tuyChon
+        ]);
+    }
 }
