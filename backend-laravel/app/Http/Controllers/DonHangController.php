@@ -275,6 +275,17 @@ class DonHangController extends Controller
             ->orderBy('ngay_tao', 'desc')
             ->get();
 
+            // Ẩn đánh giá chứa [HIDDEN] khỏi khách hàng
+            foreach ($donHangs as $donHang) {
+                foreach ($donHang->caLamViec as $ca) {
+                    if (isset($ca->noi_dung_danh_gia) && strpos($ca->noi_dung_danh_gia, '[HIDDEN]') === 0) {
+                        $ca->noi_dung_danh_gia = null;
+                        $ca->sao_danh_gia = null;
+                        $ca->ngay_danh_gia = null;
+                    }
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => $donHangs
@@ -322,6 +333,17 @@ class DonHangController extends Controller
                     'success' => false,
                     'message' => 'Không tìm thấy đơn hàng.',
                 ], 404);
+            }
+
+            // Ẩn đánh giá chứa [HIDDEN] khỏi khách hàng
+            if ($donHang->caLamViec) {
+                foreach ($donHang->caLamViec as $ca) {
+                    if (isset($ca->noi_dung_danh_gia) && strpos($ca->noi_dung_danh_gia, '[HIDDEN]') === 0) {
+                        $ca->noi_dung_danh_gia = null;
+                        $ca->sao_danh_gia = null;
+                        $ca->ngay_danh_gia = null;
+                    }
+                }
             }
 
             return response()->json([

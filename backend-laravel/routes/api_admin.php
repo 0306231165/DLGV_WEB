@@ -60,6 +60,11 @@ Route::middleware(['auth:sanctum', 'ability:role:admin'])->prefix('admin')->grou
     Route::put('/khieu-nai/{id}/trang-thai-hien-thi', [KhieuNaiController::class, 'toggleVisibility']);
     Route::delete('/khieu-nai/{id}', [KhieuNaiController::class, 'destroy']);
 
+    Route::get('/danh-gia', [KhieuNaiController::class, 'indexReviews']);
+    Route::put('/danh-gia/{id}/phan-hoi', [KhieuNaiController::class, 'updateReviewReply']);
+    Route::put('/danh-gia/{id}/trang-thai-hien-thi', [KhieuNaiController::class, 'toggleReviewVisibility']);
+    Route::delete('/danh-gia/{id}', [KhieuNaiController::class, 'deleteReview']);
+
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
