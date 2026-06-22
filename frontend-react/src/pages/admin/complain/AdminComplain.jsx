@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axiosClient from '../../../api/axiosClient';
+import adMinApi from '../../../api/adMinApi';
 
 const AdminComplain = () => {
   // ================= 1. LẤY DỮ LIỆU TỪ MYSQL =================
@@ -7,7 +7,7 @@ const AdminComplain = () => {
 
   const fetchComplaints = async () => {
     try {
-      const response = await axiosClient.get('/admin/khieu-nai');
+      const response = await adMinApi.getComplaints();
       if (response.success) {
         setComplaints(response.data);
       }
@@ -31,7 +31,7 @@ const AdminComplain = () => {
 
   // ================= 3. LOGIC XỬ LÝ & LỌC DỮ LIỆU =================
   const filteredComplaints = complaints.filter(c => {
-    const matchSearch = c.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchSearch = c.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
                         c.customer.toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = filterStatus === 'Tất cả' || c.status === filterStatus;
     return matchSearch && matchStatus;
@@ -49,11 +49,12 @@ const AdminComplain = () => {
     e.preventDefault();
     try {
       // Map frontend status to backend enum
-      let backendStatus = 'DangXuLy';
+      let backendStatus = editStatus;
       if (editStatus === 'Đã giải quyết') backendStatus = 'DaGiaiQuyet';
-      if (editStatus === 'Từ chối' || editStatus === 'TuChoi') backendStatus = 'TuChoi';
+      if (editStatus === 'Từ chối') backendStatus = 'TuChoi';
+      if (editStatus === 'Đang xử lý') backendStatus = 'DangXuLy';
 
-      await axiosClient.put(`/admin/khieu-nai/${selectedComplaint.id}/phan-hoi`, {
+      await adMinApi.updateComplaintReply(selectedComplaint.id, {
         adminNote: editNote,
         status: backendStatus
       });
@@ -62,6 +63,18 @@ const AdminComplain = () => {
       alert(`✅ Đã cập nhật xử lý cho khiếu nại ${selectedComplaint.code}`);
     } catch (error) {
       alert(error.response?.data?.message || 'Có lỗi xảy ra khi lưu xử lý');
+    }
+  };
+
+  const handleDeleteComplaint = async (id, code) => {
+    if (window.confirm(`Bạn có chắc muốn xóa vĩnh viễn khiếu nại ${code}?`)) {
+      try {
+        await adMinApi.deleteComplaint(id);
+        fetchComplaints();
+        alert(`✅ Đã xóa khiếu nại ${code}`);
+      } catch (error) {
+        alert(error.response?.data?.message || 'Có lỗi xảy ra khi xóa');
+      }
     }
   };
 
@@ -266,16 +279,25 @@ const AdminComplain = () => {
                       </span>
                     </td>
                     <td className="py-4 pr-6 text-center">
-                      <button 
-                        onClick={() => handleOpenProcessModal(c)} 
-                        className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors border ${
-                          c.status === 'DaGiaiQuyet' || c.status === 'Đã giải quyết' 
-                            ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' 
-                            : 'bg-[#0f2857] border-[#0f2857] text-white hover:bg-[#1a3873]'
-                        }`}
-                      >
-                        {c.status === 'DaGiaiQuyet' || c.status === 'Đã giải quyết' ? 'Xem lại' : 'Xử lý ngay'}
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => handleOpenProcessModal(c)} 
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors border ${
+                            c.status === 'DaGiaiQuyet' || c.status === 'Đã giải quyết' 
+                              ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' 
+                              : 'bg-[#0f2857] border-[#0f2857] text-white hover:bg-[#1a3873]'
+                          }`}
+                        >
+                          {c.status === 'DaGiaiQuyet' || c.status === 'Đã giải quyết' ? 'Xem lại' : 'Xử lý ngay'}
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteComplaint(c.id, c.code)} 
+                          className="px-3 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold flex justify-center items-center gap-1.5 transition-colors shadow-sm"
+                          title="Xóa khiếu nại"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

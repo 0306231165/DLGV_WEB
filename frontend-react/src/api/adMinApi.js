@@ -19,6 +19,17 @@ const adMinApi = {
 
   // ================= TÙY CHỌN BIẾN THỂ =================
   getVariantOptions: () => axiosClient.get('/admin/tuy-chon-bien-the'),
+
+  // ================= KHIẾU NẠI =================
+  getComplaints: () => axiosClient.get('/admin/khieu-nai'),
+  updateComplaintReply: (id, data) => axiosClient.put(`/admin/khieu-nai/${id}/phan-hoi`, data),
+  deleteComplaint: (id) => axiosClient.delete(`/admin/khieu-nai/${id}`),
+
+  // ================= ĐÁNH GIÁ =================
+  getReviews: () => axiosClient.get('/admin/danh-gia'),
+  updateReviewVisibility: (id) => axiosClient.put(`/admin/danh-gia/${id}/trang-thai-hien-thi`),
+  deleteReview: (id) => axiosClient.delete(`/admin/danh-gia/${id}`),
+  updateReviewReply: (id, data) => axiosClient.put(`/admin/danh-gia/${id}/phan-hoi`, data),
 };
 
 export default adMinApi;

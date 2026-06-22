@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axiosClient from '../../../api/axiosClient';
+import adMinApi from '../../../api/adMinApi';
 
 const AdminReviews = () => {
   // ================= 1. LẤY DỮ LIỆU TỪ MYSQL =================
@@ -7,7 +7,7 @@ const AdminReviews = () => {
 
   const fetchReviews = async () => {
     try {
-      const response = await axiosClient.get('/admin/khieu-nai');
+      const response = await adMinApi.getReviews();
       if (response.success) {
         setReviews(response.data);
       }
@@ -31,7 +31,7 @@ const AdminReviews = () => {
   // ================= 3. CÁC HÀM XỬ LÝ =================
   const handleToggleVisibility = async (id) => {
     try {
-      await axiosClient.put(`/admin/khieu-nai/${id}/trang-thai-hien-thi`);
+      await adMinApi.updateReviewVisibility(id);
       fetchReviews();
     } catch (error) {
       alert(error.response?.data?.message || 'Có lỗi xảy ra');
@@ -39,9 +39,9 @@ const AdminReviews = () => {
   };
 
   const handleDeleteReview = async (id, customer) => {
-    if (window.confirm(`Bạn có chắc muốn xóa vĩnh viễn đánh giá của "${customer}"? (Sẽ xóa luôn bên trang Khiếu nại)`)) {
+    if (window.confirm(`Bạn có chắc muốn xóa vĩnh viễn đánh giá của "${customer}"?`)) {
       try {
-        await axiosClient.delete(`/admin/khieu-nai/${id}`);
+        await adMinApi.deleteReview(id);
         fetchReviews();
       } catch (error) {
         alert(error.response?.data?.message || 'Có lỗi xảy ra');
@@ -57,7 +57,7 @@ const AdminReviews = () => {
   const handleSaveReply = async (e) => {
     e.preventDefault();
     try {
-      await axiosClient.put(`/admin/khieu-nai/${selectedReview.id}/phan-hoi`, {
+      await adMinApi.updateReviewReply(selectedReview.id, {
         adminNote: replyText
       });
       setSelectedReview(null);
