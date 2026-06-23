@@ -163,6 +163,18 @@ class CaLamViecController extends Controller
                 $ca->save();
             }
             
+            $donHang = DonHang::find($donHangId);
+            if ($donHang) {
+                \App\Models\PhongChat::firstOrCreate([
+                    'don_hang_id' => $donHangId,
+                    'khach_hang_id' => $donHang->khach_hang_id,
+                    'nhan_vien_id' => $nhanVienId,
+                ], [
+                    'trang_thai_phong' => 'DangHoatDong',
+                    'thoi_gian_nhan_tin_cuoi' => now()
+                ]);
+            }
+            
             return response()->json(['success' => true, 'message' => 'Nhận gói lịch thành công']);
         }
 
@@ -175,6 +187,18 @@ class CaLamViecController extends Controller
         $ca->nhan_vien_id = $nhanVienId;
         $ca->trang_thai_ca = 'DaNhan';
         $ca->save();
+        
+        $donHang = DonHang::find($ca->don_hang_id);
+        if ($donHang) {
+            \App\Models\PhongChat::firstOrCreate([
+                'don_hang_id' => $donHang->id,
+                'khach_hang_id' => $donHang->khach_hang_id,
+                'nhan_vien_id' => $nhanVienId,
+            ], [
+                'trang_thai_phong' => 'DangHoatDong',
+                'thoi_gian_nhan_tin_cuoi' => now()
+            ]);
+        }
         
         return response()->json(['success' => true, 'message' => 'Nhận lịch thành công']);
     }

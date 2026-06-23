@@ -92,6 +92,20 @@ const nhanVienApi = {
     getNhanVienDaLam: () => {
         return axiosClient.get('/khach-hang/nhan-vien-da-lam');
     },
+
+    // ─── CHAT VỚI KHÁCH HÀNG ───
+    getChatRooms: () => {
+        return axiosClient.get('/nhan-vien/phong-chat/danh-sach');
+    },
+    getMessages: (roomId) => {
+        return axiosClient.get(`/nhan-vien/phong-chat/${roomId}/tin-nhan`);
+    },
+    sendMessage: (roomId, text) => {
+        return axiosClient.post(`/nhan-vien/phong-chat/${roomId}/gui-tin`, { text });
+    },
+    getRoomOrderDetails: (roomId) => {
+        return axiosClient.get(`/nhan-vien/phong-chat/${roomId}/chi-tiet-don`);
+    },
 };
 
 export default nhanVienApi;
