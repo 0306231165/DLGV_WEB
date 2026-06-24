@@ -217,12 +217,7 @@ const MessagePage = () => {
             >
               Theo đơn đặt
             </button>
-            <button 
-              onClick={() => setCurrentTab('staff')}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center ${currentTab === 'staff' ? 'bg-white text-[#1a368d] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Nhân viên
-            </button>
+
             <button 
               onClick={() => setCurrentTab('history')}
               className={`flex-1 py-1.5 rounded-lg transition-all text-center ${currentTab === 'history' ? 'bg-white text-[#1a368d] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}

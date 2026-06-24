@@ -14,8 +14,6 @@ const PartnerLayout = () => {
     "/partner/messages",
   ].includes(location.pathname);
 
-  // Quản lý trạng thái số lượng của các mục khác
-  const [unreadMessages] = useState(4);
 
   // ================= STATE QUẢN LÝ THÔNG BÁO CHUYÊN SÂU =================
   const [notiTab, setNotiTab] = useState("all"); // 'all' hoặc 'unread'
@@ -182,14 +180,6 @@ const PartnerLayout = () => {
                 <span className="material-symbols-outlined text-[23px] group-hover/noti:rotate-12 transition-transform">
                   notifications
                 </span>
-                {unreadNotificationsCount > 0 && (
-                  <span className="absolute top-0 right-0 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[9px] font-black text-white items-center justify-center">
-                      {unreadNotificationsCount}
-                    </span>
-                  </span>
-                )}
               </button>
 
               <div className="absolute right-0 top-full invisible opacity-0 group-hover/noti:visible group-hover/noti:opacity-100 w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 transform origin-top-right scale-95 group-hover/noti:scale-100 transition-all duration-200 select-none">
@@ -323,14 +313,6 @@ const PartnerLayout = () => {
               <span className="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">
                 chat_bubble
               </span>
-              {unreadMessages > 0 && (
-                <span className="absolute top-0 right-0 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[9px] font-black text-white items-center justify-center">
-                    {unreadMessages}
-                  </span>
-                </span>
-              )}
             </button>
 
             <div className="h-6 w-[1px] bg-slate-200"></div>

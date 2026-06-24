@@ -1963,20 +1963,28 @@ const BookingDetailPage = () => {
             <div ref={chatEndRef} />
           </div>
           <div className="bg-white border-t border-outline-variant/20 flex flex-col shrink-0">
-            <div className="p-3 flex items-end gap-2 relative">
-              <textarea
-                ref={textareaRef}
-                value={inputMessage}
-                onChange={(e) => { setInputMessage(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`; }}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); } }}
-                placeholder="Nhập tin nhắn..."
-                rows={1}
-                className="flex-1 bg-slate-100 border border-transparent focus:border-primary/20 focus:bg-white outline-none rounded-xl py-2 px-4 text-sm font-medium text-slate-800 transition-all placeholder:text-slate-400 resize-none max-h-[100px] min-h-[36px] overflow-y-auto leading-relaxed"
-              />
-              <button type="submit" onClick={handleSendMessage} disabled={!inputMessage.trim() || !chatRoomId} className="w-9 h-9 bg-[#1a368d] disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl flex items-center justify-center active:scale-[0.95] transition-all shadow-md shrink-0 mb-0.5">
-                <span className="material-symbols-outlined text-[18px]">send</span>
-              </button>
-            </div>
+            {(booking.status === 'completed' || booking.status === 'cancelled') ? (
+              <div className="p-4 text-center">
+                <span className="text-sm font-medium text-slate-500 bg-slate-100 px-4 py-2 rounded-xl inline-block">
+                  Đơn lịch đã kết thúc. Cuộc trò chuyện này đã tự động đóng
+                </span>
+              </div>
+            ) : (
+              <div className="p-3 flex items-end gap-2 relative">
+                <textarea
+                  ref={textareaRef}
+                  value={inputMessage}
+                  onChange={(e) => { setInputMessage(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`; }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); } }}
+                  placeholder="Nhập tin nhắn..."
+                  rows={1}
+                  className="flex-1 bg-slate-100 border border-transparent focus:border-primary/20 focus:bg-white outline-none rounded-xl py-2 px-4 text-sm font-medium text-slate-800 transition-all placeholder:text-slate-400 resize-none max-h-[100px] min-h-[36px] overflow-y-auto leading-relaxed"
+                />
+                <button type="submit" onClick={handleSendMessage} disabled={!inputMessage.trim() || !chatRoomId} className="w-9 h-9 bg-[#1a368d] disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl flex items-center justify-center active:scale-[0.95] transition-all shadow-md shrink-0 mb-0.5">
+                  <span className="material-symbols-outlined text-[18px]">send</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
