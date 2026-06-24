@@ -137,6 +137,14 @@ const khachHangApi = {
         axiosClient.post(`/khach-hang/don-hang/ca-lam/${caLamViecId}/danh-gia`, data),
     reportSession: (caLamViecId, data) =>
         axiosClient.post(`/khach-hang/don-hang/ca-lam/${caLamViecId}/bao-cao`, data),
+
+    // ─── Tin nhắn & Phòng chat ────────────────────────────────────────────────
+    getChatRooms: () =>
+        axiosClient.get('/khach-hang/phong-chat/danh-sach'),
+    getMessages: (phongChatId) =>
+        axiosClient.get(`/khach-hang/phong-chat/${phongChatId}/tin-nhan`),
+    sendMessage: (phongChatId, data) =>
+        axiosClient.post(`/khach-hang/phong-chat/${phongChatId}/gui-tin`, data),
 };
 
 export default khachHangApi;

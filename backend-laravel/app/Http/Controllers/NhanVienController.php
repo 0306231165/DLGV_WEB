@@ -408,6 +408,7 @@ class NhanVienController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
     public function deposit(Request $request)
     {
         try {
@@ -531,6 +532,57 @@ class NhanVienController extends Controller
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Get Reviews Error: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Lỗi lấy danh sách đánh giá: ' . $e->getMessage()], 500);
+        }
+    }
+    /**
+     * GET /api/nhan-vien/{id}/lich-ban
+     * Fetch busy schedule (contracts and assigned jobs) for a staff member.
+     */
+    public function getBusySchedule($id)
+    {
+        try {
+            $nhanVien = NhanVien::find($id);
+            if (!$nhanVien) {
+                return response()->json(['success' => false, 'message' => 'Nhân viên không tồn tại'], 404);
+            }
+
+            // Get contract
+            $lichNghi = \App\Models\LichNghi::where('nhan_vien_id', $id)
+                ->where('loai_nghi', 'DinhKy')
+                ->get();
+
+            $contract = [
+                'startDate' => null,
+                'endDate' => null,
+                'offDays' => []
+            ];
+
+            if ($lichNghi->isNotEmpty()) {
+                $contract['startDate'] = $lichNghi->min('ngay_bat_dau_ap_dung');
+                $contract['endDate'] = $lichNghi->max('ngay_ket_thuc_ap_dung');
+                $contract['offDays'] = $lichNghi->pluck('thu_trong_tuan')->filter(function ($val) {
+                    return !is_null($val);
+                })->values()->toArray();
+            }
+
+            // Get busy jobs
+            // Trang thai ca: DangThucHien, DaNhan, ChoNhanVienChiDinhXacNhan
+            $busyJobs = \App\Models\CaLamViec::where('nhan_vien_id', $id)
+                ->where('ngay_lam', '>=', date('Y-m-d'))
+                ->whereIn('trang_thai_ca', ['DangThucHien', 'DaNhan', 'ChoNhanVienChiDinhXacNhan'])
+                ->select('id', 'ngay_lam', 'gio_bat_dau', 'thoi_gian_lam_phut', 'trang_thai_ca')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'contract' => $contract,
+                    'busyJobs' => $busyJobs
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Get busy schedule error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Lỗi server'], 500);
         }
     }
 }

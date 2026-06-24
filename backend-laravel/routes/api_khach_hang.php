@@ -67,6 +67,7 @@ Route::middleware(['auth:sanctum', 'ability:role:khach-hang'])->prefix('khach-ha
     Route::get('/don-hang/{id}', [DonHangController::class, 'show']);
 
     // ─── Phòng chat ───────────────────────────────────────────────────────────
+    Route::get('/phong-chat/danh-sach', [PhongChatController::class, 'getCustomerRooms']);
     Route::get('/phong-chat/{id}/tin-nhan', [PhongChatController::class, 'getMessages']);
     Route::post('/phong-chat/{id}/gui-tin', [PhongChatController::class, 'sendMessage']);
 });

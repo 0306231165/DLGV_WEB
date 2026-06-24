@@ -564,15 +564,15 @@ const BookingDetailPage = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeForm, setActiveForm] = useState(null);
   const [inputMessage, setInputMessage] = useState('');
-  const [selectedImages, setSelectedImages] = useState([]);
-  const [previewImageModal, setPreviewImageModal] = useState(null);
-  const [messages, setMessages] = useState([
-    { id: 1, sender: 'staff', text: 'Xin chào anh/chị, em đã nhận được lịch hẹn dọn dẹp rồi ạ!', time: 'Hôm nay' },
-    { id: 2, sender: 'staff', text: 'Em sẽ đến đúng giờ như trong lịch đặt nhé.', time: 'Hôm nay' },
-  ]);
+  const [chatRoomId, setChatRoomId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [isPolling, setIsPolling] = useState(false);
+  const chatRoomIdRef = useRef(null);
+  const isChatOpenRef = useRef(false);
 
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
+
 
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [refundData, setRefundData] = useState(null);
@@ -586,6 +586,93 @@ const BookingDetailPage = () => {
     data: null,
     staffOption: 'favorite',
   });
+
+
+  // Cập nhật ref để dùng trong polling
+  useEffect(() => {
+    chatRoomIdRef.current = chatRoomId;
+  }, [chatRoomId]);
+
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+  }, [isChatOpen]);
+
+  // Polling chat
+  useEffect(() => {
+    let isMounted = true;
+    let timerId;
+
+    const pollChatData = async () => {
+      if (!isMounted) return;
+      
+      // Chỉ poll khi chat đang mở và có booking
+      if (isChatOpenRef.current && booking?.id) {
+        try {
+          let currentRoomId = chatRoomIdRef.current;
+          
+          // Nếu chưa có room id, gọi danh sách room để tìm
+          if (!currentRoomId) {
+            const rooms = await khachHangApi.getChatRooms();
+            // Match room với donHangId hiện tại
+            const matchedRoom = rooms.find(r => String(r.bookingId) === String(booking.id));
+            if (matchedRoom) {
+              currentRoomId = matchedRoom.id;
+              setChatRoomId(currentRoomId);
+            }
+          }
+          
+          // Nếu đã có room id, load tin nhắn
+          if (currentRoomId) {
+            const msgs = await khachHangApi.getMessages(currentRoomId);
+            setMessages(msgs);
+          }
+        } catch (e) {
+          console.error("Lỗi lấy tin nhắn:", e);
+        }
+      }
+
+      if (isMounted) {
+        timerId = setTimeout(pollChatData, 10000);
+      }
+    };
+
+    pollChatData();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timerId);
+    };
+  }, [booking?.id]);
+
+  useEffect(() => {
+    if (isChatOpen) {
+      // Khi vừa mở chat, gọi ngay lập tức để không phải chờ 10s
+      const fetchInitial = async () => {
+        try {
+          let currentRoomId = chatRoomIdRef.current;
+          if (!currentRoomId && booking?.id) {
+            const rooms = await khachHangApi.getChatRooms();
+            const matchedRoom = rooms.find(r => String(r.bookingId) === String(booking.id));
+            if (matchedRoom) {
+              currentRoomId = matchedRoom.id;
+              setChatRoomId(currentRoomId);
+            }
+          }
+          if (currentRoomId) {
+            const msgs = await khachHangApi.getMessages(currentRoomId);
+            setMessages(msgs);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      fetchInitial();
+      
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    }
+  }, [isChatOpen, booking?.id]);
 
   const fetchBookingDetail = useCallback(() => {
     khachHangApi.getBookingDetail(id)
@@ -1007,31 +1094,32 @@ const BookingDetailPage = () => {
     }
   };
 
-  const handleSendMessage = (e) => {
+
+  const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
-    if (!inputMessage.trim() && selectedImages.length === 0) return;
-    const newMsg = {
+    if (!inputMessage.trim() || !chatRoomId) return;
+
+    const textToSend = inputMessage.trim();
+    setInputMessage('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+
+    // Optimistic update
+    const tempMsg = {
       id: Date.now(),
       sender: 'customer',
-      text: inputMessage,
-      images: selectedImages.map((img) => img.url),
+      text: textToSend,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
     };
-    setMessages((prev) => [...prev, newMsg]);
-    setInputMessage('');
-    setSelectedImages([]);
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: 'staff',
-          text: 'Dạ em đã nhận được thông tin rồi ạ! Em sẽ lưu ý xử lý ngay.',
-          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-    }, 1200);
+    setMessages((prev) => [...prev, tempMsg]);
+
+    try {
+      await khachHangApi.sendMessage(chatRoomId, { text: textToSend });
+    } catch (err) {
+      console.error(err);
+      alert('Không thể gửi tin nhắn.');
+    }
   };
 
   const renderSessionTitle = (session) => (
@@ -1866,13 +1954,7 @@ const BookingDetailPage = () => {
                 <div key={msg.id} className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
                   <div className={`p-3 rounded-2xl text-sm font-medium leading-relaxed shadow-sm ${isMe ? 'bg-[#1a368d] text-white rounded-br-none' : 'bg-white text-slate-800 border border-slate-100 rounded-bl-none'}`} style={{ wordBreak: 'break-word' }}>
                     {msg.text && <div>{msg.text}</div>}
-                    {msg.images && msg.images.length > 0 && (
-                      <div className={`grid gap-2 mt-2 ${msg.images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                        {msg.images.map((imgUrl, i) => (
-                          <img key={i} src={imgUrl} alt="Sent" onClick={() => setPreviewImageModal(imgUrl)} className="rounded-xl max-h-32 w-full object-cover cursor-zoom-in hover:opacity-90 border border-slate-400 shadow-sm" />
-                        ))}
-                      </div>
-                    )}
+
                   </div>
                   <span className="text-[10px] text-slate-400 mt-1 px-1 font-medium">{msg.time}</span>
                 </div>
@@ -1881,31 +1963,7 @@ const BookingDetailPage = () => {
             <div ref={chatEndRef} />
           </div>
           <div className="bg-white border-t border-outline-variant/20 flex flex-col shrink-0">
-            {selectedImages.length > 0 && (
-              <div className="p-3 bg-slate-50 border-b border-slate-100 flex gap-2 overflow-x-auto max-h-24 items-center">
-                {selectedImages.map((img) => (
-                  <div key={img.id} className="relative w-14 h-14 shrink-0">
-                    <img src={img.url} alt="Preview" onClick={() => setPreviewImageModal(img.url)} className="w-14 h-14 object-cover rounded-xl border-2 border-slate-300 shadow-md cursor-zoom-in" />
-                    <button type="button" onClick={() => setSelectedImages((prev) => prev.filter((item) => item.id !== img.id))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow z-10">
-                      <span className="material-symbols-outlined text-[12px]">close</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
             <div className="p-3 flex items-end gap-2 relative">
-              <input type="file" id="chat-image-input" accept="image/*" multiple className="hidden"
-                onChange={(e) => {
-                  if (e.target.files) {
-                    const filesArray = Array.from(e.target.files).map((file) => ({ id: Math.random().toString(36).substr(2, 9), file, url: URL.createObjectURL(file) }));
-                    setSelectedImages((prev) => [...prev, ...filesArray]);
-                    e.target.value = '';
-                  }
-                }}
-              />
-              <button type="button" onClick={() => document.getElementById('chat-image-input').click()} className="w-9 h-9 rounded-xl text-slate-500 hover:text-[#1a368d] hover:bg-slate-100 flex items-center justify-center transition-all shrink-0 mb-0.5">
-                <span className="material-symbols-outlined text-[22px]">image</span>
-              </button>
               <textarea
                 ref={textareaRef}
                 value={inputMessage}
@@ -1915,7 +1973,7 @@ const BookingDetailPage = () => {
                 rows={1}
                 className="flex-1 bg-slate-100 border border-transparent focus:border-primary/20 focus:bg-white outline-none rounded-xl py-2 px-4 text-sm font-medium text-slate-800 transition-all placeholder:text-slate-400 resize-none max-h-[100px] min-h-[36px] overflow-y-auto leading-relaxed"
               />
-              <button type="submit" onClick={handleSendMessage} disabled={!inputMessage.trim() && selectedImages.length === 0} className="w-9 h-9 bg-[#1a368d] disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl flex items-center justify-center active:scale-[0.95] transition-all shadow-md shrink-0 mb-0.5">
+              <button type="submit" onClick={handleSendMessage} disabled={!inputMessage.trim() || !chatRoomId} className="w-9 h-9 bg-[#1a368d] disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl flex items-center justify-center active:scale-[0.95] transition-all shadow-md shrink-0 mb-0.5">
                 <span className="material-symbols-outlined text-[18px]">send</span>
               </button>
             </div>
@@ -1923,15 +1981,7 @@ const BookingDetailPage = () => {
         </div>
       )}
 
-      {/* ─── Modal phóng to ảnh ─── */}
-      {previewImageModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-200" onClick={() => setPreviewImageModal(null)}>
-          <button className="absolute top-4 right-4 text-white bg-black/40 hover:bg-black/60 w-10 h-10 rounded-full flex items-center justify-center transition-colors" onClick={() => setPreviewImageModal(null)}>
-            <span className="material-symbols-outlined text-2xl">close</span>
-          </button>
-          <img src={previewImageModal} alt="Enlarged" className="max-w-full max-h-[90vh] object-contain rounded-lg animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
+
 
     </div>
   );

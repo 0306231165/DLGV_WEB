@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import publicApi from "../../api/publicApi";
 import khachHangApi from "../../api/khachHangApi";
+import nhanVienApi from "../../api/nhanVienApi";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -334,7 +335,7 @@ const formatTimeHM = (date) => {
   return `${h}:${m}`;
 };
 
-const isSlotDisabled = (dayObj, timeStr, durationHours = 0) => {
+const isSlotDisabled = (dayObj, timeStr, durationHours = 0, staffSchedule = null) => {
   if (!dayObj || !timeStr) return false;
   const [h, m] = timeStr.split(":").map(Number);
   const { outsideHours } = checkServiceHours(h, m, durationHours);
@@ -346,6 +347,29 @@ const isSlotDisabled = (dayObj, timeStr, durationHours = 0) => {
     slotTime.setHours(h, m, 0, 0);
     if (slotTime < earliest) return true;
   }
+
+  // Check against busyJobs
+  if (staffSchedule && staffSchedule.busyJobs && staffSchedule.busyJobs.length > 0) {
+    const slotStartMin = h * 60 + m;
+    const slotEndMin = slotStartMin + durationHours * 60;
+    
+    // Convert dayObj to string YYYY-MM-DD
+    const dStr = `${dayObj.year}-${String(dayObj.month + 1).padStart(2, '0')}-${String(dayObj.dateNum).padStart(2, '0')}`;
+    
+    const isOverlapping = staffSchedule.busyJobs.some(job => {
+      if (job.ngay_lam !== dStr) return false;
+      if (!job.gio_bat_dau) return false;
+      const [jh, jm] = job.gio_bat_dau.split(':').map(Number);
+      const jobStartMin = jh * 60 + jm;
+      const jobEndMin = jobStartMin + (job.thoi_gian_lam_phut || 0);
+      
+      // Overlap condition: (StartA < EndB) and (EndA > StartB)
+      return (slotStartMin < jobEndMin) && (slotEndMin > jobStartMin);
+    });
+    
+    if (isOverlapping) return true;
+  }
+
   return false;
 };
 
@@ -483,6 +507,7 @@ const CustomTimePicker = ({
   onSelectEarliest,
   tick,
   totalHours,
+  staffSchedule,
 }) => {
   const [displayHour, setDisplayHour] = useState("08");
   const [displayMinute, setDisplayMinute] = useState("00");
@@ -592,6 +617,15 @@ const CustomTimePicker = ({
     }
 
     const timeStr = `${h}:${m}`;
+    const disabledByStaff = isSlotDisabled(dayObj, timeStr, totalHours, staffSchedule);
+    if (disabledByStaff) {
+      setCustomError("Khung giờ này đã qua, nhân viên đang bận, hoặc không đủ thời gian làm tối thiểu. Vui lòng chọn giờ khác.");
+      setErrorType("staff_busy");
+      lastEmittedRef.current = null;
+      onChange(null);
+      return;
+    }
+
     setCustomError(null);
     setErrorType(null);
     lastEmittedRef.current = timeStr;
@@ -757,6 +791,7 @@ const TimeSlotPicker = ({
   urgentFee,
   tick,
   totalHours,
+  staffSchedule,
 }) => {
   const labels = {
     morning: "Buổi sáng",
@@ -847,7 +882,7 @@ const TimeSlotPicker = ({
           </h4>
           <div className="flex gap-2 flex-wrap">
             {TIME_SLOTS[period].map((t) => {
-              const disabled = isSlotDisabled(selectedDayObj, t, totalHours);
+              const disabled = isSlotDisabled(selectedDayObj, t, totalHours, staffSchedule);
               const urgentBadge = selectedDayObj?.isToday && !disabled;
               const isSelected = !showCustomTime && selectedTime === t;
               return (
@@ -1443,6 +1478,10 @@ const BookingPage = () => {
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
   const [replacementOption, setReplacementOption] = useState("none");
 
+  // State lưu lịch bận của nhân viên
+  const [staffSchedule, setStaffSchedule] = useState({ contract: null, busyJobs: [] });
+  const [loadingStaffSchedule, setLoadingStaffSchedule] = useState(false);
+
   // Nếu có nhân viên được chọn trước từ trang chi tiết nhân viên, tự bật staffSelfPick
   useEffect(() => {
     if (preselectedStaff) {
@@ -1463,6 +1502,32 @@ const BookingPage = () => {
       setReplacementOption("none");
     }
   }, [preselectedStaff]);
+
+  // Fetch lịch bận của nhân viên khi staffSelfPick được bật
+  useEffect(() => {
+    const fetchStaffSchedule = async () => {
+      const staffId = preselectedStaff?.id;
+      if (staffSelfPick && staffId) {
+        setLoadingStaffSchedule(true);
+        try {
+          const res = await nhanVienApi.getStaffBusySchedule(staffId);
+          if (res && res.success) {
+            setStaffSchedule(res.data);
+          } else {
+            setStaffSchedule({ contract: null, busyJobs: [] });
+          }
+        } catch (error) {
+          console.error("Lỗi khi fetch lịch nhân viên:", error);
+          setStaffSchedule({ contract: null, busyJobs: [] });
+        } finally {
+          setLoadingStaffSchedule(false);
+        }
+      } else {
+        setStaffSchedule({ contract: null, busyJobs: [] });
+      }
+    };
+    fetchStaffSchedule();
+  }, [staffSelfPick, preselectedStaff]);
 
   const [careOptionId, setCareOptionId] = useState(null);
   const [frequencyChoice, setFrequencyChoice] = useState(null);
@@ -1638,7 +1703,6 @@ const BookingPage = () => {
 
   // areaList giữ lại để tương thích phần code Bước 2 (lịch hẹn) chưa sửa ở đây;
   // với dịch vụ không có biến thể, areaData sẽ là null và basePrice/baseHours dùng don_gia_co_ban.
-  const areaList = variantOptions;
   const areaData = careData;
 
   const next7Days = getNext7Days();
@@ -2058,6 +2122,7 @@ const BookingPage = () => {
     urgentFee: urgentFeeVal,
     tick,
     totalHours,
+    staffSchedule,
   };
 
   const getFrequencyOptions = () => {
@@ -3867,8 +3932,25 @@ const BookingPage = () => {
                       <div className="flex gap-3 overflow-x-auto pb-2">
                         {next7Days.map((d, idx) => {
                           const isSelected = selectedDayIdx === idx;
+                          let isBlockedByStaff = false;
+                          if (staffSchedule?.contract && staffSchedule.contract.startDate && staffSchedule.contract.endDate) {
+                            const dDate = new Date(d.year, d.month, d.dateNum);
+                            dDate.setHours(0, 0, 0, 0);
+                            const sDate = new Date(staffSchedule.contract.startDate);
+                            sDate.setHours(0, 0, 0, 0);
+                            const eDate = new Date(staffSchedule.contract.endDate);
+                            eDate.setHours(0, 0, 0, 0);
+                            if (dDate < sDate || dDate > eDate) {
+                              isBlockedByStaff = true;
+                            } else {
+                              const dayOfWeek = dDate.getDay();
+                              if (staffSchedule.contract.offDays?.includes(dayOfWeek)) {
+                                isBlockedByStaff = true;
+                              }
+                            }
+                          }
                           const noSlots =
-                            d.isToday && !getEarliestBookableTime();
+                            (d.isToday && !getEarliestBookableTime()) || isBlockedByStaff;
                           return (
                             <button
                               key={idx}
@@ -3882,9 +3964,11 @@ const BookingPage = () => {
                                 setErrors((p) => ({ ...p, date: null }));
                               }}
                               title={
-                                noSlots
-                                  ? "Hôm nay đã hết khung giờ đặt lịch"
-                                  : undefined
+                                isBlockedByStaff
+                                  ? "Nhân viên không làm việc ngày này"
+                                  : noSlots
+                                    ? "Hôm nay đã hết khung giờ đặt lịch"
+                                    : undefined
                               }
                               className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl border-2 transition-all ${
                                 noSlots

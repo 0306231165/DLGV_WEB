@@ -25,11 +25,14 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
     Route::post('/ca-lam/{id}/bam-nhan', [CaLamViecController::class, 'acceptJob']); 
     Route::post('/ca-lam/{id}/tu-choi', [CaLamViecController::class, 'rejectJob']); 
     Route::post('/ca-lam/{id}/huy-ca', [CaLamViecController::class, 'cancelAcceptedJob']);
+    Route::post('/ca-lam/{id}/huy-hop-dong', [CaLamViecController::class, 'cancelContract']);
     Route::put('/ca-lam/{id}/cap-nhat', [CaLamViecController::class, 'updateProgress']); 
 
     // Chat với khách
+    Route::get('/phong-chat/danh-sach', [PhongChatController::class, 'getStaffRooms']);
     Route::get('/phong-chat/{id}/tin-nhan', [PhongChatController::class, 'getMessages']);
     Route::post('/phong-chat/{id}/gui-tin', [PhongChatController::class, 'sendMessage']);
+    Route::get('/phong-chat/{id}/chi-tiet-don', [PhongChatController::class, 'getRoomOrderDetails']);
 
     // Lịch nghỉ (Cam kết)
     Route::get('/lich-nghi/cam-ket', [NhanVienController::class, 'getCamKetLichNghi']);

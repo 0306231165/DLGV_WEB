@@ -361,10 +361,19 @@ export const mapApiToBookingDetailFormat = (dh) => {
   let statusLabel = '';
   let statusColor = '';
 
+  const firstCa = dh.ca_lam_viec && dh.ca_lam_viec.length > 0 ? dh.ca_lam_viec[0] : null;
+  const nhanVienCaLam = firstCa?.nhan_vien?.tai_khoan?.ho_ten;
+
   if (dh.trang_thai_don === 'ChoXuLy') {
-    statusStr = 'pending';
-    statusLabel = 'CHỜ XÁC NHẬN';
-    statusColor = 'text-on-surface-variant bg-surface-container-high border-outline-variant/30';
+    if (nhanVienCaLam && firstCa?.trang_thai_ca !== 'ChoNhanVienChiDinhXacNhan') {
+      statusStr = 'confirmed';
+      statusLabel = 'ĐÃ XÁC NHẬN';
+      statusColor = 'text-primary bg-primary/10 border-primary/20 font-bold';
+    } else {
+      statusStr = 'pending';
+      statusLabel = 'CHỜ XÁC NHẬN';
+      statusColor = 'text-on-surface-variant bg-surface-container-high border-outline-variant/30';
+    }
   } else if (dh.trang_thai_don === 'DangThucHien') {
     statusStr = 'active';
     if (isPackage) {
@@ -372,8 +381,8 @@ export const mapApiToBookingDetailFormat = (dh) => {
         statusLabel = 'GÓI 24/7 • ĐANG THỰC HIỆN';
         statusColor = 'text-white bg-blue-600 border-blue-600/30';
       } else {
-        const title = dh.dich_vu_loai_goi?.loai_goi?.ten_loai_goi || 'GÓI DỊCH VỤ';
-        statusLabel = `${title.toUpperCase()} • ĐANG THỰC HIỆN`;
+        if (dh.so_thang_goi_thang) statusLabel = `GÓI ${dh.so_thang_goi_thang} THÁNG • ĐANG THỰC HIỆN`;
+        else statusLabel = `GÓI DỊCH VỤ • ĐANG THỰC HIỆN`;
         statusColor = 'text-white bg-secondary border-secondary/30 shadow-md shadow-secondary/30';
       }
     } else {
@@ -390,7 +399,7 @@ export const mapApiToBookingDetailFormat = (dh) => {
     statusColor = 'text-error bg-error/10 border-error/20';
   }
 
-  const firstCa = dh.ca_lam_viec && dh.ca_lam_viec.length > 0 ? dh.ca_lam_viec[0] : null;
+
 
   // Tính toán Duration
   let durationStr = 'Tùy chọn';
