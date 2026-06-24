@@ -21,6 +21,12 @@ const nhanVienApi = {
     getWallet: () => {
         return axiosClient.get('/nhan-vien/wallet');
     },
+    depositWallet: (data) => {
+        return axiosClient.post('/nhan-vien/wallet/deposit', data);
+    },
+    withdrawWallet: (data) => {
+        return axiosClient.post('/nhan-vien/wallet/withdraw', data);
+    },
     // Lịch nghỉ (Cam kết)
     getCamKetLichNghi: () => {
         return axiosClient.get('/nhan-vien/lich-nghi/cam-ket');

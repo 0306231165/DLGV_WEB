@@ -14,6 +14,8 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
 
     // Ví và Thu nhập
     Route::get('/wallet', [NhanVienController::class, 'wallet']);
+    Route::post('/wallet/deposit', [NhanVienController::class, 'deposit']);
+    Route::post('/wallet/withdraw', [NhanVienController::class, 'withdraw']);
 
     // Quản lý ca làm việc (Nhận ca / Cập nhật tiến độ dọn dẹp)
     Route::get('/ca-lam/cho-nhan', [CaLamViecController::class, 'getAvailableJobs']); 
@@ -33,5 +35,7 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
     Route::get('/lich-nghi/cam-ket', [NhanVienController::class, 'getCamKetLichNghi']);
     Route::post('/lich-nghi/cam-ket', [NhanVienController::class, 'saveCamKetLichNghi']);
     Route::delete('/lich-nghi/cam-ket', [NhanVienController::class, 'cancelCamKetLichNghi']);
+    // Danh sách đánh giá
+    Route::get('/reviews', [NhanVienController::class, 'getReviews']);
 
 });

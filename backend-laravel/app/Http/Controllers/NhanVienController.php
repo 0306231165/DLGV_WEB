@@ -408,4 +408,129 @@ class NhanVienController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+    public function deposit(Request $request)
+    {
+        try {
+            $request->validate([
+                'amount' => 'required|numeric|min:10000',
+            ]);
+
+            $taiKhoan = $request->user();
+            $viTien = \App\Models\ViTien::where('tai_khoan_id', $taiKhoan->id)->first();
+            
+            if (!$viTien) {
+                // For this demo, try to create one if it doesn't exist
+                $viTien = \App\Models\ViTien::create([
+                    'tai_khoan_id' => $taiKhoan->id,
+                    'so_du' => 0
+                ]);
+            }
+
+            DB::beginTransaction();
+            
+            $viTien->so_du += $request->amount;
+            $viTien->save();
+            
+            \App\Models\GiaoDichVi::create([
+                'ma_giao_dich' => 'DP' . time() . rand(100, 999),
+                'vi_tien_id' => $viTien->id,
+                'loai_giao_dich' => 'NapTien',
+                'loai_bien_dong' => 'Tang',
+                'so_tien' => $request->amount,
+                'so_du_sau_giao_dich' => $viTien->so_du,
+                'noi_dung' => 'Nạp tiền vào ví',
+                'trang_thai' => 'ThanhCong',
+                'thoi_gian' => now()
+            ]);
+            
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Nạp tiền thành công!', 'balance' => $viTien->so_du]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Deposit Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Lỗi nạp tiền: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function withdraw(Request $request)
+    {
+        try {
+            $request->validate([
+                'amount' => 'required|numeric|min:500000',
+            ]);
+
+            $taiKhoan = $request->user();
+            $viTien = \App\Models\ViTien::where('tai_khoan_id', $taiKhoan->id)->first();
+            
+            if (!$viTien) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy ví tiền.'], 404);
+            }
+
+            if ($viTien->so_du - $request->amount < 500000) {
+                return response()->json(['success' => false, 'message' => 'Bạn cần giữ lại tối thiểu 500.000đ trong ví.'], 400);
+            }
+
+            DB::beginTransaction();
+            
+            $viTien->so_du -= $request->amount;
+            $viTien->save();
+            
+            \App\Models\GiaoDichVi::create([
+                'ma_giao_dich' => 'WD' . time() . rand(100, 999),
+                'vi_tien_id' => $viTien->id,
+                'loai_giao_dich' => 'RutTien',
+                'loai_bien_dong' => 'Giam',
+                'so_tien' => $request->amount,
+                'so_du_sau_giao_dich' => $viTien->so_du,
+                'noi_dung' => 'Rút tiền về ngân hàng',
+                'trang_thai' => 'ThanhCong',
+                'thoi_gian' => now()
+            ]);
+            
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Rút tiền thành công!', 'balance' => $viTien->so_du]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Withdraw Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Lỗi rút tiền: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getReviews(Request $request)
+    {
+        try {
+            $taiKhoan = $request->user();
+            $nhanVien = $taiKhoan->nhanVien;
+
+            if (!$nhanVien) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin nhân viên.'], 404);
+            }
+
+            // Truy vấn CaLamViec có sao_danh_gia != null và thuộc nhân viên này
+            // Eager load donHang để lấy thông tin khách hàng (ho_ten_thuc_te)
+            $reviews = \App\Models\CaLamViec::with(['donHang'])
+                ->where('nhan_vien_id', $nhanVien->id)
+                ->whereNotNull('sao_danh_gia')
+                ->orderBy('ngay_danh_gia', 'desc')
+                ->get()
+                ->map(function($caLam) {
+                    return [
+                        'id' => 'rev_' . $caLam->id,
+                        'customer' => $caLam->donHang->ho_ten_thuc_te ?? 'Khách hàng',
+                        'rating' => (int) $caLam->sao_danh_gia,
+                        'text' => $caLam->noi_dung_danh_gia ?? 'Khách hàng không để lại bình luận.',
+                        'date' => \Carbon\Carbon::parse($caLam->ngay_danh_gia)->format('d/m/Y'),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $reviews
+            ]);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Get Reviews Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Lỗi lấy danh sách đánh giá: ' . $e->getMessage()], 500);
+        }
+    }
 }

@@ -18,20 +18,26 @@ const PartnerWallet = () => {
   // State quản lý bộ lọc ngày của Lịch sử giao dịch (Mặc định chọn 'all' - Tất cả)
   const [dateFilter, setDateFilter] = useState('all');
 
-  useEffect(() => {
-    const fetchWallet = async () => {
-      try {
-        const response = await nhanVienApi.getWallet();
-        if (response.success) {
-          setBalance(response.data.balance || 0);
-          setTransactionHistory(response.data.transactions || []);
-        }
-      } catch (error) {
-        console.error('Lỗi lấy dữ liệu ví:', error);
-      } finally {
-        setLoading(false);
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [depositStep, setDepositStep] = useState(1); // 1: Nhập tiền, 2: Quét QR
+  const [depositInput, setDepositInput] = useState('');
+  const [depositErrorMsg, setDepositErrorMsg] = useState('');
+
+  const fetchWallet = async () => {
+    try {
+      const response = await nhanVienApi.getWallet();
+      if (response.success) {
+        setBalance(response.data.balance || 0);
+        setTransactionHistory(response.data.transactions || []);
       }
-    };
+    } catch (error) {
+      console.error('Lỗi lấy dữ liệu ví:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchWallet();
   }, []);
 
@@ -42,8 +48,9 @@ const PartnerWallet = () => {
     
     return transactionHistory.filter(txn => {
       const txnDate = new Date(txn.date);
-      const timeDiff = today - txnDate;
-      const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+      txnDate.setHours(0, 0, 0, 0); // Đưa về 0h để so sánh chính xác theo ngày
+      const timeDiff = today.getTime() - txnDate.getTime();
+      const daysDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24)); // Dùng Math.round để tránh sai số thập phân
 
       if (dateFilter === 'today') return daysDiff === 0;
       if (dateFilter === '7days') return daysDiff <= 7;
@@ -70,7 +77,14 @@ const PartnerWallet = () => {
     }
   };
 
-  const handleWithdrawSubmit = (e) => {
+  const handleDepositInputChange = (e) => {
+    const rawValue = e.target.value.replace(/,/g, '');
+    if (/^\d*$/.test(rawValue)) {
+      setDepositInput(formatNumberWithCommas(rawValue));
+    }
+  };
+
+  const handleWithdrawSubmit = async (e) => {
     e.preventDefault();
     const amount = parseRawNumber(withdrawInput);
 
@@ -83,11 +97,58 @@ const PartnerWallet = () => {
       return;
     }
 
-    alert(`Yêu cầu rút ${amount.toLocaleString()}đ thành công! Đang chờ hệ thống xử lý.`);
-    setBalance(prev => prev - amount);
-    setIsWithdrawModalOpen(false);
-    setWithdrawInput('');
-    setErrorMsg('');
+    try {
+      const response = await nhanVienApi.withdrawWallet({ amount });
+      if (response.success) {
+        alert(response.message || `Yêu cầu rút ${amount.toLocaleString()}đ thành công!`);
+        setIsWithdrawModalOpen(false);
+        setWithdrawInput('');
+        setErrorMsg('');
+        fetchWallet(); // Tải lại dữ liệu ví
+      } else {
+        setErrorMsg(response.message || 'Có lỗi xảy ra khi rút tiền');
+      }
+    } catch (error) {
+      setErrorMsg(error.response?.data?.message || 'Có lỗi xảy ra khi gọi API rút tiền');
+    }
+  };
+
+  const handleDepositSubmit = async (e) => {
+    e.preventDefault();
+    const amount = parseRawNumber(depositInput);
+
+    if (!amount || amount < 10000) {
+      setDepositErrorMsg('Số tiền nạp tối thiểu là 10,000đ');
+      return;
+    }
+
+    if (depositStep === 1) {
+      // Chuyển sang bước 2: Hiện QR
+      setDepositStep(2);
+      setDepositErrorMsg('');
+      return;
+    }
+
+    // Bước 2: Xác nhận đã nạp tiền (Demo gọi API cộng tiền)
+    try {
+      const response = await nhanVienApi.depositWallet({ amount });
+      if (response.success) {
+        alert(response.message || `Nạp ${amount.toLocaleString()}đ thành công!`);
+        closeDepositModal();
+        fetchWallet(); // Tải lại dữ liệu ví
+      } else {
+        setDepositErrorMsg(response.message || 'Có lỗi xảy ra khi nạp tiền');
+      }
+    } catch (error) {
+      setDepositErrorMsg(error.response?.data?.message || 'Có lỗi xảy ra khi gọi API nạp tiền');
+    }
+  };
+
+  const closeDepositModal = () => {
+    setIsDepositModalOpen(false);
+    setDepositErrorMsg('');
+    setDepositInput('');
+    setDepositStep(1);
   };
 
   // Hàm format ngày hiển thị từ YYYY-MM-DD sang DD/MM/YYYY
@@ -169,7 +230,7 @@ const PartnerWallet = () => {
                 <p className="text-xs text-slate-400">Nạp tiền nhanh qua chuyển khoản QR hoặc ví điện tử để nhận việc.</p>
               </div>
               <button 
-                onClick={() => alert('Chức năng Nạp tiền: Hiển thị cổng thanh toán/QR chuyển khoản')}
+                onClick={() => setIsDepositModalOpen(true)}
                 className="w-full mt-4 bg-slate-900 text-white hover:bg-slate-800 font-bold py-3 text-sm rounded-xl transition-all shadow-sm shadow-slate-900/10 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-sm">input</span>
@@ -353,6 +414,137 @@ const PartnerWallet = () => {
                     Xác nhận rút
                   </button>
                 </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL XỬ LÝ NẠP TIỀN (POPUP) */}
+        {isDepositModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden transform transition-all">
+              
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-black text-slate-900 text-lg">
+                  {depositStep === 1 ? 'Nạp tiền vào ví' : 'Quét mã QR thanh toán'}
+                </h3>
+                <button 
+                  onClick={closeDepositModal}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleDepositSubmit} className="p-5">
+                {depositStep === 1 ? (
+                  <>
+                    <div className="bg-slate-50 rounded-xl p-4 mb-4 text-xs space-y-1.5 text-slate-600">
+                      <div className="flex justify-between">
+                        <span>Tổng số dư hiện tại:</span>
+                        <span className="font-semibold text-slate-900">{balance.toLocaleString()}đ</span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Nhập số tiền muốn nạp
+                      </label>
+                      <div className="relative">
+                        <input 
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Tối thiểu 10,000"
+                          value={depositInput}
+                          onChange={handleDepositInputChange}
+                          className={`w-full pl-4 pr-16 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 font-medium tracking-wide
+                            ${depositErrorMsg ? 'border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:ring-emerald-100 focus:border-emerald-500'}`}
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                          ĐỒNG
+                        </span>
+                      </div>
+
+                      {depositErrorMsg && (
+                        <div className="mt-2 text-xs text-rose-600 flex items-center gap-1 font-medium">
+                          <span className="material-symbols-outlined text-sm">error</span>
+                          {depositErrorMsg}
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-slate-400 mb-5 leading-normal">
+                      * Quy định: Số tiền nạp tối thiểu là 10,000đ. Vui lòng làm theo hướng dẫn ở bước sau để chuyển khoản.
+                    </p>
+
+                    <div className="flex gap-3">
+                      <button 
+                        type="button"
+                        onClick={closeDepositModal}
+                        className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm rounded-xl transition-all"
+                      >
+                        Hủy
+                      </button>
+                      <button 
+                        type="submit"
+                        className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-emerald-600/10"
+                      >
+                        Tiếp tục
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-col items-center mb-6">
+                      <p className="text-sm text-slate-600 mb-4 text-center">
+                        Mở App ngân hàng hoặc Ví điện tử để quét mã QR bên dưới.
+                      </p>
+                      
+                      <div className="p-2 border-2 border-emerald-500 rounded-2xl mb-4 bg-white shadow-sm inline-block">
+                        {/* URL tạo QR động của VietQR, có truyền số tiền vào */}
+                        <img 
+                          src={`https://img.vietqr.io/image/vcb-1025537651-compact2.png?amount=${parseRawNumber(depositInput)}&addInfo=NAP%20TIEN%20VI%20DON%20DEP&accountName=CLEAN%20TRUST`}
+                          alt="Mã QR Nạp Tiền"
+                          className="w-56 h-56 object-contain"
+                        />
+                      </div>
+
+                      <div className="text-center w-full max-w-[260px]">
+                        <div className="flex justify-between border-b border-slate-100 py-2 text-sm">
+                          <span className="text-slate-500">Số tiền:</span>
+                          <span className="font-bold text-emerald-600">{depositInput} đ</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 py-2 text-sm">
+                          <span className="text-slate-500">Nội dung CK:</span>
+                          <span className="font-bold text-slate-800">NAP TIEN VI</span>
+                        </div>
+                      </div>
+                      
+                      {depositErrorMsg && (
+                        <div className="mt-4 text-xs text-rose-600 flex items-center gap-1 font-medium bg-rose-50 p-2 rounded-lg">
+                          <span className="material-symbols-outlined text-sm">error</span>
+                          {depositErrorMsg}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      <button 
+                        type="submit"
+                        className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-emerald-600/10"
+                      >
+                        Tôi đã chuyển khoản thành công
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setDepositStep(1)}
+                        className="w-full py-3 bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm rounded-xl transition-all"
+                      >
+                        Quay lại
+                      </button>
+                    </div>
+                  </>
+                )}
               </form>
             </div>
           </div>
