@@ -592,8 +592,10 @@ const AdminServices = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className={`w-1.5 h-1.5 rounded-full ${promo.trang_thai ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></span>
-                          <span className={`text-[9px] font-black uppercase tracking-wider ${promo.trang_thai ? 'text-emerald-600' : 'text-slate-500'}`}>{promo.trang_thai ? 'ĐANG CHẠY' : 'ĐÃ TẮT'}</span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${!promo.trang_thai ? 'bg-slate-300' : (new Date(promo.ngay_ket_thuc.replace(' ', 'T')) < new Date() ? 'bg-rose-500' : 'bg-emerald-500 animate-pulse')}`}></span>
+                          <span className={`text-[9px] font-black uppercase tracking-wider ${!promo.trang_thai ? 'text-slate-500' : (new Date(promo.ngay_ket_thuc.replace(' ', 'T')) < new Date() ? 'text-rose-500' : 'text-emerald-600')}`}>
+                            {!promo.trang_thai ? 'ĐÃ TẮT' : (new Date(promo.ngay_ket_thuc.replace(' ', 'T')) < new Date() ? 'HẾT HẠN' : 'ĐANG CHẠY')}
+                          </span>
                         </div>
                         <h4 className="text-sm font-black text-slate-800 truncate">{promo.ma_code}</h4>
                         <p className="text-xs text-slate-500 font-medium truncate">{promo.tieu_de}</p>

@@ -279,9 +279,7 @@ class DonHangController extends Controller
             foreach ($donHangs as $donHang) {
                 foreach ($donHang->caLamViec as $ca) {
                     if (isset($ca->noi_dung_danh_gia) && strpos($ca->noi_dung_danh_gia, '[HIDDEN]') === 0) {
-                        $ca->noi_dung_danh_gia = null;
-                        $ca->sao_danh_gia = null;
-                        $ca->ngay_danh_gia = null;
+                        $ca->noi_dung_danh_gia = 'Đánh giá này đã bị ẩn bởi quản trị viên.';
                     }
                 }
             }
@@ -339,9 +337,7 @@ class DonHangController extends Controller
             if ($donHang->caLamViec) {
                 foreach ($donHang->caLamViec as $ca) {
                     if (isset($ca->noi_dung_danh_gia) && strpos($ca->noi_dung_danh_gia, '[HIDDEN]') === 0) {
-                        $ca->noi_dung_danh_gia = null;
-                        $ca->sao_danh_gia = null;
-                        $ca->ngay_danh_gia = null;
+                        $ca->noi_dung_danh_gia = 'Đánh giá này đã bị ẩn bởi quản trị viên.';
                     }
                 }
             }

@@ -519,7 +519,9 @@ class NhanVienController extends Controller
                         'id' => 'rev_' . $caLam->id,
                         'customer' => $caLam->donHang->ho_ten_thuc_te ?? 'Khách hàng',
                         'rating' => (int) $caLam->sao_danh_gia,
-                        'text' => $caLam->noi_dung_danh_gia ?? 'Khách hàng không để lại bình luận.',
+                        'text' => isset($caLam->noi_dung_danh_gia) && strpos($caLam->noi_dung_danh_gia, '[HIDDEN]') === 0
+                            ? 'Đánh giá này đã bị ẩn bởi quản trị viên.'
+                            : ($caLam->noi_dung_danh_gia ?? 'Khách hàng không để lại bình luận.'),
                         'date' => \Carbon\Carbon::parse($caLam->ngay_danh_gia)->format('d/m/Y'),
                     ];
                 });
