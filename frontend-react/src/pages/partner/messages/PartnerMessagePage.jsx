@@ -232,12 +232,7 @@ const PartnerMessagePage = () => {
             >
               Theo đơn đặt
             </button>
-            <button
-              onClick={() => setCurrentTab('direct')}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center ${currentTab === 'direct' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Chat trực tiếp
-            </button>
+
             <button
               onClick={() => setCurrentTab('history')}
               className={`flex-1 py-1.5 rounded-lg transition-all text-center ${currentTab === 'history' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}

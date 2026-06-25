@@ -76,7 +76,7 @@ class CustomerSupportSeeder extends Seeder
         // ══════════════════════════════════════════════════════════════════
         DB::table('PhongChat')->insert([
             ['id' => 1, 'khach_hang_id' => 1, 'nhan_vien_id' => 1, 'don_hang_id' => 1, 'thoi_gian_nhan_tin_cuoi' => Carbon::now()->subMinutes(30), 'trang_thai_phong' => 'DangHoatDong'],
-            ['id' => 2, 'khach_hang_id' => 1, 'nhan_vien_id' => 2, 'don_hang_id' => 2, 'thoi_gian_nhan_tin_cuoi' => Carbon::now()->subDays(1), 'trang_thai_phong' => 'DaDong'],
+            ['id' => 2, 'khach_hang_id' => 1, 'nhan_vien_id' => 2, 'don_hang_id' => 2, 'thoi_gian_nhan_tin_cuoi' => Carbon::now()->subDays(1), 'trang_thai_phong' => 'DangHoatDong'],
         ]);
 
         DB::table('TinNhan')->insert([
