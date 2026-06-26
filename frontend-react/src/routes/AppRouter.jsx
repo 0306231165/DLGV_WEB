@@ -80,6 +80,7 @@ import AdminLayout from "../layouts/AdminLayout";
 import AdminDashboard from "../pages/admin/dashboard/AdminDashboard";
 import AdminAccount from "../pages/admin/account/AdminAccount";
 import AdminApprovals from "../pages/admin/approvals/AdminApprovals";
+import AdminSkillsApprovals from "../pages/admin/approvals/AdminSkillsApprovals";
 import AdminServices from "../pages/admin/services/AdminServices";
 import AdminBookings from "../pages/admin/bookings/AdminBookings";
 import AdminReports from "../pages/admin/reports/AdminReports";
@@ -381,6 +382,7 @@ const AppRouter = () => {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminAccount />} />
           <Route path="approvals" element={<AdminApprovals />} />
+          <Route path="skills-approvals" element={<AdminSkillsApprovals />} />
           <Route path="services" element={<AdminServices />} />
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="reports" element={<AdminReports />} />

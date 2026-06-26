@@ -11,7 +11,7 @@ const AdminLayout = () => {
   const isMinimalLayoutPage = ['/admin/login'].includes(location.pathname);
 
   // Quản lý trạng thái số lượng cần xử lý hiển thị ở Menu bên trái
-  const [pendingApprovalsCount] = useState(12); // Hồ sơ chờ duyệt
+  // Quản lý trạng thái số lượng cần xử lý hiển thị ở Menu bên trái
 
   // ================= HÀM XỬ LÝ ĐĂNG XUẤT =================
   const handleLogout = async (e) => {
@@ -31,7 +31,8 @@ const AdminLayout = () => {
   const menuItems = [
     { path: '/admin/dashboard', icon: 'dashboard', label: 'Tổng quan hệ thống' },
     { path: '/admin/users', icon: 'manage_accounts', label: 'Tài khoản & Người dùng' },
-    { path: '/admin/approvals', icon: 'verified_user', label: 'Kiểm duyệt hồ sơ', badge: pendingApprovalsCount },
+    { path: '/admin/approvals', icon: 'verified_user', label: 'Kiểm duyệt hồ sơ' },
+    { path: '/admin/skills-approvals', icon: 'model_training', label: 'Duyệt kỹ năng thêm' },
     { path: '/admin/services', icon: 'category', label: 'Dịch vụ & Bảng giá' },
     { path: '/admin/bookings', icon: 'calendar_month', label: 'Điều phối Đơn hàng' },
     { path: '/admin/reports', icon: 'bar_chart', label: 'Doanh thu & Thống kê' },

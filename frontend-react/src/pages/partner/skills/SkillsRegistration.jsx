@@ -1,62 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axiosClient from '../../../api/axiosClient';
 
 const SkillsRegistration = () => {
   // Danh sách dịch vụ ban đầu trong State
-  const [services, setServices] = useState([
-    { 
-      id: 1, 
-      name: 'Dọn dẹp nhà phổ thông', 
-      icon: 'clean_hands', 
-      desc: 'Lau dọn sàn, quét bụi, dọn phòng khách, phòng ngủ cơ bản.', 
-      status: 'active', 
-      statusText: 'Đang hoạt động' 
-    },
-    { 
-      id: 2, 
-      name: 'Tổng vệ sinh sâu (Deep Clean)', 
-      icon: 'imagesearch_roller', 
-      desc: 'Vệ sinh nhà mới xây, dọn dẹp tổng thể quy mô lớn bằng máy móc.', 
-      status: 'active', 
-      statusText: 'Đang hoạt động' 
-    },
-    { 
-      id: 3, 
-      name: 'Đi chợ & Nấu ăn gia đình', 
-      icon: 'cooking', 
-      desc: 'Lên thực đơn, đi chợ lựa chọn thực phẩm tươi ngon và chế biến.', 
-      status: 'pending', 
-      statusText: 'Đang chờ thi test',
-      examSchedule: {
-        date: '15/06/2026',
-        time: '13:00 - 15:00',
-        location: 'Phòng thực hành tầng 3, Trụ sở CleanTrust Quận 1'
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosClient.get('/nhan-vien/dich-vu-dang-ky');
+      if (res && res.success) {
+        setServices(res.data);
       }
-    },
-    { 
-      id: 4, 
-      name: 'Vệ sinh máy lạnh / Thiết bị', 
-      icon: 'ac_unit', 
-      desc: 'Tháo màng lọc, xịt rửa bảo dưỡng cục nóng, cục lạnh điều hòa.', 
-      status: 'available', 
-      statusText: 'Có thể đăng ký' 
-    },
-    { 
-      id: 5, 
-      name: 'Chăm sóc trẻ em (Babysitting)', 
-      icon: 'child_care', 
-      desc: 'Hỗ trợ trông trẻ, cho trẻ ăn, chơi cùng trẻ theo giờ.', 
-      status: 'available', 
-      statusText: 'Có thể đăng ký' 
-    },
-    { 
-      id: 6, 
-      name: 'Ủi đồ & Giặt là chuyên sâu', 
-      icon: 'iron', 
-      desc: 'Phân loại vải, giặt sấy, là phẳng phiu các loại quần áo cao cấp.', 
-      status: 'available', 
-      statusText: 'Có thể đăng ký' 
-    },
-  ]);
+    } catch (error) {
+      console.error('Lỗi khi tải danh sách kỹ năng:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Quản lý trạng thái các Modals
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
@@ -157,22 +123,20 @@ const SkillsRegistration = () => {
   };
 
   // Xác nhận Đăng ký
-  const handleConfirmRegistration = () => {
-    setServices(prevServices => 
-      prevServices.map(item => 
-        item.id === selectedService.id 
-          ? { 
-              ...item, 
-              status: 'pending', 
-              statusText: 'Đang chờ thi test', 
-              examSchedule: calculatedSchedule 
-            }
-          : item
-      )
-    );
-    setIsRegisterModalOpen(false);
-    setSelectedService(null);
-    setCalculatedSchedule(null);
+  const handleConfirmRegistration = async () => {
+    try {
+      const res = await axiosClient.post(`/nhan-vien/dich-vu-dang-ky/${selectedService.id}/dang-ky`);
+      if (res && res.success) {
+        fetchServices();
+      }
+    } catch (error) {
+      console.error('Lỗi khi đăng ký:', error);
+      alert(error.message || error.response?.data?.message || 'Có lỗi xảy ra khi đăng ký.');
+    } finally {
+      setIsRegisterModalOpen(false);
+      setSelectedService(null);
+      setCalculatedSchedule(null);
+    }
   };
 
   // Mở modal Hủy lịch
@@ -182,16 +146,19 @@ const SkillsRegistration = () => {
   };
 
   // Xác nhận Hủy lịch
-  const handleConfirmCancel = () => {
-    setServices(prevServices => 
-      prevServices.map(item => 
-        item.id === selectedService.id 
-          ? { ...item, status: 'available', statusText: 'Có thể đăng ký', examSchedule: null }
-          : item
-      )
-    );
-    setIsCancelModalOpen(false);
-    setSelectedService(null);
+  const handleConfirmCancel = async () => {
+    try {
+      const res = await axiosClient.delete(`/nhan-vien/dich-vu-dang-ky/${selectedService.id}/huy`);
+      if (res && res.success) {
+        fetchServices();
+      }
+    } catch (error) {
+      console.error('Lỗi khi hủy:', error);
+      alert(error.message || error.response?.data?.message || 'Có lỗi xảy ra khi hủy.');
+    } finally {
+      setIsCancelModalOpen(false);
+      setSelectedService(null);
+    }
   };
 
   return (
@@ -209,87 +176,93 @@ const SkillsRegistration = () => {
       </div>
 
       {/* Grid danh sách các dịch vụ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {getSortedServices().map((service) => (
-          <div 
-            key={service.id} 
-            className={`bg-white p-5 rounded-2xl border flex flex-col justify-between transition-all hover:shadow-md ${
-              service.status === 'pending' ? 'border-amber-300 ring-2 ring-amber-500/5 bg-amber-50/10' : 'border-slate-200/60'
-            }`}
-          >
-            <div>
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 border border-slate-100 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-xl">{service.icon}</span>
+      {loading ? (
+        <div className="flex justify-center items-center py-10">
+          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {getSortedServices().map((service) => (
+            <div 
+              key={service.id} 
+              className={`bg-white p-5 rounded-2xl border flex flex-col justify-between transition-all hover:shadow-md ${
+                service.status === 'pending' ? 'border-amber-300 ring-2 ring-amber-500/5 bg-amber-50/10' : 'border-slate-200/60'
+              }`}
+            >
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 border border-slate-100 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-xl">{service.icon}</span>
+                  </div>
+
+                  {/* Badge trạng thái */}
+                  {service.status === 'active' && (
+                    <span className="px-2.5 py-1 text-[10px] font-black tracking-wide bg-emerald-100 text-emerald-800 border border-emerald-200/60 rounded-lg flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      {service.statusText?.toUpperCase()}
+                    </span>
+                  )}
+                  {service.status === 'pending' && (
+                    <span className="px-2.5 py-1 text-[10px] font-black tracking-wide bg-amber-100 text-amber-800 border border-amber-200 rounded-lg flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">hourglass_empty</span>
+                      {service.statusText?.toUpperCase()}
+                    </span>
+                  )}
+                  {service.status === 'available' && (
+                    <span className="px-2.5 py-1 text-[10px] font-bold tracking-wide bg-slate-100 text-slate-600 border border-slate-200 rounded-lg">
+                      {service.statusText?.toUpperCase()}
+                    </span>
+                  )}
                 </div>
 
-                {/* Badge trạng thái */}
-                {service.status === 'active' && (
-                  <span className="px-2.5 py-1 text-[10px] font-black tracking-wide bg-emerald-100 text-emerald-800 border border-emerald-200/60 rounded-lg flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    {service.statusText.toUpperCase()}
-                  </span>
-                )}
-                {service.status === 'pending' && (
-                  <span className="px-2.5 py-1 text-[10px] font-black tracking-wide bg-amber-100 text-amber-800 border border-amber-200 rounded-lg flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">hourglass_empty</span>
-                    {service.statusText.toUpperCase()}
-                  </span>
-                )}
-                {service.status === 'available' && (
-                  <span className="px-2.5 py-1 text-[10px] font-bold tracking-wide bg-slate-100 text-slate-600 border border-slate-200 rounded-lg">
-                    {service.statusText.toUpperCase()}
-                  </span>
+                <h3 className="font-bold text-slate-900 text-base">{service.name}</h3>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{service.desc}</p>
+
+                {/* KHỐI LỊCH HẸN TINH GỌN */}
+                {service.status === 'pending' && service.examSchedule && (
+                  <div className="mt-4 p-3.5 bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-200 rounded-xl space-y-1.5 text-slate-700">
+                    <p className="text-[11px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1 mb-1">
+                      <span className="material-symbols-outlined text-sm">calendar_month</span> Lịch hẹn kiểm tra tay nghề
+                    </p>
+                    <div className="text-xs space-y-1 font-medium text-slate-600">
+                      <p>• <span className="font-bold text-slate-800">Thời gian:</span> {service.examSchedule.time} | {service.examSchedule.date}</p>
+                      <p>• <span className="font-bold text-slate-800">Địa điểm:</span> {service.examSchedule.location}</p>
+                    </div>
+                    <p className="text-[10px] text-amber-700 font-semibold leading-tight pt-1">
+                      *Vui lòng mặc đồng phục CleanTrust khi tham gia.
+                    </p>
+                  </div>
                 )}
               </div>
 
-              <h3 className="font-bold text-slate-900 text-base">{service.name}</h3>
-              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{service.desc}</p>
-
-              {/* KHỐI LỊCH HẸN TINH GỌN */}
-              {service.status === 'pending' && service.examSchedule && (
-                <div className="mt-4 p-3.5 bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-200 rounded-xl space-y-1.5 text-slate-700">
-                  <p className="text-[11px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1 mb-1">
-                    <span className="material-symbols-outlined text-sm">calendar_month</span> Lịch hẹn kiểm tra tay nghề
-                  </p>
-                  <div className="text-xs space-y-1 font-medium text-slate-600">
-                    <p>• <span className="font-bold text-slate-800">Thời gian:</span> {service.examSchedule.time} | {service.examSchedule.date}</p>
-                    <p>• <span className="font-bold text-slate-800">Địa điểm:</span> {service.examSchedule.location}</p>
-                  </div>
-                  <p className="text-[10px] text-amber-700 font-semibold leading-tight pt-1">
-                    *Vui lòng mặc đồng phục CleanTrust khi tham gia.
-                  </p>
-                </div>
-              )}
+              {/* Khu vực nút bấm xử lý tương tác */}
+              <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-end">
+                {service.status === 'active' && (
+                  <button className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100 cursor-not-allowed flex items-center gap-1" disabled>
+                    <span className="material-symbols-outlined text-sm">verified</span> Sẵn sàng nhận đơn
+                  </button>
+                )}
+                {service.status === 'pending' && (
+                  <button 
+                    onClick={() => handleOpenCancelModal(service)}
+                    className="text-xs font-bold text-rose-600 bg-rose-100 hover:bg-rose-100 border border-rose-100 px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Hủy lịch đăng ký
+                  </button>
+                )}
+                {service.status === 'available' && (
+                  <button 
+                    onClick={() => handleOpenRegisterModal(service)}
+                    className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/10 px-4 py-2 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">add_circle</span> Đăng ký & Đặt lịch thi Test
+                  </button>
+                )}
+              </div>
             </div>
-
-            {/* Khu vực nút bấm xử lý tương tác */}
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-end">
-              {service.status === 'active' && (
-                <button className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100 cursor-not-allowed flex items-center gap-1" disabled>
-                  <span className="material-symbols-outlined text-sm">verified</span> Sẵn sàng nhận đơn
-                </button>
-              )}
-              {service.status === 'pending' && (
-                <button 
-                  onClick={() => handleOpenCancelModal(service)}
-                  className="text-xs font-bold text-rose-600 bg-rose-100 hover:bg-rose-100 border border-rose-100 px-3 py-2 rounded-xl transition-colors cursor-pointer"
-                >
-                  Hủy lịch đăng ký
-                </button>
-              )}
-              {service.status === 'available' && (
-                <button 
-                  onClick={() => handleOpenRegisterModal(service)}
-                  className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/10 px-4 py-2 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-sm">add_circle</span> Đăng ký & Đặt lịch thi Test
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Khối quy trình chân trang */}
       <div className="bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-950 text-slate-100 rounded-2xl p-5 flex gap-4 text-xs leading-relaxed shadow-sm">
