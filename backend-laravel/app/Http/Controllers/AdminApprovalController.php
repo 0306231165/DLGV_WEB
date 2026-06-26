@@ -201,4 +201,112 @@ class AdminApprovalController extends Controller
             return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()], 500);
         }
     }
+
+    // ============================================
+    // DUYỆT NÂNG CẤP KỸ NĂNG CHO ĐỐI TÁC HOẠT ĐỘNG
+    // ============================================
+
+    public function getPendingSkills()
+    {
+        $pendingSkills = DB::table('nhanvien_dichvu')
+            ->join('nhanvien', 'nhanvien_dichvu.nhan_vien_id', '=', 'nhanvien.id')
+            ->join('taikhoan', 'nhanvien.tai_khoan_id', '=', 'taikhoan.id')
+            ->join('dichvu', 'nhanvien_dichvu.dich_vu_id', '=', 'dichvu.id')
+            ->where('nhanvien_dichvu.trang_thai_duyet', 'ChoDuyet')
+            ->where('taikhoan.trang_thai', 'HoatDong')
+            ->select(
+                'nhanvien.id as nhanvien_id',
+                'dichvu.id as dich_vu_id',
+                'taikhoan.ho_ten as partner_name',
+                'taikhoan.avatar as partner_avatar',
+                'taikhoan.so_dien_thoai as partner_phone',
+                'dichvu.ten_dich_vu as service_name',
+                'dichvu.noi_dung_chi_tiet',
+                'nhanvien_dichvu.ngay_dang_ky'
+            )
+            ->orderBy('nhanvien_dichvu.ngay_dang_ky', 'desc')
+            ->get()
+            ->map(function ($item) {
+                // Tính toán ngày thi mô phỏng giống frontend (tăng 2 ngày)
+                $examDate = Carbon::parse($item->ngay_dang_ky)->addDays(2)->format('d/m/Y');
+                
+                // Khởi tạo avatar initials
+                $nameParts = explode(' ', trim($item->partner_name));
+                $initials = '';
+                if (count($nameParts) >= 2) {
+                    $initials = mb_strtoupper(mb_substr($nameParts[0], 0, 1) . mb_substr(end($nameParts), 0, 1));
+                } elseif (count($nameParts) === 1) {
+                    $initials = mb_strtoupper(mb_substr($nameParts[0], 0, 2));
+                }
+                
+                $icon = 'cleaning_services';
+                if ($item->noi_dung_chi_tiet) {
+                    $details = json_decode($item->noi_dung_chi_tiet, true);
+                    if (isset($details['icon'])) {
+                        $icon = $details['icon'];
+                    }
+                }
+
+                return [
+                    'nhanvien_id' => $item->nhanvien_id,
+                    'dich_vu_id' => $item->dich_vu_id,
+                    'partner_name' => $item->partner_name,
+                    'partner_avatar' => $item->partner_avatar,
+                    'partner_initials' => $initials,
+                    'partner_phone' => $item->partner_phone,
+                    'service_name' => $item->service_name,
+                    'service_icon' => $icon,
+                    'ngay_dang_ky' => Carbon::parse($item->ngay_dang_ky)->format('H:i d/m/Y'),
+                    'exam_date' => $examDate,
+                    'exam_time' => '09:00 - 11:00' // Lịch thi mô phỏng
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $pendingSkills
+        ]);
+    }
+
+    public function approveSkill($nhan_vien_id, $dich_vu_id)
+    {
+        try {
+            $affected = DB::table('nhanvien_dichvu')
+                ->where('nhan_vien_id', $nhan_vien_id)
+                ->where('dich_vu_id', $dich_vu_id)
+                ->where('trang_thai_duyet', 'ChoDuyet')
+                ->update([
+                    'trang_thai_duyet' => 'DaDuyet',
+                    'ngay_duyet' => now()
+                ]);
+
+            if ($affected === 0) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy yêu cầu nâng cấp kỹ năng này.'], 404);
+            }
+
+            return response()->json(['success' => true, 'message' => 'Đã phê duyệt kỹ năng bổ sung thành công.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function rejectSkill($nhan_vien_id, $dich_vu_id)
+    {
+        try {
+            // Theo như thống nhất, ta sẽ XÓA bản ghi khỏi DB để nhân viên có thể đăng ký thi lại
+            $affected = DB::table('nhanvien_dichvu')
+                ->where('nhan_vien_id', $nhan_vien_id)
+                ->where('dich_vu_id', $dich_vu_id)
+                ->where('trang_thai_duyet', 'ChoDuyet')
+                ->delete();
+
+            if ($affected === 0) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy yêu cầu nâng cấp kỹ năng này.'], 404);
+            }
+
+            return response()->json(['success' => true, 'message' => 'Đã xóa yêu cầu nâng cấp kỹ năng thành công.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()], 500);
+        }
+    }
 }

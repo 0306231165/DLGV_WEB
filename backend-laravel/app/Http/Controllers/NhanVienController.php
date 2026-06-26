@@ -587,4 +587,156 @@ class NhanVienController extends Controller
             return response()->json(['success' => false, 'message' => 'Lỗi server'], 500);
         }
     }
+
+    public function getSkills(Request $request)
+    {
+        try {
+            $taiKhoan = $request->user();
+            $nhanVien = $taiKhoan->nhanVien;
+
+            if (!$nhanVien) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin nhân viên.'], 404);
+            }
+
+            // Get all active services
+            $allServices = \App\Models\DichVu::where('trang_thai', true)->get();
+
+            // Get registered services for this employee
+            $registeredServices = DB::table('NhanVien_DichVu')
+                ->where('nhan_vien_id', $nhanVien->id)
+                ->get()
+                ->keyBy('dich_vu_id');
+
+            $formattedServices = $allServices->map(function ($service) use ($registeredServices) {
+                $status = 'available';
+                $statusText = 'Có thể đăng ký';
+                $examSchedule = null;
+                $registeredInfo = $registeredServices->get($service->id);
+
+                if ($registeredInfo) {
+                    if ($registeredInfo->trang_thai_duyet === 'DaDuyet') {
+                        $status = 'active';
+                        $statusText = 'Đang hoạt động';
+                    } elseif ($registeredInfo->trang_thai_duyet === 'ChoDuyet') {
+                        $status = 'pending';
+                        $statusText = 'Đang chờ thi test';
+                        // Generate mock exam schedule for UI purposes if it's pending
+                        $examSchedule = [
+                            'date' => \Carbon\Carbon::parse($registeredInfo->ngay_dang_ky)->addDays(2)->format('d/m/Y'),
+                            'time' => '13:00 - 15:00',
+                            'location' => 'Phòng thực hành tầng 3, Trụ sở CleanTrust Quận 1'
+                        ];
+                    }
+                }
+
+                $icon = 'cleaning_services';
+                $desc = $service->mo_ta ?: 'Dịch vụ chuyên nghiệp từ CleanTrust.';
+                if ($service->noi_dung_chi_tiet && is_array($service->noi_dung_chi_tiet)) {
+                    if (isset($service->noi_dung_chi_tiet['icon'])) {
+                        $icon = $service->noi_dung_chi_tiet['icon'];
+                    }
+                }
+
+                return [
+                    'id' => $service->id,
+                    'name' => $service->ten_dich_vu,
+                    'icon' => $icon,
+                    'desc' => $desc,
+                    'status' => $status,
+                    'statusText' => $statusText,
+                    'examSchedule' => $examSchedule
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $formattedServices
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Get Skills Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Lỗi server: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function registerSkill(Request $request, $id)
+    {
+        try {
+            $taiKhoan = $request->user();
+            $nhanVien = $taiKhoan->nhanVien;
+
+            if (!$nhanVien) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin nhân viên.'], 404);
+            }
+
+            // Check if service exists
+            $service = \App\Models\DichVu::find($id);
+            if (!$service) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy dịch vụ.'], 404);
+            }
+
+            // Attach to pivot table if not already attached
+            $exists = DB::table('NhanVien_DichVu')
+                ->where('nhan_vien_id', $nhanVien->id)
+                ->where('dich_vu_id', $id)
+                ->exists();
+
+            if ($exists) {
+                return response()->json(['success' => false, 'message' => 'Bạn đã đăng ký dịch vụ này rồi.'], 400);
+            }
+
+            DB::table('NhanVien_DichVu')->insert([
+                'nhan_vien_id' => $nhanVien->id,
+                'dich_vu_id' => $id,
+                'trang_thai_duyet' => 'ChoDuyet',
+                'ngay_dang_ky' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đăng ký lịch thi thành công!'
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Register Skill Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Lỗi server: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function cancelSkill(Request $request, $id)
+    {
+        try {
+            $taiKhoan = $request->user();
+            $nhanVien = $taiKhoan->nhanVien;
+
+            if (!$nhanVien) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin nhân viên.'], 404);
+            }
+
+            // Only allow cancellation if status is ChoDuyet
+            $registeredInfo = DB::table('NhanVien_DichVu')
+                ->where('nhan_vien_id', $nhanVien->id)
+                ->where('dich_vu_id', $id)
+                ->first();
+
+            if (!$registeredInfo) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy lịch đăng ký dịch vụ này.'], 404);
+            }
+
+            if ($registeredInfo->trang_thai_duyet !== 'ChoDuyet') {
+                return response()->json(['success' => false, 'message' => 'Chỉ có thể hủy đăng ký khi đang chờ duyệt.'], 400);
+            }
+
+            DB::table('NhanVien_DichVu')
+                ->where('nhan_vien_id', $nhanVien->id)
+                ->where('dich_vu_id', $id)
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã hủy đăng ký lịch thi thành công!'
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Cancel Skill Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Lỗi server: ' . $e->getMessage()], 500);
+        }
+    }
 }

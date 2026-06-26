@@ -24,6 +24,11 @@ Route::prefix('admin')->group(function () {
     Route::put('/approvals/{id}/approve', [AdminApprovalController::class, 'approve']);
     Route::put('/approvals/{id}/reject', [AdminApprovalController::class, 'reject']);
 
+    // Duyệt kỹ năng bổ sung cho đối tác đang hoạt động
+    Route::get('/skills-approvals', [AdminApprovalController::class, 'getPendingSkills']);
+    Route::put('/skills-approvals/{nhan_vien_id}/{dich_vu_id}/approve', [AdminApprovalController::class, 'approveSkill']);
+    Route::put('/skills-approvals/{nhan_vien_id}/{dich_vu_id}/reject', [AdminApprovalController::class, 'rejectSkill']);
+
     // Booking Routes
     Route::get('/bookings', [AdminBookingController::class, 'index']);
     Route::put('/bookings/{id}/assign', [AdminBookingController::class, 'assign']);

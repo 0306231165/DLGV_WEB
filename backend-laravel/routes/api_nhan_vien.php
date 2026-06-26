@@ -41,4 +41,9 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
     // Danh sách đánh giá
     Route::get('/reviews', [NhanVienController::class, 'getReviews']);
 
+    // Đăng ký dịch vụ (kỹ năng)
+    Route::get('/dich-vu-dang-ky', [NhanVienController::class, 'getSkills']);
+    Route::post('/dich-vu-dang-ky/{id}/dang-ky', [NhanVienController::class, 'registerSkill']);
+    Route::delete('/dich-vu-dang-ky/{id}/huy', [NhanVienController::class, 'cancelSkill']);
+
 });
