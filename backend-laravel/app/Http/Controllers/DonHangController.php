@@ -167,7 +167,7 @@ class DonHangController extends Controller
                 if (!empty($availableStaffIds)) {
                     $randomStaffId = $availableStaffIds[array_rand($availableStaffIds)];
                     $mockDistance = rand(1, 10); // Giả lập khoảng cách 1 -> 10km
-                    if ($mockDistance <= 10) {
+                    if ($mockDistance <= 5) {
                         $autoAssignNhanVienId = $randomStaffId;
                     }
                 }
