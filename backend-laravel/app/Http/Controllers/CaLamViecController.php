@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CaLamViec;
+use App\Models\DonHang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -39,9 +40,9 @@ class CaLamViecController extends Controller
                     $qTuDo->where('trang_thai_ca', 'ChoNhanVienTuDoNhan')
                           ->where(function($qCondition) use ($startDate, $endDate, $offDays) {
                                 // Gói tháng và 247: luôn thấy
-                                $qCondition->whereIn('loai_goi_ca_lam', ['GoiThang', 'Goi247'])
+                                $qCondition->whereIn('loai_goi_ca_lam', ['GoiThang', 'Goi247', 'GoiLapLai'])
                                            ->orWhere(function($qContract) use ($startDate, $endDate, $offDays) {
-                                                $qContract->whereIn('loai_goi_ca_lam', ['CaLe', 'GoiLapLai']);
+                                                $qContract->where('loai_goi_ca_lam', 'CaLe');
                                                 if ($startDate && $endDate) {
                                                     $qContract->whereBetween('ngay_lam', [$startDate, $endDate]);
                                                     if (!empty($offDays)) {

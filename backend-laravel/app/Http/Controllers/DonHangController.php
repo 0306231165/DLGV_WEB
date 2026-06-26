@@ -131,16 +131,44 @@ class DonHangController extends Controller
             }
 
             if ($isCaLe && empty($validated['nhan_vien_duoc_yeu_cau_id'])) {
-                $activeContractStaff = DB::table('lichnghi')
+                // Xác định thứ mấy trong tuần của ca lẻ (0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7)
+                $ngayLamStr = $validated['ca_lam_viec'][0]['ngay_lam'];
+                $dow = (int) date('w', strtotime($ngayLamStr));
+                
+                // Lấy tất cả nhân viên có hợp đồng còn hiệu lực
+                $activeStaffIds = DB::table('lichnghi')
                     ->where('loai_nghi', 'DinhKy')
                     ->whereDate('ngay_ket_thuc_ap_dung', '>=', now())
-                    ->inRandomOrder()
-                    ->first();
+                    ->pluck('nhan_vien_id')
+                    ->unique()
+                    ->toArray();
                 
-                if ($activeContractStaff) {
+                // Lấy các nhân viên nghỉ định kỳ vào thứ này
+                $offDinhKy = DB::table('lichnghi')
+                    ->where('loai_nghi', 'DinhKy')
+                    ->where('thu_trong_tuan', $dow)
+                    ->whereDate('ngay_ket_thuc_ap_dung', '>=', now())
+                    ->pluck('nhan_vien_id')
+                    ->toArray();
+                    
+                // Lấy các nhân viên xin nghỉ đột xuất vào ngày này
+                $offDotXuat = DB::table('lichnghi')
+                    ->where('loai_nghi', 'DotXuat')
+                    ->whereDate('ngay_nghi', $ngayLamStr)
+                    ->where('trang_thai_duyet', 'DaDuyet')
+                    ->pluck('nhan_vien_id')
+                    ->toArray();
+                    
+                $allOffStaffIds = array_unique(array_merge($offDinhKy, $offDotXuat));
+                
+                // Nhân viên sẵn sàng = Nhân viên active - Nhân viên nghỉ
+                $availableStaffIds = array_values(array_diff($activeStaffIds, $allOffStaffIds));
+                
+                if (!empty($availableStaffIds)) {
+                    $randomStaffId = $availableStaffIds[array_rand($availableStaffIds)];
                     $mockDistance = rand(1, 10); // Giả lập khoảng cách 1 -> 10km
-                    if ($mockDistance <= 5) {
-                        $autoAssignNhanVienId = $activeContractStaff->nhan_vien_id;
+                    if ($mockDistance <= 10) {
+                        $autoAssignNhanVienId = $randomStaffId;
                     }
                 }
             }
