@@ -1195,6 +1195,19 @@ const ScheduleManager = () => {
       });
     }
 
+    if (payload.length === 0) {
+      payload.push({
+        loai_nghi: 'DinhKy',
+        thu_trong_tuan: null,
+        ngay_nghi: null,
+        gio_bat_dau_nghi: null,
+        gio_ket_thuc_nghi: null,
+        ngay_bat_dau_ap_dung: startDate,
+        ngay_ket_thuc_ap_dung: endDate,
+        ly_do: 'Lưu thời hạn hợp đồng'
+      });
+    }
+
     return payload;
   };
 
