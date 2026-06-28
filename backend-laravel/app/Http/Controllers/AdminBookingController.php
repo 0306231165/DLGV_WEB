@@ -136,19 +136,28 @@ class AdminBookingController extends Controller
     // Gán nhân sự
     public function assign(Request $request, $id)
     {
-        $workerId = $request->input('worker_id'); // truyền dạng raw_id
+        $workerId = $request->input('worker_id'); // truyền dạng raw_id (taikhoan.id)
 
-        $affected = DB::table('donhang')
-            ->where('id', $id)
-            ->update([
-                'nhan_vien_duoc_yeu_cau_id' => $workerId,
-                'trang_thai_don' => 'DangThucHien'
-            ]);
+        try {
+            DB::table('donhang')
+                ->where('id', $id)
+                ->update([
+                    'nhan_vien_duoc_yeu_cau_id' => $workerId,
+                    'trang_thai_don' => 'DangThucHien'
+                ]);
 
-        if ($affected) {
+            $nhanVien = DB::table('nhanvien')->where('tai_khoan_id', $workerId)->first();
+            if ($nhanVien) {
+                DB::table('calamviec')
+                    ->where('don_hang_id', $id)
+                    ->update([
+                        'nhan_vien_id' => $nhanVien->id,
+                        'trang_thai_ca' => 'ChoNhanVienChiDinhXacNhan'
+                    ]);
+            }
             return response()->json(['success' => true, 'message' => 'Phân công thành công']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi cập nhật đơn hàng: ' . $e->getMessage()], 400);
         }
-
-        return response()->json(['success' => false, 'message' => 'Lỗi cập nhật đơn hàng'], 400);
     }
 }

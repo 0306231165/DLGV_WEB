@@ -9,12 +9,13 @@ class AdminDashboardController extends Controller
 {
     public function recentOrders()
     {
-        // Sử dụng đúng cột 'khach_hang_id' như trong ảnh 3
+        // Khắc phục lỗi join sai bảng: donhang.khach_hang_id phải join với khachhang.id, sau đó mới join tới taikhoan
         $orders = DB::table('donhang')
-            ->join('taikhoan', 'donhang.khach_hang_id', '=', 'taikhoan.id') 
+            ->join('khachhang', 'donhang.khach_hang_id', '=', 'khachhang.id')
+            ->join('taikhoan', 'khachhang.tai_khoan_id', '=', 'taikhoan.id') 
             ->select(
                 'donhang.id', 
-                'donhang.trang_thai_don', // Sử dụng đúng tên cột như trong ảnh 2
+                'donhang.trang_thai_don', 
                 'donhang.ngay_tao', 
                 'taikhoan.ho_ten'
             )
@@ -224,7 +225,8 @@ class AdminDashboardController extends Controller
 
             // 3. Recent Transactions
             $transactions = DB::table('donhang')
-                ->join('taikhoan', 'donhang.khach_hang_id', '=', 'taikhoan.id')
+                ->join('khachhang', 'donhang.khach_hang_id', '=', 'khachhang.id')
+                ->join('taikhoan', 'khachhang.tai_khoan_id', '=', 'taikhoan.id')
                 ->join('dichvu_loaigoi', 'donhang.dich_vu_loai_goi_id', '=', 'dichvu_loaigoi.id')
                 ->join('dichvu', 'dichvu_loaigoi.dich_vu_id', '=', 'dichvu.id')
                 ->select(
