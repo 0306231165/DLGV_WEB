@@ -23,6 +23,8 @@ return new class extends Migration
             $table->foreignId('tai_khoan_id')->unique()->constrained('TaiKhoan')->cascadeOnDelete();
             $table->string('cccd', 20)->unique();
             $table->string('dia_chi', 255);
+            $table->decimal('vi_do', 10, 7)->nullable();
+            $table->decimal('kinh_do', 10, 7)->nullable();
             $table->decimal('danh_gia_sao_trung_binh', 3, 2)->default(5.00);
             $table->integer('tong_so_danh_gia')->default(0);
             $table->integer('tong_so_ca_hoan_thanh')->default(0);
@@ -56,6 +58,8 @@ return new class extends Migration
             $table->foreignId('khach_hang_id')->constrained('KhachHang')->cascadeOnDelete();
             $table->string('ten_goi_nho', 100);
             $table->string('dia_chi_chi_tiet', 255);
+            $table->decimal('vi_do', 10, 7)->nullable();
+            $table->decimal('kinh_do', 10, 7)->nullable();
         });
 
         // 19. LienHeDaLuu

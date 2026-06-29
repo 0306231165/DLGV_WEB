@@ -143,7 +143,7 @@ class AdminBookingController extends Controller
                 ->where('id', $id)
                 ->update([
                     'nhan_vien_duoc_yeu_cau_id' => $workerId,
-                    'trang_thai_don' => 'DangThucHien'
+                    'trang_thai_don' => 'ChoXuLy'
                 ]);
 
             $nhanVien = DB::table('nhanvien')->where('tai_khoan_id', $workerId)->first();

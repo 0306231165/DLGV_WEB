@@ -294,17 +294,17 @@ class ServicePromotionSeeder extends Seeder
             ['id' => 25, 'dich_vu_id' => 13, 'ten_tuy_chon' => 'Văn phòng lớn (trên 100m²)', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 300, 'don_gia' => 450000, 'trang_thai' => true],
 
             // Chăm sóc người lớn tuổi (4)
-            ['id' => 26, 'dich_vu_id' => 4, 'ten_tuy_chon' => '2 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 300000, 'trang_thai' => true],
-            ['id' => 27, 'dich_vu_id' => 4, 'ten_tuy_chon' => '3 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 400000, 'trang_thai' => true],
-            ['id' => 28, 'dich_vu_id' => 4, 'ten_tuy_chon' => '4 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 500000, 'trang_thai' => true],
+            ['id' => 26, 'dich_vu_id' => 4, 'ten_tuy_chon' => null, 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 300000, 'trang_thai' => true],
+            ['id' => 27, 'dich_vu_id' => 4, 'ten_tuy_chon' => null, 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 400000, 'trang_thai' => true],
+            ['id' => 28, 'dich_vu_id' => 4, 'ten_tuy_chon' => null, 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 500000, 'trang_thai' => true],
             // Trông trẻ (5)
-            ['id' => 29, 'dich_vu_id' => 5, 'ten_tuy_chon' => '2 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 250000, 'trang_thai' => true],
-            ['id' => 30, 'dich_vu_id' => 5, 'ten_tuy_chon' => '3 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 340000, 'trang_thai' => true],
-            ['id' => 31, 'dich_vu_id' => 5, 'ten_tuy_chon' => '4 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 430000, 'trang_thai' => true],
+            ['id' => 29, 'dich_vu_id' => 5, 'ten_tuy_chon' => null, 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 250000, 'trang_thai' => true],
+            ['id' => 30, 'dich_vu_id' => 5, 'ten_tuy_chon' => null, 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 340000, 'trang_thai' => true],
+            ['id' => 31, 'dich_vu_id' => 5, 'ten_tuy_chon' => null, 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 430000, 'trang_thai' => true],
             // Chăm sóc người bệnh (6)
-            ['id' => 32, 'dich_vu_id' => 6, 'ten_tuy_chon' => '2 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 350000, 'trang_thai' => true],
-            ['id' => 33, 'dich_vu_id' => 6, 'ten_tuy_chon' => '3 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 460000, 'trang_thai' => true],
-            ['id' => 34, 'dich_vu_id' => 6, 'ten_tuy_chon' => '4 giờ', 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 580000, 'trang_thai' => true],
+            ['id' => 32, 'dich_vu_id' => 6, 'ten_tuy_chon' => null, 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 120, 'don_gia' => 350000, 'trang_thai' => true],
+            ['id' => 33, 'dich_vu_id' => 6, 'ten_tuy_chon' => null, 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 180, 'don_gia' => 460000, 'trang_thai' => true],
+            ['id' => 34, 'dich_vu_id' => 6, 'ten_tuy_chon' => null, 'don_vi_tinh' => 'Goi', 'thoi_gian_chuan' => 240, 'don_gia' => 580000, 'trang_thai' => true],
         ]);
 
         // ══════════════════════════════════════════════════════════════════
@@ -338,6 +338,7 @@ class ServicePromotionSeeder extends Seeder
             ['id' => 1, 'dich_vu_id' => 1, 'dich_vu_them_id' => 1, 'gia_cong_them' => 100000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
             ['id' => 2, 'dich_vu_id' => 1, 'dich_vu_them_id' => 2, 'gia_cong_them' => 150000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
             ['id' => 3, 'dich_vu_id' => 1, 'dich_vu_them_id' => 3, 'gia_cong_them' => 80000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
+            ['id' => 4, 'dich_vu_id' => 2, 'dich_vu_them_id' => 3, 'gia_cong_them' => 80000, 'thoi_gian_cong' => 60, 'trang_thai' => true],
         ]);
     }
 }

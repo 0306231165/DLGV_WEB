@@ -35,6 +35,8 @@ class OperationTransactionSeeder extends Seeder
             $donHangs[] = [
                 'id' => $item['id'],
                 'khach_hang_id' => 1, // Mặc định khách hàng 1
+                'vi_do' => 10.773411,
+                'kinh_do' => 106.614124,
                 'dich_vu_loai_goi_id' => $item['dich_vu_loai_goi_id'],
                 'tuy_chon_bien_the_id' => $item['tuy_chon_bien_the_id'],
                 'so_luong_tuy_chon' => 1,
@@ -71,7 +73,7 @@ class OperationTransactionSeeder extends Seeder
                 'tong_tien_cuoi_cung' => $item['tong_tien'],
                 'tien_giam_giu' => 0,
                 
-                'phuong_thuc_tt' => 'TienMat',
+                'phuong_thuc_tt' => 'Online',
                 'trang_thai_thanh_toan' => $item['trang_thai'] === 'DaHoanThanh' ? 'DaThanhToan' : 'ChuaThanhToan',
                 'ma_giao_dich_online' => null,
                 'trang_thai_don' => $item['trang_thai'],

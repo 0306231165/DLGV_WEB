@@ -86,7 +86,6 @@ const DURATION_247_OPTIONS = [
 ];
 
 const PAYMENT_METHODS = [
-  { id: "cash", icon: "payments", label: "Tiền mặt" },
   {
     id: "cleantrust",
     icon: "account_balance_wallet",
@@ -123,7 +122,6 @@ const REPLACEMENT_OPTION_TO_ENUM = {
 };
 
 const PAYMENT_METHOD_TO_ENUM = {
-  cash: "TienMat",
   cleantrust: "ViTien",
   card: "Online",
   ewallet: "Online",
@@ -197,7 +195,13 @@ const getAreaOptionsFromApi = (pkg) => {
     return pkg.tuy_chon_bien_the.map((opt) => ({
       id: `variant-${opt.id}`,
       label: opt.ten_tuy_chon,
-      sub: opt.don_vi_tinh,
+      sub: (() => {
+        if (opt.don_vi_tinh === "Goi") return null;
+        if (opt.don_vi_tinh === "May") return "Máy";
+        if (opt.don_vi_tinh === "Bo") return "Bộ";
+        if (opt.don_vi_tinh === "Tam") return "Tấm";
+        return opt.don_vi_tinh;
+      })(),
       baseHours: opt.thoi_gian_chuan / 60,
       price: Number(opt.don_gia),
     }));
@@ -1389,7 +1393,7 @@ const CalendarModal = ({
 
 const BookingPage = () => {
   const location = useLocation();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(location.state?.selectedPackage ? 2 : 1);
   const headingRef = useRef(null);
 
   useEffect(() => {
@@ -1743,7 +1747,7 @@ const BookingPage = () => {
     : false;
   const urgentFee = isUrgent ? urgentFeeVal : 0;
   const selfPickFee = staffSelfPick ? selfPickFeeVal : 0;
-  const travelFee = 15000;
+  const travelFee = 0;
   const extrasTotal = apiExtraList
     .filter((s) => extras.includes(s.id))
     .reduce((sum, s) => sum + s.price, 0);
@@ -1785,11 +1789,12 @@ const BookingPage = () => {
         : defaultDates.length
       : null;
 
-  const monthlyRawTotal = isMonthly
-    ? basePrice *
-      (totalSessions ??
-        monthlySessionsPerMonth * (monthlyDurationData?.months || 1))
-    : 0;
+  const actualSessions = isMonthly
+    ? totalSessions ??
+      monthlySessionsPerMonth * (monthlyDurationData?.months || 1)
+    : 1;
+
+  const monthlyRawTotal = isMonthly ? basePrice * actualSessions : 0;
   const monthlyDiscount =
     isMonthly && monthlyDurationData
       ? Math.round(monthlyRawTotal * (monthlyDurationData.discount / 100))
@@ -2084,7 +2089,7 @@ const BookingPage = () => {
   } else {
     subtotal = isMonthly
       ? monthlyRawTotal +
-        extrasTotal +
+        extrasTotal * (isMonthly && totalSessions !== null ? totalSessions : 1) +
         travelFee +
         urgentFee +
         selfPickFee +
@@ -2182,9 +2187,6 @@ const BookingPage = () => {
     setMonthlyDuration("1");
     setShift247(null);
     setStartDate247(id === "247" ? 0 : null);
-    // ✅ Gói tháng không cho chọn dịch vụ thêm — nếu lỡ chọn từ Bước 1
-    // (lúc dịch vụ chưa rõ hình thức) thì xóa luôn để khỏi tính nhầm.
-    if (id === "monthly") setExtras([]);
     // ✅ MỚI: Mã khuyến mãi chỉ áp dụng cho "Ca lẻ" — đổi hình thức thì reset luôn,
     // tránh trường hợp đã áp mã rồi đổi sang Gói tháng/24-7 mà mã vẫn âm thầm trừ tiền.
     setPromoCode("");
@@ -2201,7 +2203,6 @@ const BookingPage = () => {
   };
 
   const toggleExtra = (id) => {
-    if (isMonthly) return; // Gói tháng không cho chọn dịch vụ thêm
     const extraList = getExtraServicesFromApi(apiPkgData);
     const svc = extraList.find((s) => s.id === id);
     if (!svc) return;
@@ -2238,16 +2239,11 @@ const BookingPage = () => {
 
   const validateStep1 = () => {
     const e = {};
-    // ✅ FIX: section "Tùy chọn chi tiết" chỉ gắn ref `sectionRefs.area` (xem JSX),
-    // nên lỗi phải được set vào key `area` để focusFirstErrorSection tìm thấy đúng ref và scroll tới.
-    if (hasVariants) {
-      if (!careOptionId) e.area = "Vui lòng chọn tùy chọn dịch vụ cụ thể.";
-      else if (isOverMax)
-        e.area = `Tổng thời gian vượt ${MAX_HOURS} giờ! Vui lòng bỏ bớt dịch vụ thêm.`;
+    if (!selectedPackage) {
+      e.package = "Vui lòng chọn gói dịch vụ.";
     }
     setErrors(e);
     if (Object.keys(e).length > 0) {
-      focusFirstErrorSection(e, ["area"]);
       return false;
     }
     return true;
@@ -2255,6 +2251,12 @@ const BookingPage = () => {
 
   const validateStep2 = () => {
     const e = {};
+
+    if (hasVariants) {
+      if (!careOptionId) e.area = "Vui lòng chọn tùy chọn dịch vụ cụ thể.";
+      else if (isOverMax)
+        e.area = `Tổng thời gian vượt ${MAX_HOURS} giờ! Vui lòng bỏ bớt dịch vụ thêm.`;
+    }
 
     if (frequencyMode !== "none" && !frequencyChoice) {
       e.frequency = "Vui lòng chọn hình thức đặt lịch.";
@@ -2358,7 +2360,7 @@ const BookingPage = () => {
 
     setErrors(e);
     if (Object.keys(e).length > 0) {
-      focusFirstErrorSection(e, ["pet", "date", "time", "shift247"]);
+      focusFirstErrorSection(e, ["area", "pet", "date", "time", "shift247"]);
       return false;
     }
     return true;
@@ -2673,14 +2675,16 @@ const BookingPage = () => {
           </div>
         )}
 
-        <div className="flex justify-between items-end pt-5 mt-2 border-t-[3px] border-dashed border-outline-variant/30">
-          <span className="font-extrabold text-on-surface text-base uppercase tracking-wide">
-            Tổng thanh toán
-          </span>
-          <span className="text-[28px] leading-none font-black text-primary">
-            {fmt(total)}
-          </span>
-        </div>
+        {!(isMonthly && totalSessions === null) && (
+          <div className="flex justify-between items-end pt-5 mt-2 border-t-[3px] border-dashed border-outline-variant/30">
+            <span className="font-extrabold text-on-surface text-base uppercase tracking-wide">
+              Tổng thanh toán
+            </span>
+            <span className="text-[28px] leading-none font-black text-primary">
+              {fmt(total)}
+            </span>
+          </div>
+        )}
       </div>
     );
   };
@@ -2758,7 +2762,9 @@ const BookingPage = () => {
                   </span>
                 }
               />
-              {step >= 2 && (areaData || careData) && !is247 && (
+              {step >= 2 && (
+                <>
+              {(areaData || careData) && !is247 && (
                 <Row label="Giá / buổi" value={fmt(basePrice)} />
               )}
               {frequencyMode !== "none" && frequencyChoice && (
@@ -2792,7 +2798,7 @@ const BookingPage = () => {
                   <Row label="Tùy chọn" value={areaData.label} />
                   <Row
                     label="Thời lượng"
-                    value={`${baseHours}h${isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} NV` : ""}`}
+                    value={`${totalHours}h${isDeep && areaData.staffCount > 1 ? ` × ${areaData.staffCount} NV` : ""}`}
                   />
                 </>
               )}
@@ -2825,11 +2831,13 @@ const BookingPage = () => {
                 extras.map((id) => {
                   const e = apiExtraList.find((s) => s.id === id);
                   if (!e) return null;
+                  const displaySessions = isMonthly && totalSessions !== null ? totalSessions : 1;
+                  const displayPrice = e.price * displaySessions;
+                  const suffix = isMonthly && totalSessions !== null && displaySessions > 1 ? ` (×${displaySessions})` : "";
                   return (
-                    <Row key={id} label={e.title} value={`+${fmt(e.price)}`} />
+                    <Row key={id} label={`${e.title}${suffix}`} value={`+${fmt(displayPrice)}`} />
                   );
                 })}
-              <Row label="Phí di chuyển" value={fmt(travelFee)} />
               {staffSelfPick && !is247 && (
                 <Row label="Phí tự chọn NV" value={`+${fmt(selfPickFee)}`} />
               )}
@@ -2923,6 +2931,8 @@ const BookingPage = () => {
                   value={`-${fmt(actualPromoDiscount)}`}
                   highlight
                 />
+              )}
+                </>
               )}
             </AccordionSection>
 
@@ -3030,14 +3040,16 @@ const BookingPage = () => {
 
           {/* Tổng + Buttons — luôn hiện, không scroll */}
           <div className="px-6 pb-5 pt-4 border-t-2 border-dashed border-outline-variant/30">
-            <div className="flex justify-between items-end mb-4">
-              <span className="text-on-surface-variant font-medium text-sm">
-                Tổng thanh toán
-              </span>
-              <span className="text-2xl font-extrabold text-primary">
-                {fmt(total)}
-              </span>
-            </div>
+            {step >= 2 && !(isMonthly && totalSessions === null) && (
+              <div className="flex justify-between items-end mb-4">
+                <span className="text-on-surface-variant font-medium text-sm">
+                  Tổng thanh toán
+                </span>
+                <span className="text-2xl font-extrabold text-primary">
+                  {fmt(total)}
+                </span>
+              </div>
+            )}
             {showActions && (
               <>
                 {confirmMode && (
@@ -3385,7 +3397,21 @@ const BookingPage = () => {
                         }
                       });
                       return renderGroups;
-                    })().map((group) => (
+                    })()
+                      .map((group) => {
+                        // Nếu có selectedPackage từ trang Service truyền sang, chỉ giữ lại package đó
+                        if (location.state?.selectedPackage) {
+                          return {
+                            ...group,
+                            packages: group.packages.filter(
+                              (pkg) => pkg.id === location.state.selectedPackage
+                            ),
+                          };
+                        }
+                        return group;
+                      })
+                      .filter((group) => group.packages.length > 0)
+                      .map((group) => (
                       <div key={group.groupId}>
                         <div className="flex items-center gap-2 mb-4">
                           <span className="material-symbols-outlined text-primary text-base">
@@ -3478,6 +3504,29 @@ const BookingPage = () => {
                   </div>
                 </section>
 
+              </div>
+              {renderOrderSummary({
+                primaryLabel: "Tiếp theo",
+                onPrimary: () => {
+                  if (validateStep1()) setStep(2);
+                },
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ══════════ STEP 2 ══════════ */}
+      {step === 2 && (
+        <>
+          <div ref={headingRef} className="mb-12 scroll-mt-24">
+            <h1 className="font-h2 text-h2 text-primary mb-1">
+              Bước 2: Chọn lịch hẹn
+            </h1>
+            {renderStepIndicator()}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+            <div className="lg:col-span-8 space-y-6">
                 {/* ✅ MỚI: "Tùy chọn chi tiết" chỉ hiện khi co_bien_the = true */}
                 {hasVariants && variantOptions.length > 0 && (
                   <section className="glass-card bg-surface-container-item rounded-2xl p-8">
@@ -3630,7 +3679,7 @@ const BookingPage = () => {
                 {/* ✅ MỚI: "Dịch vụ thêm (tùy chọn)" chỉ hiện khi service có dich_vu_them */}
                 {(() => {
                   const extraList = getExtraServicesFromApi(apiPkgData);
-                  if (extraList.length === 0 || isMonthly) return null;
+                  if (extraList.length === 0) return null;
                   return (
                     <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                       <SectionTitle icon="add_circle">
@@ -3704,29 +3753,6 @@ const BookingPage = () => {
                     </section>
                   );
                 })()}
-              </div>
-              {renderOrderSummary({
-                primaryLabel: "Tiếp theo",
-                onPrimary: () => {
-                  if (validateStep1()) setStep(2);
-                },
-              })}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ══════════ STEP 2 ══════════ */}
-      {step === 2 && (
-        <>
-          <div ref={headingRef} className="mb-12 scroll-mt-24">
-            <h1 className="font-h2 text-h2 text-primary mb-1">
-              Bước 2: Chọn lịch hẹn
-            </h1>
-            {renderStepIndicator()}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-            <div className="lg:col-span-8 space-y-6">
               {/* Chỉ hiện FrequencySelector khi có ≥2 loaiGoi */}
               {frequencyMode !== "none" && (
                 <FrequencySelector
@@ -4043,18 +4069,7 @@ const BookingPage = () => {
                         />
                       </div>
 
-                      {/* Lặp lại hàng tuần — CHỈ có ở ca lẻ của dịch vụ id = 1 */}
-                      {pkgData.id === 1 && !preselectedStaff && (
-                        <div className="mt-8 border-t border-outline-variant/20 pt-6">
-                          <ToggleRow
-                            icon="update"
-                            title="Lặp lại lịch này hàng tuần"
-                            description="Tự động đặt lại lịch này mỗi tuần. Bạn có thể hủy bất kỳ lúc nào."
-                            checked={isWeeklyRepeat}
-                            onChange={() => setIsWeeklyRepeat((prev) => !prev)}
-                          />
-                        </div>
-                      )}
+                      {/* Lặp lại hàng tuần đã bị loại bỏ */}
                     </section>
                   )}
 
@@ -4643,9 +4658,7 @@ const BookingPage = () => {
                   Phương thức thanh toán
                 </SectionTitle>
                 <div className="grid grid-cols-1 gap-3">
-                  {PAYMENT_METHODS.filter(
-                    (method) => !((isMonthly || is247) && method.id === "cash"),
-                  ).map((method) => {
+                  {PAYMENT_METHODS.map((method) => {
                     const isSelected = paymentMethod === method.id;
                     return (
                       <label
@@ -4809,6 +4822,19 @@ const BookingPage = () => {
             </h1>
             {renderStepIndicator()}
           </div>
+
+          {isMonthly && (
+            <div className="mb-6 bg-primary/10 text-primary p-4 rounded-xl flex gap-3 items-start border border-primary/20">
+              <span className="material-symbols-outlined mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
+                info
+              </span>
+              <p className="text-sm font-medium leading-relaxed">
+                <strong className="block mb-1">Đảm bảo quyền lợi gói tháng</strong>
+                Nếu nhân viên đang thực hiện phát sinh sự cố phải hủy lịch giữa chừng, hệ thống sẽ ngay lập tức tự động đăng lại các buổi còn lại để phân công nhân viên khác thay thế. Bạn hoàn toàn không bị ảnh hưởng đến số tiền đã thanh toán.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
             <div className="lg:col-span-8 space-y-6">
               <section className="glass-card bg-surface-container-item rounded-2xl p-8">
@@ -5478,7 +5504,7 @@ const BookingPage = () => {
                 setNewAddress({ street: "", district: "" });
 
                 setStaffNote("");
-                setPaymentMethod("cash");
+                setPaymentMethod("");
                 setPromoCode("");
                 setPromoApplied(false);
                 setPromoDiscount(0);

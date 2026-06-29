@@ -226,7 +226,7 @@ class CaLamViecController extends Controller
             
             if ($donHang && $donHang->phuong_an_thay_the === 'KhongTimThayThe') {
                 foreach ($cas as $ca) {
-                    $ca->trang_thai_ca = 'DaHuy';
+                    $ca->trang_thai_ca = 'NhanVienHuy';
                     $ca->save();
                 }
                 $donHang->trang_thai_don = 'DaHuy';
@@ -248,7 +248,7 @@ class CaLamViecController extends Controller
             $donHang = $ca->donHang;
             
             if ($donHang && $donHang->phuong_an_thay_the === 'KhongTimThayThe') {
-                $ca->trang_thai_ca = 'DaHuy';
+                $ca->trang_thai_ca = 'NhanVienHuy';
                 $ca->save();
 
                 $donHang->trang_thai_don = 'DaHuy';

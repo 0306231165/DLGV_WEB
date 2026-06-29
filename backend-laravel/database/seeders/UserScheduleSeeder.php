@@ -28,26 +28,26 @@ class UserScheduleSeeder extends Seeder
         // 15. NhanVien (ID 6-25 từ bảng TaiKhoan, mapping mockStaffs.js)
         // ══════════════════════════════════════════════════════════════════
         $staffData = [
-            ['id' => 1,  'tai_khoan_id' => 6,  'cccd' => '079100000001', 'dia_chi' => 'Q.Bình Thạnh, TP.HCM', 'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 342, 'tong_so_ca_hoan_thanh' => 1250, 'tong_gio_lam' => 3500],
-            ['id' => 2,  'tai_khoan_id' => 7,  'cccd' => '079100000002', 'dia_chi' => 'Quận 7, TP.HCM',       'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 215, 'tong_so_ca_hoan_thanh' => 890,  'tong_gio_lam' => 2600],
-            ['id' => 3,  'tai_khoan_id' => 8,  'cccd' => '079100000003', 'dia_chi' => 'Quận 2, TP.HCM',       'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 189, 'tong_so_ca_hoan_thanh' => 720,  'tong_gio_lam' => 2100],
-            ['id' => 4,  'tai_khoan_id' => 9,  'cccd' => '079100000004', 'dia_chi' => 'Quận 1, TP.HCM',       'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 410, 'tong_so_ca_hoan_thanh' => 1530, 'tong_gio_lam' => 4600],
-            ['id' => 5,  'tai_khoan_id' => 10, 'cccd' => '079100000005', 'dia_chi' => 'Quận 10, TP.HCM',      'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 156, 'tong_so_ca_hoan_thanh' => 450,  'tong_gio_lam' => 1300],
-            ['id' => 6,  'tai_khoan_id' => 11, 'cccd' => '079100000006', 'dia_chi' => 'Quận 8, TP.HCM',       'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 278, 'tong_so_ca_hoan_thanh' => 800,  'tong_gio_lam' => 2400],
-            ['id' => 7,  'tai_khoan_id' => 12, 'cccd' => '079100000007', 'dia_chi' => 'Q.Tân Bình, TP.HCM',   'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 520, 'tong_so_ca_hoan_thanh' => 2100, 'tong_gio_lam' => 6200],
-            ['id' => 8,  'tai_khoan_id' => 13, 'cccd' => '079100000008', 'dia_chi' => 'Q.Gò Vấp, TP.HCM',     'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 112, 'tong_so_ca_hoan_thanh' => 380,  'tong_gio_lam' => 1100],
-            ['id' => 9,  'tai_khoan_id' => 14, 'cccd' => '079100000009', 'dia_chi' => 'Q.Tân Phú, TP.HCM',    'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 305, 'tong_so_ca_hoan_thanh' => 1100, 'tong_gio_lam' => 3300],
-            ['id' => 10, 'tai_khoan_id' => 15, 'cccd' => '079100000010', 'dia_chi' => 'Quận 4, TP.HCM',       'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 440, 'tong_so_ca_hoan_thanh' => 1650, 'tong_gio_lam' => 4900],
-            ['id' => 11, 'tai_khoan_id' => 16, 'cccd' => '079100000011', 'dia_chi' => 'Quận 5, TP.HCM',       'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 220, 'tong_so_ca_hoan_thanh' => 650,  'tong_gio_lam' => 1900],
-            ['id' => 12, 'tai_khoan_id' => 17, 'cccd' => '079100000012', 'dia_chi' => 'Quận 6, TP.HCM',       'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 310, 'tong_so_ca_hoan_thanh' => 950,  'tong_gio_lam' => 2800],
-            ['id' => 13, 'tai_khoan_id' => 18, 'cccd' => '079100000013', 'dia_chi' => 'Q.Bình Tân, TP.HCM',   'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 180, 'tong_so_ca_hoan_thanh' => 520,  'tong_gio_lam' => 1500],
-            ['id' => 14, 'tai_khoan_id' => 19, 'cccd' => '079100000014', 'dia_chi' => 'Quận 11, TP.HCM',      'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 260, 'tong_so_ca_hoan_thanh' => 820,  'tong_gio_lam' => 2400],
-            ['id' => 15, 'tai_khoan_id' => 20, 'cccd' => '079100000015', 'dia_chi' => 'Quận 12, TP.HCM',      'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 390, 'tong_so_ca_hoan_thanh' => 1300, 'tong_gio_lam' => 3900],
-            ['id' => 16, 'tai_khoan_id' => 21, 'cccd' => '079100000016', 'dia_chi' => 'H.Hóc Môn, TP.HCM',    'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 150, 'tong_so_ca_hoan_thanh' => 400,  'tong_gio_lam' => 1200],
-            ['id' => 17, 'tai_khoan_id' => 22, 'cccd' => '079100000017', 'dia_chi' => 'H.Bình Chánh, TP.HCM', 'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 195, 'tong_so_ca_hoan_thanh' => 600,  'tong_gio_lam' => 1800],
-            ['id' => 18, 'tai_khoan_id' => 23, 'cccd' => '079100000018', 'dia_chi' => 'H.Nhà Bè, TP.HCM',     'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 480, 'tong_so_ca_hoan_thanh' => 1800, 'tong_gio_lam' => 5400],
-            ['id' => 19, 'tai_khoan_id' => 24, 'cccd' => '079100000019', 'dia_chi' => 'TP.Thủ Đức, TP.HCM',   'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 210, 'tong_so_ca_hoan_thanh' => 710,  'tong_gio_lam' => 2100],
-            ['id' => 20, 'tai_khoan_id' => 25, 'cccd' => '079100000020', 'dia_chi' => 'TP.Thủ Đức, TP.HCM',   'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 290, 'tong_so_ca_hoan_thanh' => 1050, 'tong_gio_lam' => 3100],
+            ['id' => 1,  'tai_khoan_id' => 6,  'cccd' => '079100000001', 'dia_chi' => 'Q.Bình Thạnh, TP.HCM', 'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 342, 'tong_so_ca_hoan_thanh' => 1250, 'tong_gio_lam' => 3500, 'vi_do' => 10.767548, 'kinh_do' => 106.612251],
+            ['id' => 2,  'tai_khoan_id' => 7,  'cccd' => '079100000002', 'dia_chi' => 'Quận 7, TP.HCM',       'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 215, 'tong_so_ca_hoan_thanh' => 890,  'tong_gio_lam' => 2600, 'vi_do' => 10.734753, 'kinh_do' => 106.630089],
+            ['id' => 3,  'tai_khoan_id' => 8,  'cccd' => '079100000003', 'dia_chi' => 'Quận 2, TP.HCM',       'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 189, 'tong_so_ca_hoan_thanh' => 720,  'tong_gio_lam' => 2100, 'vi_do' => 10.776282, 'kinh_do' => 106.670903],
+            ['id' => 4,  'tai_khoan_id' => 9,  'cccd' => '079100000004', 'dia_chi' => 'Quận 1, TP.HCM',       'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 410, 'tong_so_ca_hoan_thanh' => 1530, 'tong_gio_lam' => 4600, 'vi_do' => 10.790296, 'kinh_do' => 106.617824],
+            ['id' => 5,  'tai_khoan_id' => 10, 'cccd' => '079100000005', 'dia_chi' => 'Quận 10, TP.HCM',      'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 156, 'tong_so_ca_hoan_thanh' => 450,  'tong_gio_lam' => 1300, 'vi_do' => 10.747973, 'kinh_do' => 106.612682],
+            ['id' => 6,  'tai_khoan_id' => 11, 'cccd' => '079100000006', 'dia_chi' => 'Quận 8, TP.HCM',       'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 278, 'tong_so_ca_hoan_thanh' => 800,  'tong_gio_lam' => 2400, 'vi_do' => 10.729677, 'kinh_do' => 106.655482],
+            ['id' => 7,  'tai_khoan_id' => 12, 'cccd' => '079100000007', 'dia_chi' => 'Q.Tân Bình, TP.HCM',   'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 520, 'tong_so_ca_hoan_thanh' => 2100, 'tong_gio_lam' => 6200, 'vi_do' => 10.712388, 'kinh_do' => 106.627895],
+            ['id' => 8,  'tai_khoan_id' => 13, 'cccd' => '079100000008', 'dia_chi' => 'Q.Gò Vấp, TP.HCM',     'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 112, 'tong_so_ca_hoan_thanh' => 380,  'tong_gio_lam' => 1100, 'vi_do' => 10.76849, 'kinh_do' => 106.659045],
+            ['id' => 9,  'tai_khoan_id' => 14, 'cccd' => '079100000009', 'dia_chi' => 'Q.Tân Phú, TP.HCM',    'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 305, 'tong_so_ca_hoan_thanh' => 1100, 'tong_gio_lam' => 3300, 'vi_do' => 10.72984, 'kinh_do' => 106.663034],
+            ['id' => 10, 'tai_khoan_id' => 15, 'cccd' => '079100000010', 'dia_chi' => 'Quận 4, TP.HCM',       'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 440, 'tong_so_ca_hoan_thanh' => 1650, 'tong_gio_lam' => 4900, 'vi_do' => 10.782849, 'kinh_do' => 106.610585],
+            ['id' => 11, 'tai_khoan_id' => 16, 'cccd' => '079100000011', 'dia_chi' => 'Quận 5, TP.HCM',       'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 220, 'tong_so_ca_hoan_thanh' => 650,  'tong_gio_lam' => 1900, 'vi_do' => 10.782524, 'kinh_do' => 106.672833],
+            ['id' => 12, 'tai_khoan_id' => 17, 'cccd' => '079100000012', 'dia_chi' => 'Quận 6, TP.HCM',       'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 310, 'tong_so_ca_hoan_thanh' => 950,  'tong_gio_lam' => 2800, 'vi_do' => 10.740623, 'kinh_do' => 106.623993],
+            ['id' => 13, 'tai_khoan_id' => 18, 'cccd' => '079100000013', 'dia_chi' => 'Q.Bình Tân, TP.HCM',   'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 180, 'tong_so_ca_hoan_thanh' => 520,  'tong_gio_lam' => 1500, 'vi_do' => 10.796149, 'kinh_do' => 106.640294],
+            ['id' => 14, 'tai_khoan_id' => 19, 'cccd' => '079100000014', 'dia_chi' => 'Quận 11, TP.HCM',      'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 260, 'tong_so_ca_hoan_thanh' => 820,  'tong_gio_lam' => 2400, 'vi_do' => 10.718347, 'kinh_do' => 106.618704],
+            ['id' => 15, 'tai_khoan_id' => 20, 'cccd' => '079100000015', 'dia_chi' => 'Quận 12, TP.HCM',      'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 390, 'tong_so_ca_hoan_thanh' => 1300, 'tong_gio_lam' => 3900, 'vi_do' => 10.786274, 'kinh_do' => 106.664335],
+            ['id' => 16, 'tai_khoan_id' => 21, 'cccd' => '079100000016', 'dia_chi' => 'H.Hóc Môn, TP.HCM',    'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 150, 'tong_so_ca_hoan_thanh' => 400,  'tong_gio_lam' => 1200, 'vi_do' => 10.782642, 'kinh_do' => 106.675676],
+            ['id' => 17, 'tai_khoan_id' => 22, 'cccd' => '079100000017', 'dia_chi' => 'H.Bình Chánh, TP.HCM', 'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 195, 'tong_so_ca_hoan_thanh' => 600,  'tong_gio_lam' => 1800, 'vi_do' => 10.758261, 'kinh_do' => 106.69758],
+            ['id' => 18, 'tai_khoan_id' => 23, 'cccd' => '079100000018', 'dia_chi' => 'H.Nhà Bè, TP.HCM',     'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 480, 'tong_so_ca_hoan_thanh' => 1800, 'tong_gio_lam' => 5400, 'vi_do' => 10.744068, 'kinh_do' => 106.659684],
+            ['id' => 19, 'tai_khoan_id' => 24, 'cccd' => '079100000019', 'dia_chi' => 'TP.Thủ Đức, TP.HCM',   'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 210, 'tong_so_ca_hoan_thanh' => 710,  'tong_gio_lam' => 2100, 'vi_do' => 10.784646, 'kinh_do' => 106.665667],
+            ['id' => 20, 'tai_khoan_id' => 25, 'cccd' => '079100000020', 'dia_chi' => 'TP.Thủ Đức, TP.HCM',   'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 290, 'tong_so_ca_hoan_thanh' => 1050, 'tong_gio_lam' => 3100, 'vi_do' => 10.787554, 'kinh_do' => 106.661962],
         ];
         DB::table('NhanVien')->insert($staffData);
 
@@ -87,8 +87,8 @@ class UserScheduleSeeder extends Seeder
         // ══════════════════════════════════════════════════════════════════
         for ($i = 1; $i <= 5; $i++) {
             DB::table('DiaChiDaLuu')->insert([
-                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Nhà riêng', 'dia_chi_chi_tiet' => '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM'],
-                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Văn phòng', 'dia_chi_chi_tiet' => '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM'],
+                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Nhà riêng', 'dia_chi_chi_tiet' => '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM', 'vi_do' => 10.773411, 'kinh_do' => 106.614124],
+                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Văn phòng', 'dia_chi_chi_tiet' => '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM', 'vi_do' => 10.730511, 'kinh_do' => 106.636045],
             ]);
             
             DB::table('LienHeDaLuu')->insert([

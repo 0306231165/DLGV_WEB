@@ -57,7 +57,7 @@ return new class extends Migration
         Schema::create('TuyChonBienTheDichVu', function (Blueprint $table) {
             $table->id();
             $table->foreignId('dich_vu_id')->constrained('DichVu');
-            $table->string('ten_tuy_chon', 150);
+            $table->string('ten_tuy_chon', 150)->nullable();
             $table->string('don_vi_tinh', 50)->default('Phut');
             $table->integer('thoi_gian_chuan');
             $table->decimal('don_gia', 12, 2);

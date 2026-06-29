@@ -42,6 +42,8 @@ return new class extends Migration
             $table->string('ho_ten_thuc_te', 150);
             $table->string('sdt_thuc_te', 15);
             $table->string('dia_chi_thuc_te', 255);
+            $table->decimal('vi_do', 10, 7)->nullable();
+            $table->decimal('kinh_do', 10, 7)->nullable();
             $table->text('ghi_chu_cho_nhan_vien')->nullable();
             
             $table->boolean('is_cao_cap')->default(false);
@@ -57,7 +59,7 @@ return new class extends Migration
             $table->decimal('tien_giam_giu', 12, 2)->default(0.00);
             
             // CHUYỂN SANG ENUM: Hình thức thanh toán đơn hàng
-            $table->enum('phuong_thuc_tt', ['ViTien', 'ChuyenKhoan', 'Online', 'TienMat']);
+            $table->enum('phuong_thuc_tt', ['ViTien', 'ChuyenKhoan', 'Online']);
             // CHUYỂN SANG ENUM: Tiến độ dòng tiền thanh toán đơn hàng
             $table->enum('trang_thai_thanh_toan', ['ChuaThanhToan', 'DaThanhToan', 'HoanTien'])->default('ChuaThanhToan');
             $table->string('ma_giao_dich_online', 255)->nullable();
