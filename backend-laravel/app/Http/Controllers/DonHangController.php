@@ -36,6 +36,8 @@ class DonHangController extends Controller
             'ho_ten_thuc_te'                  => 'required|string|max:150',
             'sdt_thuc_te'                     => 'required|string|max:15',
             'dia_chi_thuc_te'                 => 'required|string|max:255',
+            'vi_do'                           => 'nullable|numeric',
+            'kinh_do'                         => 'nullable|numeric',
             'ghi_chu_cho_nhan_vien'           => 'nullable|string|max:1000',
             'is_cao_cap'                      => 'boolean',
             'ty_le_phu_phi_cao_cap_snapshot'  => 'nullable|integer|min:0',
@@ -106,6 +108,8 @@ class DonHangController extends Controller
                 'ho_ten_thuc_te'                 => $validated['ho_ten_thuc_te'],
                 'sdt_thuc_te'                    => $validated['sdt_thuc_te'],
                 'dia_chi_thuc_te'                => $validated['dia_chi_thuc_te'],
+                'vi_do'                          => $validated['vi_do']                          ?? null,
+                'kinh_do'                        => $validated['kinh_do']                        ?? null,
                 'ghi_chu_cho_nhan_vien'          => $validated['ghi_chu_cho_nhan_vien']          ?? null,
                 'is_cao_cap'                     => $validated['is_cao_cap']                     ?? false,
                 'ty_le_phu_phi_cao_cap_snapshot' => $validated['ty_le_phu_phi_cao_cap_snapshot'] ?? 0,
@@ -123,7 +127,7 @@ class DonHangController extends Controller
                 'trang_thai_don'                 => 'ChoXuLy',
             ]);
 
-            // [Auto-Assignment] Logic gán lịch tự động <= 8km
+            // [Auto-Assignment] Logic gán lịch tự động <= 3km (Haversine thực tế) & Check Trùng Giờ
             $autoAssignNhanVienId = null;
             $isCaLe = false;
             if (!empty($validated['ca_lam_viec'])) {
@@ -131,11 +135,11 @@ class DonHangController extends Controller
             }
 
             if ($isCaLe && empty($validated['nhan_vien_duoc_yeu_cau_id'])) {
-                // Xác định thứ mấy trong tuần của ca lẻ (0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7)
-                $ngayLamStr = $validated['ca_lam_viec'][0]['ngay_lam'];
+                $caLam = $validated['ca_lam_viec'][0];
+                $ngayLamStr = $caLam['ngay_lam'];
                 $dow = (int) date('w', strtotime($ngayLamStr));
                 
-                // Lấy tất cả nhân viên có hợp đồng còn hiệu lực
+                // 1. Lọc nhân viên nghỉ ngơi (DinhKy, DotXuat)
                 $activeStaffIds = DB::table('lichnghi')
                     ->where('loai_nghi', 'DinhKy')
                     ->whereDate('ngay_ket_thuc_ap_dung', '>=', now())
@@ -143,7 +147,6 @@ class DonHangController extends Controller
                     ->unique()
                     ->toArray();
                 
-                // Lấy các nhân viên nghỉ định kỳ vào thứ này
                 $offDinhKy = DB::table('lichnghi')
                     ->where('loai_nghi', 'DinhKy')
                     ->where('thu_trong_tuan', $dow)
@@ -151,7 +154,6 @@ class DonHangController extends Controller
                     ->pluck('nhan_vien_id')
                     ->toArray();
                     
-                // Lấy các nhân viên xin nghỉ đột xuất vào ngày này
                 $offDotXuat = DB::table('lichnghi')
                     ->where('loai_nghi', 'DotXuat')
                     ->whereDate('ngay_nghi', $ngayLamStr)
@@ -159,16 +161,57 @@ class DonHangController extends Controller
                     ->pluck('nhan_vien_id')
                     ->toArray();
                     
-                $allOffStaffIds = array_unique(array_merge($offDinhKy, $offDotXuat));
+                $leaveStaffIds = array_unique(array_merge($offDinhKy, $offDotXuat));
                 
-                // Nhân viên sẵn sàng = Nhân viên active - Nhân viên nghỉ
-                $availableStaffIds = array_values(array_diff($activeStaffIds, $allOffStaffIds));
+                // 2. Lọc nhân viên trùng giờ rảnh (Overlapping CaLamViec)
+                $startTimeStr = $caLam['gio_bat_dau']; // Format "H:i" or "H:i:s"
+                $durationMins = $caLam['thoi_gian_lam_phut'];
+                $startDt = \Carbon\Carbon::parse($startTimeStr);
+                $endDt = (clone $startDt)->addMinutes($durationMins);
+                $newStartStr = $startDt->format('H:i:s');
+                $newEndStr = $endDt->format('H:i:s');
                 
-                if (!empty($availableStaffIds)) {
-                    $randomStaffId = $availableStaffIds[array_rand($availableStaffIds)];
-                    $mockDistance = rand(1, 10); // Giả lập khoảng cách 1 -> 10km
-                    if ($mockDistance <= 5) {
-                        $autoAssignNhanVienId = $randomStaffId;
+                $overlappingStaffIds = DB::table('calamviec')
+                    ->where('ngay_lam', $ngayLamStr)
+                    ->whereNotIn('trang_thai_ca', ['KhachHuy', 'NhanVienHuy', 'DaHuy', 'TuChoiDuyet', 'DaTuChoi'])
+                    ->whereNotNull('nhan_vien_id')
+                    ->get(['nhan_vien_id', 'gio_bat_dau', 'thoi_gian_lam_phut'])
+                    ->filter(function ($ca) use ($newStartStr, $newEndStr) {
+                        if (!$ca->gio_bat_dau || !$ca->thoi_gian_lam_phut) return false;
+                        $cStart = \Carbon\Carbon::parse($ca->gio_bat_dau);
+                        $cEnd = (clone $cStart)->addMinutes($ca->thoi_gian_lam_phut);
+                        // A_start < B_end && A_end > B_start
+                        return ($newStartStr < $cEnd->format('H:i:s') && $newEndStr > $cStart->format('H:i:s'));
+                    })
+                    ->pluck('nhan_vien_id')
+                    ->unique()
+                    ->toArray();
+                    
+                $allUnavailableStaffIds = array_unique(array_merge($leaveStaffIds, $overlappingStaffIds));
+                
+                // Nhân viên sẵn sàng
+                $availableStaffIds = array_values(array_diff($activeStaffIds, $allUnavailableStaffIds));
+                
+                // 3. Tính khoảng cách Haversine <= 3km
+                if (!empty($availableStaffIds) && $donHang->vi_do && $donHang->kinh_do) {
+                    $lat = $donHang->vi_do;
+                    $lon = $donHang->kinh_do;
+                    
+                    $nearestStaff = DB::table('NhanVien')
+                        ->whereIn('id', $availableStaffIds)
+                        ->whereNotNull('vi_do')
+                        ->whereNotNull('kinh_do')
+                        ->select('id', DB::raw("
+                            ( 6371 * acos( cos( radians($lat) ) * cos( radians( vi_do ) ) 
+                            * cos( radians( kinh_do ) - radians($lon) ) 
+                            + sin( radians($lat) ) * sin( radians( vi_do ) ) ) ) AS distance
+                        "))
+                        ->having('distance', '<=', 3)
+                        ->orderBy('distance', 'asc')
+                        ->first();
+                        
+                    if ($nearestStaff) {
+                        $autoAssignNhanVienId = $nearestStaff->id;
                     }
                 }
             }

@@ -85,6 +85,21 @@ const AddressesPage = () => {
     return e;
   };
 
+  const geocodeAddress = async (address) => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+      const response = await fetch(url, { headers: { "Accept-Language": "vi-VN" } });
+      const data = await response.json();
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      }
+      return null;
+    } catch (e) {
+      console.error("Geocoding error:", e);
+      return null;
+    }
+  };
+
   // ── Lưu (thêm / cập nhật) ────────────────────────────────────────────────
   const handleSave = async () => {
     const e = validate();
@@ -94,9 +109,20 @@ const AddressesPage = () => {
     }
 
     setSaving(true);
+    
+    // Tìm tọa độ (Geocoding) với thuật toán cắt chuỗi giảm dần
+    let coords = await geocodeAddress(form.address);
+    if (!coords) {
+      const parts = form.address.split(",");
+      if (parts.length > 1) coords = await geocodeAddress(parts.slice(1).join(",").trim());
+      if (!coords && parts.length > 2) coords = await geocodeAddress(parts.slice(2).join(",").trim());
+    }
+
     const payload = {
       label: form.label,
       address: form.address,
+      vi_do: coords?.lat ?? null,
+      kinh_do: coords?.lon ?? null,
     };
 
     try {

@@ -63,6 +63,8 @@ class MasterDataSeeder extends Seeder
             ['id' => 3, 'ma_phu_phi' => 'CAO_CAP',        'ten_phu_phi' => 'Phụ phí dịch vụ cao cấp',      'loai_phu_phi' => 'PhanTram',  'gia_tri_phu_phi' => 25.00,  'trang_thai' => true, 'mo_ta' => 'Cộng thêm 25% khi chọn gói dịch vụ cao cấp.'],
             ['id' => 4, 'ma_phu_phi' => 'RUT_TIEN',       'ten_phu_phi' => 'Phí rút tiền về ngân hàng',    'loai_phu_phi' => 'PhanTram',  'gia_tri_phu_phi' => 20.00,  'trang_thai' => true, 'mo_ta' => 'Khấu trừ 20% khi rút tiền từ ví về tài khoản ngân hàng.'],
             ['id' => 5, 'ma_phu_phi' => 'GIAM_VI',        'ten_phu_phi' => 'Giảm giá thanh toán bằng ví',  'loai_phu_phi' => 'PhanTram',  'gia_tri_phu_phi' => 2.00,   'trang_thai' => true, 'mo_ta' => 'Giảm 2% khi thanh toán trực tiếp bằng Ví CleanTrust.'],
+            ['id' => 6, 'ma_phu_phi' => 'TANG_TIEN_T7_CN',        'ten_phu_phi' => 'Tăng tiền vào thứ 7 và chủ nhật',  'loai_phu_phi' => 'PhanTram',  'gia_tri_phu_phi' => 15.00,   'trang_thai' => true, 'mo_ta' => 'Tăng 15% khi đặt vào thứ 7 và chủ nhật'],
+            ['id' => 7, 'ma_phu_phi' => 'TANG_TIEN_BAN_DEM',        'ten_phu_phi' => 'Tăng tiền vào ban đêm',  'loai_phu_phi' => 'PhanTram',  'gia_tri_phu_phi' => 10.00,   'trang_thai' => true, 'mo_ta' => 'Tăng 10% khi đặt vào ban đêm'],
         ]);
 
         // ══════════════════════════════════════════════════════════════════

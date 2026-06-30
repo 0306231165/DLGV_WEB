@@ -129,7 +129,7 @@ const MyBookingsLayout = () => {
               </button>
 
               {/* Gói lặp lại */}
-              <button
+              {/* <button
                 onClick={() => handleFilter('recurring')}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-label-sm w-full text-left ${
                   activeFilter === 'recurring'
@@ -139,7 +139,7 @@ const MyBookingsLayout = () => {
               >
                 <span className="material-symbols-outlined">autorenew</span>
                 Gói lặp lại
-              </button>
+              </button> */}
 
               {/* Gói 24/7 */}
               <button

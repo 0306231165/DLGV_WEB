@@ -715,12 +715,9 @@ const ScheduleManager = () => {
     return {
       startDate: minStartStr,
       endDate: minEndStr,
-      selectedDays: [],
-      timeSlots: [],
+      daysOff: [],
+      restSession: "none",
     };
-  });
-  const [tempSlotUI, setTempSlotUI] = useState({
-    startHour: "08", startMin: "00", endHour: "12", endMin: "00",
   });
   const [formError, setFormError] = useState("");
 
@@ -864,40 +861,29 @@ const ScheduleManager = () => {
           
           // Reverse Parse
           const dayMapInverse = { 0: "Chủ Nhật", 1: "Thứ 2", 2: "Thứ 3", 3: "Thứ 4", 4: "Thứ 5", 5: "Thứ 6", 6: "Thứ 7" };
-          const offDays = list.filter(x => x.thu_trong_tuan !== null).map(x => x.thu_trong_tuan);
-          const workingDays = [0, 1, 2, 3, 4, 5, 6].filter(d => !offDays.includes(d)).map(d => dayMapInverse[d]);
+          const offDays = list.filter(x => x.thu_trong_tuan !== null).map(x => dayMapInverse[x.thu_trong_tuan]);
           
-          const gapList = list.filter(x => x.gio_bat_dau_nghi !== null).sort((a, b) => {
-            return parseTimeToMinutes(a.gio_bat_dau_nghi.slice(0, 5)) - parseTimeToMinutes(b.gio_bat_dau_nghi.slice(0, 5));
-          });
-          
-          let currentMin = 6 * 60;
-          const timeSlotsParsed = [];
-          
-          gapList.forEach(gap => {
-            const gapStartMin = parseTimeToMinutes(gap.gio_bat_dau_nghi.slice(0, 5));
-            const gapEndMin = parseTimeToMinutes(gap.gio_ket_thuc_nghi.slice(0, 5));
-            
-            if (gapStartMin > currentMin) {
-              timeSlotsParsed.push(`${formatMinutesToTime(currentMin)} - ${formatMinutesToTime(gapStartMin)}`);
-            }
-            currentMin = gapEndMin;
-          });
-          
-          if (currentMin < 23 * 60) {
-             timeSlotsParsed.push(`${formatMinutesToTime(currentMin)} - 23:00`);
+          let restSessionParsed = "none";
+          const gapList = list.filter(x => x.gio_bat_dau_nghi !== null);
+          if (gapList.length > 0) {
+            const gap = gapList[0];
+            const start = gap.gio_bat_dau_nghi.slice(0, 5);
+            if (start === "06:00") restSessionParsed = "morning";
+            else if (start === "13:00") restSessionParsed = "afternoon";
+            else if (start === "17:00") restSessionParsed = "evening";
           }
           
           setContractForm(prev => ({
              ...prev,
              startDate: first.ngay_bat_dau_ap_dung,
              endDate: first.ngay_ket_thuc_ap_dung,
-             selectedDays: workingDays,
-             timeSlots: timeSlotsParsed
+             daysOff: offDays,
+             restSession: restSessionParsed
           }));
           
+          const workingDaysForBlock = VI_DAYS.filter(d => !offDays.includes(d));
           setContractBlockedDates(
-            generateContractDays(first.ngay_bat_dau_ap_dung, first.ngay_ket_thuc_ap_dung, workingDays, calendarJobs)
+            generateContractDays(first.ngay_bat_dau_ap_dung, first.ngay_ket_thuc_ap_dung, workingDaysForBlock, calendarJobs)
           );
         } else {
           setHasRegisteredContract(false);
@@ -1022,60 +1008,27 @@ const ScheduleManager = () => {
     }
   };
 
-  const validateAndAddTimeSlot = () => {
-    setFormError("");
-    const startMin = parseInt(tempSlotUI.startHour) * 60 + parseInt(tempSlotUI.startMin);
-    const endMin = parseInt(tempSlotUI.endHour) * 60 + parseInt(tempSlotUI.endMin);
-
-    if (startMin < 6 * 60 || endMin > 23 * 60) {
-      setFormError("Thời gian làm việc phải nằm trong khoảng từ 06:00 đến 23:00!");
-      return;
-    }
-
-    if (endMin <= startMin) { setFormError("Giờ kết thúc phải sau giờ bắt đầu!"); return; }
-    if (contractForm.timeSlots.length >= 2) { setFormError("Đã đủ tối đa 2 khung giờ cam kết!"); return; }
-
-    if (contractForm.timeSlots.length === 1) {
-      const existEnd = contractForm.timeSlots[0].split(" - ")[1];
-      const eEndMin = parseTimeToMinutes(existEnd);
-      if (startMin < eEndMin) {
-        setFormError("Khung giờ thứ 2 phải bắt đầu sau khi khung giờ thứ 1 kết thúc!");
-        return;
-      }
-    }
-
-    for (const slot of contractForm.timeSlots) {
-      const [existStart, existEnd] = slot.split(" - ");
-      const eStartMin = parseTimeToMinutes(existStart);
-      const eEndMin = parseTimeToMinutes(existEnd);
-      if (startMin < eEndMin && endMin > eStartMin) {
-        setFormError(`Khung giờ mới bị trùng với khung giờ đã có: ${slot}!`);
-        return;
-      }
-    }
-    const newSlot = `${tempSlotUI.startHour}:${tempSlotUI.startMin} - ${tempSlotUI.endHour}:${tempSlotUI.endMin}`;
-    setContractForm((prev) => ({ ...prev, timeSlots: [...prev.timeSlots, newSlot] }));
-  };
-
-  const removeTimeSlot = (index) =>
-    setContractForm((prev) => ({
-      ...prev,
-      timeSlots: prev.timeSlots.filter((_, i) => i !== index),
-    }));
-
   const DAY_ORDER = ["Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7","Chủ Nhật"];
 
-  const handleToggleDay = (day) =>
+  const handleToggleDayOff = (day) => {
     setContractForm((prev) => {
-      const isExist = prev.selectedDays.includes(day);
-      const updated = isExist
-        ? prev.selectedDays.filter((d) => d !== day)
-        : [...prev.selectedDays, day];
+      const isExist = prev.daysOff.includes(day);
+      let updated;
+      if (isExist) {
+        updated = prev.daysOff.filter((d) => d !== day);
+      } else {
+        if (prev.daysOff.length >= 2) {
+          alert("Bạn chỉ được phép chọn tối đa 2 ngày nghỉ trong tuần!");
+          return prev;
+        }
+        updated = [...prev.daysOff, day];
+      }
       return {
         ...prev,
-        selectedDays: updated.sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b)),
+        daysOff: updated.sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b)),
       };
     });
+  };
 
   const openCancelWorkflow = (job) => {
     setCancelTargetJob(job);
@@ -1131,68 +1084,46 @@ const ScheduleManager = () => {
     setCancelDateRange({ from: "", to: "" });
   };
 
-  const calculateLichNghiPayload = (selectedDays, timeSlots, startDate, endDate) => {
+  const calculateLichNghiPayload = (daysOff, restSession, startDate, endDate) => {
     const payload = [];
     const dayMap = { "Chủ Nhật": 0, "Thứ 2": 1, "Thứ 3": 2, "Thứ 4": 3, "Thứ 5": 4, "Thứ 6": 5, "Thứ 7": 6 };
-    const allDays = [0, 1, 2, 3, 4, 5, 6];
     
-    // 1. Tính các ngày nghỉ trọn ngày
-    const workingDays = selectedDays.map(d => dayMap[d]);
-    const offDays = allDays.filter(d => !workingDays.includes(d));
-    
-    offDays.forEach(day => {
+    // 1. Ngày nghỉ trọn ngày (Full-day off)
+    daysOff.forEach(dayName => {
+      const dayIndex = dayMap[dayName];
       payload.push({
         loai_nghi: 'DinhKy',
-        thu_trong_tuan: day,
+        thu_trong_tuan: dayIndex,
         ngay_nghi: null,
         gio_bat_dau_nghi: null,
         gio_ket_thuc_nghi: null,
         ngay_bat_dau_ap_dung: startDate,
         ngay_ket_thuc_ap_dung: endDate,
-        ly_do: day === 0 ? 'Nghỉ định kỳ Chủ Nhật' : `Nghỉ định kỳ thứ ${day + 1}`
+        ly_do: dayIndex === 0 ? 'Nghỉ định kỳ Chủ Nhật' : `Nghỉ định kỳ thứ ${dayIndex + 1}`
       });
     });
 
-    // 2. Tính các khung giờ nghỉ
-    // Sắp xếp timeSlots
-    const sortedSlots = [...timeSlots].sort((a, b) => {
-      return parseTimeToMinutes(a.split(' - ')[0]) - parseTimeToMinutes(b.split(' - ')[0]);
-    });
+    // 2. Buổi nghỉ (Rest session)
+    if (restSession !== "none") {
+      let startStr = null;
+      let endStr = null;
+      let reason = "";
+      if (restSession === "morning") { startStr = "06:00:00"; endStr = "10:00:00"; reason = "Nghỉ buổi sáng"; }
+      else if (restSession === "afternoon") { startStr = "13:00:00"; endStr = "17:00:00"; reason = "Nghỉ buổi chiều"; }
+      else if (restSession === "evening") { startStr = "17:00:00"; endStr = "23:00:00"; reason = "Nghỉ buổi tối"; }
 
-    let currentMin = 6 * 60; // Bắt đầu từ 06:00
-    const endOfDayMin = 23 * 60; // Kết thúc lúc 23:00
-
-    sortedSlots.forEach((slot, index) => {
-      const [startStr, endStr] = slot.split(' - ');
-      const startMin = parseTimeToMinutes(startStr);
-      const endMin = parseTimeToMinutes(endStr);
-
-      if (startMin > currentMin) {
+      if (startStr && endStr) {
         payload.push({
           loai_nghi: 'DinhKy',
-          thu_trong_tuan: null,
+          thu_trong_tuan: null, // null nghĩa là áp dụng cho mọi ngày làm việc
           ngay_nghi: null,
-          gio_bat_dau_nghi: formatMinutesToTime(currentMin) + ':00',
-          gio_ket_thuc_nghi: startStr + ':00',
+          gio_bat_dau_nghi: startStr,
+          gio_ket_thuc_nghi: endStr,
           ngay_bat_dau_ap_dung: startDate,
           ngay_ket_thuc_ap_dung: endDate,
-          ly_do: 'Nghỉ ngoài khung giờ làm việc'
+          ly_do: reason
         });
       }
-      currentMin = endMin;
-    });
-
-    if (currentMin < endOfDayMin) {
-      payload.push({
-        loai_nghi: 'DinhKy',
-        thu_trong_tuan: null,
-        ngay_nghi: null,
-        gio_bat_dau_nghi: formatMinutesToTime(currentMin) + ':00',
-        gio_ket_thuc_nghi: '23:00:00',
-        ngay_bat_dau_ap_dung: startDate,
-        ngay_ket_thuc_ap_dung: endDate,
-        ly_do: 'Nghỉ ngoài khung giờ làm việc'
-      });
     }
 
     if (payload.length === 0) {
@@ -1213,19 +1144,15 @@ const ScheduleManager = () => {
 
 
   const submitContractForm = async () => {
-    if (contractForm.selectedDays.length === 0) {
-      alert("Vui lòng chọn ít nhất 1 ngày rảnh trong tuần!");
-      return;
-    }
-    if (contractForm.timeSlots.length === 0) {
-      alert("Vui lòng thiết lập ít nhất 1 khung giờ làm việc trước khi kích hoạt!");
+    if (!contractForm.daysOff || contractForm.daysOff.length === 0) {
+      alert("Vui lòng chọn ít nhất 1 ngày nghỉ trong tuần!");
       return;
     }
 
     // --- Tính toán dữ liệu insert bảng LichNghi (DinhKy) ---
     const lichNghiPayload = calculateLichNghiPayload(
-      contractForm.selectedDays, 
-      contractForm.timeSlots, 
+      contractForm.daysOff, 
+      contractForm.restSession, 
       contractForm.startDate, 
       contractForm.endDate
     );
@@ -1234,8 +1161,9 @@ const ScheduleManager = () => {
       await nhanVienApi.saveCamKetLichNghi(lichNghiPayload);
       alert("Lưu hợp đồng cam kết thành công!");
       
+      const workingDays = VI_DAYS.filter(d => !contractForm.daysOff.includes(d));
       setContractBlockedDates(
-        generateContractDays(contractForm.startDate, contractForm.endDate, contractForm.selectedDays, calendarJobs)
+        generateContractDays(contractForm.startDate, contractForm.endDate, workingDays, calendarJobs)
       );
       setHasRegisteredContract(true);
       setIsContractModalOpen(false);
@@ -1253,7 +1181,7 @@ const ScheduleManager = () => {
         alert("Hủy hợp đồng cam kết thành công!");
         setHasRegisteredContract(false);
         setContractBlockedDates({});
-        setContractForm((prev) => ({ ...prev, timeSlots: [], selectedDays: [] }));
+        setContractForm((prev) => ({ ...prev, restSession: "none", daysOff: [] }));
       } catch (error) {
         console.error(error);
         alert("Có lỗi xảy ra khi hủy hợp đồng!");
@@ -1298,7 +1226,7 @@ const ScheduleManager = () => {
             onClick={() => setIsContractModalOpen(true)}
             className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all whitespace-nowrap active:scale-95 shrink-0"
           >
-            Đăng ký lịch rảnh ngay
+            Đăng ký lịch làm việc ngay
           </button>
         </div>
       ) : (
@@ -1343,22 +1271,33 @@ const ScheduleManager = () => {
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
               <p className="text-slate-400 font-bold mb-2">📅 Ngày trực tuyến cố định tuần:</p>
               <div className="flex flex-wrap gap-1.5">
-                {contractForm.selectedDays.map((day, idx) => (
-                  <span key={idx} className="bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded">
-                    {day}
-                  </span>
-                ))}
+                {(() => {
+                  const workingDays = DAY_ORDER.filter(d => !(contractForm.daysOff || []).includes(d));
+                  return workingDays.map((day, idx) => (
+                    <span key={idx} className="bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded">
+                      {day}
+                    </span>
+                  ));
+                })()}
               </div>
             </div>
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
               <p className="text-slate-400 font-bold mb-2">⏰ Khung giờ hệ thống đẩy đơn:</p>
               <div className="space-y-1">
-                {contractForm.timeSlots.map((slot, idx) => (
-                  <p key={idx} className="font-bold text-slate-700 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    Khung {idx + 1}: {slot}
-                  </p>
-                ))}
+                {(() => {
+                  let activeTimeSlots = [];
+                  if (contractForm.restSession === "none") activeTimeSlots = ["06:00 - 23:00"];
+                  else if (contractForm.restSession === "morning") activeTimeSlots = ["10:00 - 23:00"];
+                  else if (contractForm.restSession === "afternoon") activeTimeSlots = ["06:00 - 13:00", "17:00 - 23:00"];
+                  else if (contractForm.restSession === "evening") activeTimeSlots = ["06:00 - 17:00"];
+                  
+                  return activeTimeSlots.map((slot, idx) => (
+                    <p key={idx} className="font-bold text-slate-700 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Khung {idx + 1}: {slot}
+                    </p>
+                  ));
+                })()}
               </div>
             </div>
           </div>
@@ -1906,17 +1845,17 @@ const ScheduleManager = () => {
               <div className="space-y-3">
                 <p className="font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 text-[11px]">
                   <span className="material-symbols-outlined text-sm text-emerald-600">today</span>
-                  Chọn ngày rảnh cố định trong tuần:
+                  Chọn ngày nghỉ cố định trong tuần:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"].map((day) => {
-                    const isSel = contractForm.selectedDays.includes(day);
+                    const isSel = contractForm.daysOff.includes(day);
                     return (
                       <button
                         type="button"
                         key={day}
-                        onClick={() => handleToggleDay(day)}
-                        className={`px-4 py-2.5 rounded-xl font-bold border transition-all text-xs active:scale-95 ${isSel ? "bg-emerald-600 text-white border-emerald-600 shadow-md" : "bg-white text-slate-600 hover:bg-slate-50 border-slate-200"}`}
+                        onClick={() => handleToggleDayOff(day)}
+                        className={`px-4 py-2.5 rounded-xl font-bold border transition-all text-xs active:scale-95 ${isSel ? "bg-rose-500 text-white border-rose-500 shadow-md" : "bg-white text-slate-600 hover:bg-slate-50 border-slate-200"}`}
                       >
                         {day}
                       </button>
@@ -1926,80 +1865,29 @@ const ScheduleManager = () => {
               </div>
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 space-y-4">
                 <p className="font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 text-[11px]">
-                  <span className="material-symbols-outlined text-sm text-emerald-600">schedule</span>
-                  Thiết lập khung giờ trực tuyến (Tối đa 2 ca | 06:00 – 23:00)
+                  <span className="material-symbols-outlined text-sm text-emerald-600">nightlight</span>
+                  Chọn buổi nghỉ cố định trên ngày làm việc
                 </p>
-                {formError && (
-                  <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-xl text-[11px] font-semibold flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-sm">error</span>{formError}
-                  </div>
-                )}
-                {!isEditContractMode && (
-                  <>
-                    {contractForm.timeSlots.length < 2 ? (
-                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <TimePicker
-                            label="Từ giờ"
-                            hour={tempSlotUI.startHour}
-                            minute={tempSlotUI.startMin}
-                            onHourChange={(h) => setTempSlotUI((p) => ({ ...p, startHour: h }))}
-                            onMinuteChange={(m) => setTempSlotUI((p) => ({ ...p, startMin: m }))}
-                          />
-                          <TimePicker
-                            label="Đến giờ"
-                            hour={tempSlotUI.endHour}
-                            minute={tempSlotUI.endMin}
-                            onHourChange={(h) => setTempSlotUI((p) => ({ ...p, endHour: h }))}
-                            onMinuteChange={(m) => setTempSlotUI((p) => ({ ...p, endMin: m }))}
-                          />
-                        </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            Dự kiến:{" "}
-                            <strong className="text-slate-700">{tempSlotUI.startHour}:{tempSlotUI.startMin}</strong>
-                            {" → "}
-                            <strong className="text-slate-700">{tempSlotUI.endHour}:{tempSlotUI.endMin}</strong>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={validateAndAddTimeSlot}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1 shadow-md transition-all active:scale-95 text-xs"
-                          >
-                            <span className="material-symbols-outlined text-sm">add_circle</span>Thêm khung giờ
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-amber-700 font-semibold text-[11px] bg-amber-50 p-3 rounded-xl border border-amber-200">
-                        🔒 Đã cấu hình đủ tối đa 2 khung giờ.
-                      </p>
-                    )}
-                  </>
-                )}
-                <div className="space-y-2">
-                  <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Khung giờ đã cấu hình:</p>
-                  {contractForm.timeSlots.length === 0 ? (
-                    <p className="text-slate-400 italic pl-1 text-[11px]">Chưa có khung giờ nào.</p>
-                  ) : (
-                    contractForm.timeSlots.map((slot, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white px-3 py-2.5 rounded-xl border border-slate-200 shadow-sm">
-                        <span className="font-bold text-slate-700 flex items-center gap-2 text-xs">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                          Khung {index + 1}: {slot}
-                        </span>
-                        {!isEditContractMode && (
-                          <button
-                            type="button"
-                            onClick={() => removeTimeSlot(index)}
-                            className="text-rose-500 hover:text-rose-700 font-bold text-xs transition-colors"
-                          >
-                            Xóa
-                          </button>
-                        )}
-                      </div>
-                    ))
-                  )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { id: "none", label: "Không nghỉ (Làm nguyên ngày)", time: "06:00 - 23:00" },
+                    { id: "morning", label: "Nghỉ buổi sáng", time: "06:00 - 10:00" },
+                    { id: "afternoon", label: "Nghỉ buổi chiều", time: "13:00 - 17:00" },
+                    { id: "evening", label: "Nghỉ buổi tối", time: "17:00 - 23:00" },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      disabled={isEditContractMode}
+                      onClick={() => setContractForm(prev => ({ ...prev, restSession: option.id }))}
+                      className={`flex flex-col items-start px-4 py-3 rounded-xl border transition-all text-left ${contractForm.restSession === option.id ? "bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500" : "bg-white border-slate-200 hover:border-emerald-300"} ${isEditContractMode ? "opacity-70 cursor-not-allowed" : "cursor-pointer"}`}
+                    >
+                      <span className={`font-bold text-sm ${contractForm.restSession === option.id ? "text-emerald-700" : "text-slate-700"}`}>
+                        {option.label}
+                      </span>
+                      {option.time && <span className="text-xs text-slate-500 mt-1">{option.time}</span>}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

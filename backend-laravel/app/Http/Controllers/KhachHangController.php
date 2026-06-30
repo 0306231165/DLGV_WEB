@@ -102,6 +102,8 @@ class KhachHangController extends Controller
                 'label'     => $item->ten_goi_nho,
                 'address'   => $item->dia_chi_chi_tiet,
                 'isDefault' => (bool) $item->is_mac_dinh,
+                'vi_do'     => $item->vi_do,
+                'kinh_do'   => $item->kinh_do,
             ];
         });
 
@@ -113,6 +115,8 @@ class KhachHangController extends Controller
         $request->validate([
             'label'   => 'required|string|max:100',
             'address' => 'required|string|max:255',
+            'vi_do'   => 'nullable|numeric',
+            'kinh_do' => 'nullable|numeric',
         ]);
 
         $khachHang = $request->user()->khachHang;
@@ -125,6 +129,8 @@ class KhachHangController extends Controller
         $addr = $khachHang->diaChiDaLuu()->create([
             'ten_goi_nho'      => $request->label,
             'dia_chi_chi_tiet' => $request->address,
+            'vi_do'            => $request->vi_do,
+            'kinh_do'          => $request->kinh_do,
             'is_mac_dinh'      => $isFirst,
         ]);
 
@@ -145,6 +151,8 @@ class KhachHangController extends Controller
         $request->validate([
             'label'   => 'required|string|max:100',
             'address' => 'required|string|max:255',
+            'vi_do'   => 'nullable|numeric',
+            'kinh_do' => 'nullable|numeric',
         ]);
 
         $khachHang = $request->user()->khachHang;
@@ -153,6 +161,8 @@ class KhachHangController extends Controller
         $addr->update([
             'ten_goi_nho'      => $request->label,
             'dia_chi_chi_tiet' => $request->address,
+            'vi_do'            => $request->vi_do,
+            'kinh_do'          => $request->kinh_do,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Cập nhật địa chỉ thành công.']);

@@ -67,8 +67,8 @@ const WEEK_DAY_OPTIONS = [
   { id: "wed", label: "T4", full: "Thứ Tư" },
   { id: "thu", label: "T5", full: "Thứ Năm" },
   { id: "fri", label: "T6", full: "Thứ Sáu" },
-  { id: "sat", label: "T7", full: "Thứ Bảy" },
-  { id: "sun", label: "CN", full: "Chủ Nhật" },
+  { id: "sat", label: "T7", full: "Thứ Bảy", isWeekend: true },
+  { id: "sun", label: "CN", full: "Chủ Nhật", isWeekend: true },
 ];
 
 const MONTHLY_DURATION_OPTIONS = [
@@ -889,6 +889,10 @@ const TimeSlotPicker = ({
               const disabled = isSlotDisabled(selectedDayObj, t, totalHours, staffSchedule);
               const urgentBadge = selectedDayObj?.isToday && !disabled;
               const isSelected = !showCustomTime && selectedTime === t;
+              
+              const hour = parseInt(t.split(":")[0], 10);
+              const isNight = hour >= 18 && hour <= 23;
+              
               return (
                 <button
                   key={t}
@@ -908,8 +912,20 @@ const TimeSlotPicker = ({
                   }`}
                 >
                   {t}
-                  {urgentBadge && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-error rounded-full flex items-center justify-center">
+                  {isNight && !disabled && (
+                    <span className="absolute -top-2 -right-2 bg-error text-on-error text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10 whitespace-nowrap" title="Phụ phí ban đêm +10%">
+                      +10%
+                    </span>
+                  )}
+                  {urgentBadge && !isNight && (
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-error rounded-full flex items-center justify-center" title="Phụ phí đặt gấp">
+                      <span className="material-symbols-outlined text-white text-[10px]">
+                        bolt
+                      </span>
+                    </span>
+                  )}
+                  {urgentBadge && isNight && (
+                    <span className="absolute -top-2 -left-2 w-4 h-4 bg-error rounded-full flex items-center justify-center" title="Phụ phí đặt gấp">
                       <span className="material-symbols-outlined text-white text-[10px]">
                         bolt
                       </span>
@@ -928,18 +944,25 @@ const TimeSlotPicker = ({
             <span className="material-symbols-outlined text-base">tune</span>
             Giờ khác
           </h4>
-          <button
-            onClick={handleToggleCustom}
-            className={`py-2 px-4 border-2 rounded-xl text-sm font-semibold transition-all ${
-              showCustomTime
-                ? "border-primary bg-primary/5 text-primary"
-                : "border-outline-variant/50 text-on-surface hover:border-primary"
-            }`}
-          >
-            {showCustomTime && customTimeValue
-              ? `Giờ tùy chọn: ${customTimeValue}`
-              : "Tự nhập giờ"}
-          </button>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={handleToggleCustom}
+              className={`relative py-2 px-4 border-2 rounded-xl text-sm font-semibold transition-all ${
+                showCustomTime
+                  ? "border-primary bg-primary/5 text-primary"
+                  : "border-outline-variant/50 text-on-surface hover:border-primary"
+              }`}
+            >
+              {showCustomTime && customTimeValue
+                ? `Giờ tùy chọn: ${customTimeValue}`
+                : "Tự nhập giờ"}
+              {showCustomTime && customTimeValue && parseInt(customTimeValue.split(":")[0], 10) >= 18 && (
+                <span className="absolute -top-2 -right-2 bg-error text-on-error text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10 whitespace-nowrap" title="Phụ phí ban đêm +10%">
+                  +10%
+                </span>
+              )}
+            </button>
+          </div>
 
           {showCustomTime && (
             <CustomTimePicker
@@ -1561,7 +1584,6 @@ const BookingPage = () => {
   const [selectedSavedAddress, setSelectedSavedAddress] = useState(null);
   const [newAddress, setNewAddress] = useState({
     street: "",
-    district: "",
   });
   const [staffNote, setStaffNote] = useState("");
 
@@ -1571,6 +1593,8 @@ const BookingPage = () => {
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [promoId, setPromoId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [newAddressCoords, setNewAddressCoords] = useState({ lat: null, lon: null });
 
   const [showStep5Tasks, setShowStep5Tasks] = useState(false);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
@@ -1834,6 +1858,22 @@ const BookingPage = () => {
     return [];
   };
 
+  const caLamDates = getCaLamViecDates();
+  
+  const weekendSessionCount = is247 
+    ? 0 
+    : caLamDates.filter(d => {
+        const dateObj = new Date(d);
+        const day = dateObj.getDay();
+        return day === 0 || day === 6; // Sunday or Saturday
+      }).length;
+      
+  const isNightTime = effectiveTime && parseInt(effectiveTime.split(":")[0], 10) >= 18;
+  const nightSessionCount = is247 ? 0 : (isNightTime ? caLamDates.length : 0);
+
+  const weekendSurchargeTotal = weekendSessionCount * Math.round(basePrice * 0.15);
+  const nightSurchargeTotal = nightSessionCount * Math.round(basePrice * 0.10);
+
   // ✅ MỚI: sinh danh sách {ngay_lam, gio_bat_dau} cho từng ca trực 24/7
   // - shift-day / shift-night: 1 ca/ngày, 12 giờ
   // - shift-full: 2 ca/ngày (ca ngày 06:00 + ca đêm 18:00), mỗi ca 12 giờ
@@ -1877,7 +1917,7 @@ const BookingPage = () => {
     const diaChi =
       addressMode === "saved" && savedAddresses.length > 0
         ? savedAddresses.find((a) => a.id === selectedSavedAddress)?.address
-        : `${newAddress.street}, ${newAddress.district}`;
+        : newAddress.street;
 
     // ✅ MỚI: 24/7 sinh riêng — mỗi ca 12 giờ (720 phút), không dùng effectiveTime/totalHours
     if (is247) {
@@ -1961,7 +2001,10 @@ const BookingPage = () => {
         : null;
     const diaChiThucTe = addrInfo
       ? addrInfo.address
-      : `${newAddress.street}, ${newAddress.district}`;
+      : newAddress.street;
+
+    const viDoThucTe = addrInfo ? addrInfo.vi_do : newAddressCoords.lat;
+    const kinhDoThucTe = addrInfo ? addrInfo.kinh_do : newAddressCoords.lon;
 
     // ── ngay_bat_dau / ngay_ket_thuc ──
     const toYMD = (d) =>
@@ -2015,6 +2058,8 @@ const BookingPage = () => {
       ho_ten_thuc_te: hoTenThucTe,
       sdt_thuc_te: sdtThucTe,
       dia_chi_thuc_te: diaChiThucTe,
+      vi_do: viDoThucTe,
+      kinh_do: kinhDoThucTe,
       ghi_chu_cho_nhan_vien: staffNote || null,
       is_cao_cap: premiumStaff,
       ty_le_phu_phi_cao_cap_snapshot: premiumStaff
@@ -2093,13 +2138,17 @@ const BookingPage = () => {
         travelFee +
         urgentFee +
         selfPickFee +
-        premiumFeeTotal
+        premiumFeeTotal +
+        weekendSurchargeTotal +
+        nightSurchargeTotal
       : basePrice +
         extrasTotal +
         travelFee +
         urgentFee +
         selfPickFee +
-        premiumFeeTotal;
+        premiumFeeTotal +
+        weekendSurchargeTotal +
+        nightSurchargeTotal;
   }
 
   let actualPromoDiscount = promoDiscount;
@@ -2376,9 +2425,7 @@ const BookingPage = () => {
     }
     if (addressMode === "new" || savedAddresses.length === 0) {
       if (!newAddress.street.trim())
-        e.street = "Vui lòng nhập số nhà, tên đường.";
-      if (!newAddress.district.trim())
-        e.district = "Vui lòng nhập phường / quận.";
+        e.street = "Vui lòng nhập địa chỉ cụ thể.";
     } else if (selectedSavedAddress === null) {
       e.street = "Vui lòng chọn một địa chỉ đã lưu.";
     }
@@ -2391,6 +2438,64 @@ const BookingPage = () => {
       return false;
     }
     return true;
+  };
+
+  const geocodeAddress = async (address) => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+      const response = await fetch(url, { headers: { "Accept-Language": "vi-VN" } });
+      const data = await response.json();
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      }
+      return null;
+    } catch (e) {
+      console.error("Geocoding error:", e);
+      return null;
+    }
+  };
+
+  const handleNextStep3 = async () => {
+    if (isGeocoding) return;
+    if (!validateStep3()) return;
+    
+    if (addressMode === "new") {
+      setIsGeocoding(true);
+      console.log("📍 [Geocoding] Bắt đầu tìm tọa độ cho:", newAddress.street);
+      
+      let coords = await geocodeAddress(newAddress.street);
+      
+      if (coords) {
+        console.log("✅ [Geocoding] Lần 1 thành công! Tọa độ:", coords);
+      } else {
+        console.log("❌ [Geocoding] Lần 1 thất bại. Thử cắt chuỗi giảm dần (bỏ phần đầu)...");
+        const parts = newAddress.street.split(",");
+        
+        if (parts.length > 1) {
+          const fallbackAddress = parts.slice(1).join(",").trim();
+          console.log("📍 [Geocoding] Thử lần 2 với chuỗi:", fallbackAddress);
+          coords = await geocodeAddress(fallbackAddress);
+          if (coords) console.log("✅ [Geocoding] Lần 2 thành công! Tọa độ (Trung tâm Phường/Quận):", coords);
+        }
+        
+        if (!coords && parts.length > 2) {
+          const fallbackAddress2 = parts.slice(2).join(",").trim();
+          console.log("📍 [Geocoding] Thử lần 3 với chuỗi:", fallbackAddress2);
+          coords = await geocodeAddress(fallbackAddress2);
+          if (coords) console.log("✅ [Geocoding] Lần 3 thành công! Tọa độ (Trung tâm Quận/Huyện):", coords);
+        }
+      }
+
+      if (coords) {
+        setNewAddressCoords(coords);
+      } else {
+        console.log("❌ [Geocoding] Thất bại toàn tập. Không tìm thấy tọa độ.");
+        setNewAddressCoords({ lat: null, lon: null });
+      }
+      setIsGeocoding(false);
+    }
+    
+    setStep(4);
   };
 
   const renderStepIndicator = () => {
@@ -2514,7 +2619,9 @@ const BookingPage = () => {
       urgentFee > 0 ||
       travelFee > 0 ||
       hasExtras ||
-      premiumFeeTotal > 0;
+      premiumFeeTotal > 0 ||
+      weekendSurchargeTotal > 0 ||
+      nightSurchargeTotal > 0;
     const hasDiscounts =
       monthlyDiscount > 0 ||
       actualPromoDiscount > 0 ||
@@ -2562,13 +2669,16 @@ const BookingPage = () => {
               {extras.map((id) => {
                 const e = apiExtraList.find((s) => s.id === id);
                 if (!e) return null;
+                const displaySessions = isMonthly && totalSessions !== null ? totalSessions : 1;
+                const displayPrice = e.price * displaySessions;
+                const suffix = isMonthly && totalSessions !== null && displaySessions > 1 ? ` (×${displaySessions})` : "";
                 return (
                   <div
                     key={id}
                     className="flex justify-between text-on-surface-variant"
                   >
-                    <span>{e.title}</span>
-                    <span>+{fmt(e.price)}</span>
+                    <span>{e.title}{suffix}</span>
+                    <span>+{fmt(displayPrice)}</span>
                   </div>
                 );
               })}
@@ -2607,16 +2717,30 @@ const BookingPage = () => {
                   <span>+{fmt(travelFee)}</span>
                 </div>
               )}
+              {weekendSurchargeTotal > 0 && (
+                <div className="flex justify-between text-on-surface-variant">
+                  <span>Phụ phí cuối tuần (+15%){weekendSessionCount > 1 ? ` (${weekendSessionCount} buổi)` : ""}</span>
+                  <span>+{fmt(weekendSurchargeTotal)}</span>
+                </div>
+              )}
+              {nightSurchargeTotal > 0 && (
+                <div className="flex justify-between text-on-surface-variant">
+                  <span>Phụ phí ban đêm (+10%){nightSessionCount > 1 ? ` (${nightSessionCount} buổi)` : ""}</span>
+                  <span>+{fmt(nightSurchargeTotal)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-on-surface font-semibold pt-2 border-t border-outline-variant/50 mt-2">
                 <span>Tổng phụ phí</span>
                 <span>
                   +
                   {fmt(
-                    extrasTotal +
+                    extrasTotal * (isMonthly && totalSessions !== null ? totalSessions : 1) +
                       selfPickFee +
                       urgentFee +
                       travelFee +
-                      premiumFeeTotal,
+                      premiumFeeTotal +
+                      weekendSurchargeTotal +
+                      nightSurchargeTotal,
                   )}
                 </span>
               </div>
@@ -3878,6 +4002,11 @@ const BookingPage = () => {
                                 }`}
                               >
                                 {d.label}
+                                {d.isWeekend && (
+                                  <span className="absolute -top-2 -right-2 bg-error text-on-error text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10 whitespace-nowrap" title="Phụ phí cuối tuần +15%">
+                                    +15%
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
@@ -3955,7 +4084,7 @@ const BookingPage = () => {
                       >
                         Chọn ngày làm việc
                       </SectionTitle>
-                      <div className="flex gap-3 overflow-x-auto pb-2">
+                      <div className="flex gap-3 overflow-x-auto pb-2 pt-3 px-1 -mx-1">
                         {next7Days.map((d, idx) => {
                           const isSelected = selectedDayIdx === idx;
                           let isBlockedByStaff = false;
@@ -3996,7 +4125,7 @@ const BookingPage = () => {
                                     ? "Hôm nay đã hết khung giờ đặt lịch"
                                     : undefined
                               }
-                              className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl border-2 transition-all ${
+                              className={`relative flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl border-2 transition-all ${
                                 noSlots
                                   ? "border-outline-variant/20 bg-surface-container-lowest cursor-not-allowed opacity-40"
                                   : isSelected
@@ -4014,6 +4143,11 @@ const BookingPage = () => {
                               >
                                 {d.dateNum}
                               </span>
+                              {(d.label === "T7" || d.label === "CN") && (
+                                <span className="absolute -top-2 -right-2 bg-error text-on-error text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10 whitespace-nowrap" title="Phụ phí cuối tuần +15%">
+                                  +15%
+                                </span>
+                              )}
                               {noSlots && (
                                 <span className="text-[9px] text-error/70 font-medium mt-0.5">
                                   Hết giờ
@@ -4584,15 +4718,9 @@ const BookingPage = () => {
                     {[
                       {
                         key: "street",
-                        label: "Số nhà, tên đường",
+                        label: "Địa chỉ cụ thể",
                         icon: "signpost",
-                        placeholder: "123 Nguyễn Huệ",
-                      },
-                      {
-                        key: "district",
-                        label: "Phường / Quận",
-                        icon: "location_city",
-                        placeholder: "Phường Bến Nghé, Quận 1",
+                        placeholder: "123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM",
                       },
                     ].map((f) => (
                       <div key={f.key}>
@@ -4803,10 +4931,8 @@ const BookingPage = () => {
               )}
             </div>
             {renderOrderSummary({
-              primaryLabel: "Tiếp theo",
-              onPrimary: () => {
-                if (validateStep3()) setStep(4);
-              },
+              primaryLabel: isGeocoding ? "Đang định vị..." : "Tiếp theo",
+              onPrimary: handleNextStep3,
               onBack: () => setStep(2),
             })}
           </div>
@@ -5318,18 +5444,10 @@ const BookingPage = () => {
                         <>
                           <div className="flex justify-between">
                             <span className="text-sm text-on-surface-variant">
-                              Số nhà, đường
+                              Địa chỉ
                             </span>
-                            <span className="font-bold text-on-surface">
+                            <span className="font-bold text-on-surface text-right max-w-[60%]">
                               {newAddress.street}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-on-surface-variant">
-                              Phường / Quận
-                            </span>
-                            <span className="font-semibold text-on-surface">
-                              {newAddress.district}
                             </span>
                           </div>
                         </>
