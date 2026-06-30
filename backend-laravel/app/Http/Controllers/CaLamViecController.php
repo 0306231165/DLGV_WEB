@@ -23,6 +23,8 @@ class CaLamViecController extends Controller
         $startDate = null;
         $endDate = null;
         $offDays = [];
+        $nghiStart = null;
+        $nghiEnd = null;
 
         if ($lichNghi->isNotEmpty()) {
             $startDate = $lichNghi->min('ngay_bat_dau_ap_dung');
@@ -30,45 +32,81 @@ class CaLamViecController extends Controller
             $offDays = $lichNghi->pluck('thu_trong_tuan')->filter(function ($val) {
                 return !is_null($val);
             })->toArray();
+            
+            $firstLichNghi = $lichNghi->firstWhere('thu_trong_tuan', null);
+            if ($firstLichNghi && $firstLichNghi->gio_bat_dau_nghi && $firstLichNghi->gio_ket_thuc_nghi) {
+                $nghiStart = $firstLichNghi->gio_bat_dau_nghi;
+                $nghiEnd = $firstLichNghi->gio_ket_thuc_nghi;
+            }
         }
 
         $caLamViecs = CaLamViec::with(['donHang.khachHang.taiKhoan', 'donHang.dichVuLoaiGoi.dichVu', 'dichVu'])
-            ->whereIn('trang_thai_ca', ['ChoNhanVienTuDoNhan', 'ChoNhanVienChiDinhXacNhan'])
-            ->where(function($q) use ($nhanVienId, $startDate, $endDate, $offDays) {
-                // Ca tự do: GoiThang, 247 thì luôn lấy; CaLe, GoiLapLai thì check hợp đồng
-                $q->where(function($qTuDo) use ($startDate, $endDate, $offDays) {
-                    $qTuDo->where('trang_thai_ca', 'ChoNhanVienTuDoNhan')
-                          ->where(function($qCondition) use ($startDate, $endDate, $offDays) {
-                                // Gói tháng và 247: luôn thấy
-                                $qCondition->whereIn('loai_goi_ca_lam', ['GoiThang', 'Goi247', 'GoiLapLai'])
-                                           ->orWhere(function($qContract) use ($startDate, $endDate, $offDays) {
-                                                $qContract->where('loai_goi_ca_lam', 'CaLe');
-                                                if ($startDate && $endDate) {
-                                                    $qContract->whereBetween('ngay_lam', [$startDate, $endDate]);
-                                                    if (!empty($offDays)) {
-                                                        $offDaysStr = implode(',', $offDays);
-                                                        $qContract->whereRaw("(DAYOFWEEK(ngay_lam) - 1) NOT IN ($offDaysStr)");
-                                                    }
-                                                } else {
-                                                    $qContract->whereRaw("1 = 0");
-                                                }
-                                           });
-                          });
-                });
-
-                // HOẶC ca chỉ định đích danh (luôn thấy)
-                $q->orWhere(function($subQ) use ($nhanVienId) {
-                    $subQ->where('trang_thai_ca', 'ChoNhanVienChiDinhXacNhan')
-                         ->where('nhan_vien_id', $nhanVienId);
-                });
+            ->where(function($q) use ($nhanVienId) {
+                $q->where('trang_thai_ca', 'ChoNhanVienTuDoNhan')
+                  ->orWhere(function($subQ) use ($nhanVienId) {
+                      $subQ->where('trang_thai_ca', 'ChoNhanVienChiDinhXacNhan')
+                           ->where('nhan_vien_id', $nhanVienId);
+                  });
             })
-            ->orderBy('ngay_lam', 'asc')
             ->get();
 
         $grouped = collect($caLamViecs)->groupBy('don_hang_id');
         $result = [];
         
         foreach ($grouped as $don_hang_id => $cas) {
+            $firstCa = $cas->first();
+            $isAssigned = $firstCa->trang_thai_ca === 'ChoNhanVienChiDinhXacNhan' && $firstCa->nhan_vien_id == $nhanVienId;
+            $isCaLe = $firstCa->loai_goi_ca_lam === 'CaLe';
+            
+            if (!$isAssigned && $isCaLe) {
+                if (!$startDate || !$endDate) {
+                    continue; // Phải đăng ký lịch rảnh thì mới được nhận Ca lẻ
+                }
+                
+                $isValidPackage = true;
+                foreach ($cas as $ca) {
+                    if ($ca->ngay_lam < $startDate || $ca->ngay_lam > $endDate) {
+                        \Log::info('CaLe Hidden due to Date Range', ['don_hang' => $don_hang_id, 'ca_ngay_lam' => $ca->ngay_lam, 'startDate' => $startDate, 'endDate' => $endDate]);
+                        $isValidPackage = false;
+                        break;
+                    }
+                    
+                    $dow = (int) date('w', strtotime($ca->ngay_lam));
+                    if (in_array($dow, $offDays)) {
+                        \Log::info('CaLe Hidden due to DOW', ['don_hang' => $don_hang_id, 'dow' => $dow, 'offDays' => $offDays]);
+                        $isValidPackage = false;
+                        break;
+                    }
+                    
+                    if ($nghiStart && $nghiEnd && $ca->gio_bat_dau && $ca->thoi_gian_lam_phut) {
+                        $cStart = \Carbon\Carbon::parse($ca->gio_bat_dau);
+                        $cEnd = (clone $cStart)->addMinutes($ca->thoi_gian_lam_phut);
+                        
+                        $rStart = \Carbon\Carbon::parse($nghiStart);
+                        $rEnd = \Carbon\Carbon::parse($nghiEnd);
+                        
+                        // Fix intersection logic for midnight crossing
+                        $intersects = false;
+                        if ($rStart <= $rEnd) {
+                            $intersects = ($cStart->format('H:i:s') < $rEnd->format('H:i:s') && $cEnd->format('H:i:s') > $rStart->format('H:i:s'));
+                        } else {
+                            // Crosses midnight (e.g. 23:00 to 06:00)
+                            $intersects = ($cStart->format('H:i:s') > $rStart->format('H:i:s') || $cEnd->format('H:i:s') < $rEnd->format('H:i:s'));
+                        }
+                        
+                        if ($intersects) {
+                            \Log::info('CaLe Hidden due to Time', ['ca' => $ca->id, 'cStart' => $cStart->format('H:i:s'), 'cEnd' => $cEnd->format('H:i:s'), 'rStart' => $rStart->format('H:i:s'), 'rEnd' => $rEnd->format('H:i:s')]);
+                            $isValidPackage = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!$isValidPackage) {
+                    continue; 
+                }
+            }
+
             if ($cas->count() == 1) {
                 $result[] = $cas->first()->toArray();
             } else {
@@ -106,7 +144,32 @@ class CaLamViecController extends Controller
             ->orderBy('ngay_lam', 'asc')
             ->get();
             
-        return response()->json(['success' => true, 'data' => $caLamViecs]);
+        $grouped = collect($caLamViecs)->groupBy('don_hang_id');
+        $result = [];
+        
+        foreach ($grouped as $don_hang_id => $cas) {
+            if ($cas->count() == 1) {
+                $result[] = $cas->first()->toArray();
+            } else {
+                $firstCa = $cas->sortBy('ngay_lam')->first();
+                $packageCa = $firstCa->toArray();
+                $packageCa['id'] = 'PACKAGE_' . $don_hang_id;
+                $packageCa['thuc_nhan_nv'] = $cas->sum('thuc_nhan_nv');
+                $packageCa['is_package'] = true;
+                $packageCa['so_ca_kha_dung'] = $cas->count();
+                $packageCa['ngay_lam_end'] = $cas->max('ngay_lam');
+                $packageCa['ngay_lam_start'] = $cas->min('ngay_lam');
+                $result[] = $packageCa;
+            }
+        }
+        
+        usort($result, function($a, $b) {
+            $dateA = isset($a['is_package']) && $a['is_package'] ? $a['ngay_lam_start'] : $a['ngay_lam'];
+            $dateB = isset($b['is_package']) && $b['is_package'] ? $b['ngay_lam_start'] : $b['ngay_lam'];
+            return strtotime($dateA) <=> strtotime($dateB);
+        });
+
+        return response()->json(['success' => true, 'data' => $result]);
     }
 
     /**
@@ -158,6 +221,11 @@ class CaLamViecController extends Controller
                 return response()->json(['success' => false, 'message' => 'Gói lịch này không còn khả dụng'], 400);
             }
             
+            $errorMsg = $this->checkOverlappingAndGap($cas, $nhanVienId);
+            if ($errorMsg) {
+                return response()->json(['success' => false, 'message' => $errorMsg], 400);
+            }
+            
             foreach ($cas as $ca) {
                 $ca->nhan_vien_id = $nhanVienId;
                 $ca->trang_thai_ca = 'DaNhan';
@@ -183,6 +251,11 @@ class CaLamViecController extends Controller
         
         if (!in_array($ca->trang_thai_ca, ['ChoNhanVienTuDoNhan', 'ChoNhanVienChiDinhXacNhan'])) {
             return response()->json(['success' => false, 'message' => 'Lịch này không còn khả dụng'], 400);
+        }
+        
+        $errorMsg = $this->checkOverlappingAndGap(collect([$ca]), $nhanVienId);
+        if ($errorMsg) {
+            return response()->json(['success' => false, 'message' => $errorMsg], 400);
         }
         
         $ca->nhan_vien_id = $nhanVienId;
@@ -363,5 +436,47 @@ class CaLamViecController extends Controller
         }
 
         return response()->json(['success' => false, 'message' => 'Không có ca làm việc nào chưa bắt đầu để hủy'], 400);
+    }
+
+    /**
+     * Helper: Kiểm tra trùng lịch và khoảng cách 1 tiếng giữa các ca làm việc
+     */
+    private function checkOverlappingAndGap($cas, $nhanVienId)
+    {
+        $dates = $cas->pluck('ngay_lam')->unique()->toArray();
+        
+        $existingCas = CaLamViec::where('nhan_vien_id', $nhanVienId)
+            ->whereIn('trang_thai_ca', ['DaNhan', 'DangThucHien'])
+            ->whereIn('ngay_lam', $dates)
+            ->get(['id', 'ngay_lam', 'gio_bat_dau', 'thoi_gian_lam_phut']);
+            
+        foreach ($cas as $newCa) {
+            $newStartStr = $newCa->gio_bat_dau;
+            $newDuration = $newCa->thoi_gian_lam_phut;
+            if (!$newStartStr || !$newDuration) continue;
+            
+            $newStartDt = \Carbon\Carbon::parse($newCa->ngay_lam . ' ' . $newStartStr);
+            $newEndDt = (clone $newStartDt)->addMinutes($newDuration);
+            
+            // Mở rộng thời gian ca mới +- 60 phút để đảm bảo khoảng nghỉ
+            $expandedStartDt = (clone $newStartDt)->subMinutes(60);
+            $expandedEndDt = (clone $newEndDt)->addMinutes(60);
+            
+            foreach ($existingCas as $existingCa) {
+                if ($existingCa->ngay_lam === $newCa->ngay_lam) {
+                    $existStartStr = $existingCa->gio_bat_dau;
+                    $existDuration = $existingCa->thoi_gian_lam_phut;
+                    if (!$existStartStr || !$existDuration) continue;
+                    
+                    $existStartDt = \Carbon\Carbon::parse($existingCa->ngay_lam . ' ' . $existStartStr);
+                    $existEndDt = (clone $existStartDt)->addMinutes($existDuration);
+                    
+                    if ($existStartDt < $expandedEndDt && $existEndDt > $expandedStartDt) {
+                        return "Nhận lịch thất bại! Ca ngày {$newCa->ngay_lam} (từ {$newStartDt->format('H:i')} đến {$newEndDt->format('H:i')}) bị trùng hoặc chưa cách lịch làm việc hiện tại tối thiểu 1 tiếng để nghỉ ngơi/di chuyển. Vui lòng kiểm tra lại.";
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

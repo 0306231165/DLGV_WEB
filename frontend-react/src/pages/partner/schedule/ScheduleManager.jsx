@@ -745,7 +745,7 @@ const ScheduleManager = () => {
   };
 
   const formatMinutesToTime = (minutes) => {
-    const h = Math.floor(minutes / 60);
+    const h = Math.floor(minutes / 60) % 24;
     const m = minutes % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   };
@@ -789,6 +789,21 @@ const ScheduleManager = () => {
         staffCount: 1, 
         jobNote: ca.don_hang?.ghi_chu_cho_nhan_vien,
         totalSessions: ca.don_hang?.tong_so_buoi,
+        vi_tri_ca: ca.vi_tri_ca,
+        daysOfWeek: (() => {
+            if (!ca.don_hang?.cac_ngay_trong_tuan) return null;
+            const dayMap = {
+                mon: "Thứ 2", tue: "Thứ 3", wed: "Thứ 4", thu: "Thứ 5",
+                fri: "Thứ 6", sat: "Thứ 7", sun: "Chủ nhật"
+            };
+            const sortOrder = {
+                mon: 1, tue: 2, wed: 3, thu: 4,
+                fri: 5, sat: 6, sun: 7
+            };
+            const daysArray = ca.don_hang.cac_ngay_trong_tuan.split(",").map(d => d.trim().toLowerCase());
+            daysArray.sort((a, b) => (sortOrder[a] || 99) - (sortOrder[b] || 99));
+            return daysArray.map(d => dayMap[d] || d).join(", ");
+        })(),
         district: district,
         paymentMethod: ca.don_hang?.phuong_thuc_tt,
         trang_thai_ca: ca.trang_thai_ca,
@@ -837,8 +852,7 @@ const ScheduleManager = () => {
   }, []);
 
   // Fetch Hợp đồng Lịch Nghỉ khi mount
-  useEffect(() => {
-    const fetchCamKet = async () => {
+  const fetchCamKet = async () => {
       try {
         const res = await nhanVienApi.getCamKetLichNghi();
         if (res.data && Array.isArray(res.data) && res.data.length > 0) {
@@ -892,6 +906,8 @@ const ScheduleManager = () => {
         console.error("Lỗi fetch hợp đồng:", err);
       }
     };
+  
+  useEffect(() => {
     fetchCamKet();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -986,7 +1002,8 @@ const ScheduleManager = () => {
         alert(res?.message || "Nhận lịch thất bại");
       }
     } catch (e) {
-      alert("Lỗi khi nhận lịch. Có thể lịch này không còn khả dụng.");
+      const errorMsg = e?.message || "Lỗi khi nhận lịch. Có thể lịch này không còn khả dụng.";
+      alert(errorMsg);
     }
   };
 
@@ -1447,7 +1464,7 @@ const ScheduleManager = () => {
                         )}
                         {renderBookingBadge(job.bookingType)}
                         <span className="text-xs font-bold text-slate-600">
-                          {job.time} | Ngày {job.dateStr}
+                          {job.time} | {job.daysOfWeek ? `${job.dateStr} (${job.daysOfWeek})` : `Ngày ${job.dateStr}`}
                         </span>
                       </div>
                       <h4 className="font-bold text-slate-700 text-sm">{job.service}</h4>
@@ -1500,7 +1517,7 @@ const ScheduleManager = () => {
                       <h4 className="font-bold text-slate-700 text-sm">{job.service}</h4>
                       <p className="text-[11px] font-bold text-slate-600">{job.customer}</p>
                       <p className="text-xs font-black text-slate-700">
-                        {job.time} · Ngày {job.dateStr}
+                        {job.time} · {job.daysOfWeek ? `${job.dateStr} (${job.daysOfWeek})` : `Ngày ${job.dateStr}`}
                       </p>
                       <p className="text-[11px] text-slate-500 flex items-center gap-0.5 line-clamp-1">
                         <span className="material-symbols-outlined text-xs text-slate-400">location_on</span>
@@ -1580,13 +1597,37 @@ const ScheduleManager = () => {
                 <div className="space-y-3 text-xs">
                   {selectedJob.bookingType === "RECURRING" && (
                     <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
-                      <p className="font-bold text-purple-800 text-[11px] uppercase tracking-wide mb-1">🔄 Gói lặp lại:</p>
+                      <div className="flex justify-between items-start mb-1">
+                        <p className="font-bold text-purple-800 text-[11px] uppercase tracking-wide">🔄 Gói lặp lại:</p>
+                        {selectedJob.totalSessions > 1 && !selectedJob.id.toString().startsWith("PACKAGE_") && (
+                          <span className="bg-purple-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            Ca {selectedJob.vi_tri_ca} / {selectedJob.totalSessions}
+                          </span>
+                        )}
+                        {selectedJob.id.toString().startsWith("PACKAGE_") && (
+                          <span className="bg-purple-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            Tổng {selectedJob.totalSessions} ca
+                          </span>
+                        )}
+                      </div>
                       <p className="text-slate-600">Hệ thống tự động kích hoạt ca làm định kỳ hàng tuần cố định cho khách hàng.</p>
                     </div>
                   )}
                   {selectedJob.bookingType === "MONTHLY" && (
                     <div className="bg-orange-50 border border-orange-200 rounded-xl p-3">
-                      <p className="font-bold text-orange-800 text-[11px] uppercase tracking-wide mb-1">📅 Gói tháng:</p>
+                      <div className="flex justify-between items-start mb-1">
+                        <p className="font-bold text-orange-800 text-[11px] uppercase tracking-wide">📅 Gói tháng:</p>
+                        {selectedJob.totalSessions > 1 && !selectedJob.id.toString().startsWith("PACKAGE_") && (
+                          <span className="bg-orange-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            Ca {selectedJob.vi_tri_ca} / {selectedJob.totalSessions}
+                          </span>
+                        )}
+                        {selectedJob.id.toString().startsWith("PACKAGE_") && (
+                          <span className="bg-orange-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            Tổng {selectedJob.totalSessions} ca
+                          </span>
+                        )}
+                      </div>
                       <p className="text-slate-600">Chuỗi dịch vụ dài hạn hàng tháng đã ký hợp đồng ràng buộc.</p>
                     </div>
                   )}
@@ -1615,7 +1656,9 @@ const ScheduleManager = () => {
                     <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">calendar_month</span>
                     <div>
                       <p className="text-[10px] text-slate-400 font-medium">Thời gian</p>
-                      <p className="text-slate-800 font-bold">{selectedJob.time} · Ngày {selectedJob.dateStr}</p>
+                      <p className="text-slate-800 font-bold">
+                        {selectedJob.time} · {selectedJob.daysOfWeek ? `${selectedJob.dateStr} (${selectedJob.daysOfWeek})` : `Ngày ${selectedJob.dateStr}`}
+                      </p>
                       <p className="text-[11px] text-slate-500 mt-0.5">{selectedJob.duration}</p>
                     </div>
                   </div>
@@ -1897,6 +1940,7 @@ const ScheduleManager = () => {
                 onClick={() => {
                   setIsContractModalOpen(false);
                   setIsEditContractMode(false);
+                  fetchCamKet(); // Reset local state
                 }}
                 className="bg-slate-200 text-slate-600 font-bold py-2 px-4 rounded-xl hover:bg-slate-300 text-sm"
               >

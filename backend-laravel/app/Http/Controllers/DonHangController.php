@@ -168,20 +168,22 @@ class DonHangController extends Controller
                 $durationMins = $caLam['thoi_gian_lam_phut'];
                 $startDt = \Carbon\Carbon::parse($startTimeStr);
                 $endDt = (clone $startDt)->addMinutes($durationMins);
-                $newStartStr = $startDt->format('H:i:s');
-                $newEndStr = $endDt->format('H:i:s');
+                $startDtWithGap = (clone $startDt)->subMinutes(60);
+                $endDtWithGap = (clone $endDt)->addMinutes(60);
+                $newStartStr = $startDtWithGap->format('H:i:s');
+                $newEndStr = $endDtWithGap->format('H:i:s');
                 
                 $overlappingStaffIds = DB::table('calamviec')
                     ->where('ngay_lam', $ngayLamStr)
                     ->whereNotIn('trang_thai_ca', ['KhachHuy', 'NhanVienHuy', 'DaHuy', 'TuChoiDuyet', 'DaTuChoi'])
                     ->whereNotNull('nhan_vien_id')
                     ->get(['nhan_vien_id', 'gio_bat_dau', 'thoi_gian_lam_phut'])
-                    ->filter(function ($ca) use ($newStartStr, $newEndStr) {
+                    ->filter(function ($ca) use ($startDtWithGap, $endDtWithGap, $ngayLamStr) {
                         if (!$ca->gio_bat_dau || !$ca->thoi_gian_lam_phut) return false;
-                        $cStart = \Carbon\Carbon::parse($ca->gio_bat_dau);
+                        $cStart = \Carbon\Carbon::parse($ngayLamStr . ' ' . $ca->gio_bat_dau);
                         $cEnd = (clone $cStart)->addMinutes($ca->thoi_gian_lam_phut);
-                        // A_start < B_end && A_end > B_start
-                        return ($newStartStr < $cEnd->format('H:i:s') && $newEndStr > $cStart->format('H:i:s'));
+                        
+                        return ($startDtWithGap < $cEnd && $endDtWithGap > $cStart);
                     })
                     ->pluck('nhan_vien_id')
                     ->unique()

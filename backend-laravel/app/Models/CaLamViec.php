@@ -9,6 +9,7 @@ class CaLamViec extends Model
     protected $table = 'CaLamViec';
     public $timestamps = false;
     protected $guarded = ['id'];
+    protected $appends = ['vi_tri_ca'];
 
     public function donHang()
     {
@@ -36,5 +37,18 @@ class CaLamViec extends Model
         return $this->hasOne(KhieuNai::class, 'ca_lam_viec_id')
                     ->where('nguoi_khieu_nai_loai', 'KhachHang')
                     ->latest('ngay_tao');
+    }
+
+    public function getViTriCaAttribute()
+    {
+        return static::where('don_hang_id', $this->don_hang_id)
+            ->where(function($q) {
+                $q->where('ngay_lam', '<', $this->ngay_lam)
+                  ->orWhere(function($q2) {
+                      $q2->where('ngay_lam', $this->ngay_lam)
+                         ->where('gio_bat_dau', '<=', $this->gio_bat_dau)
+                         ->where('id', '<=', $this->id);
+                  });
+            })->count();
     }
 }
