@@ -88,7 +88,7 @@ class UserScheduleSeeder extends Seeder
         for ($i = 1; $i <= 5; $i++) {
             DB::table('DiaChiDaLuu')->insert([
                 ['khach_hang_id' => $i, 'ten_goi_nho' => 'Nhà riêng', 'dia_chi_chi_tiet' => '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM', 'vi_do' => 10.773411, 'kinh_do' => 106.614124],
-                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Văn phòng', 'dia_chi_chi_tiet' => '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM', 'vi_do' => 10.730511, 'kinh_do' => 106.636045],
+                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Văn phòng(<= 9km)', 'dia_chi_chi_tiet' => '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM', 'vi_do' => 10.8500000, 'kinh_do' => 106.6122510],
             ]);
             
             DB::table('LienHeDaLuu')->insert([

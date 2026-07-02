@@ -139,21 +139,25 @@ class DonHangController extends Controller
                 $ngayLamStr = $caLam['ngay_lam'];
                 $dow = (int) date('w', strtotime($ngayLamStr));
                 
-                // 1. Lọc nhân viên nghỉ ngơi (DinhKy, DotXuat)
+                // 1. Lọc nhân viên có hợp đồng cam kết rảnh hợp lệ trong khoảng thời gian ngày làm
                 $activeStaffIds = DB::table('lichnghi')
                     ->where('loai_nghi', 'DinhKy')
-                    ->whereDate('ngay_ket_thuc_ap_dung', '>=', now())
+                    ->whereDate('ngay_bat_dau_ap_dung', '<=', $ngayLamStr)
+                    ->whereDate('ngay_ket_thuc_ap_dung', '>=', $ngayLamStr)
                     ->pluck('nhan_vien_id')
                     ->unique()
                     ->toArray();
                 
+                // 2. Lọc nhân viên đăng ký nghỉ định kỳ vào ngày thứ trong tuần ($dow)
                 $offDinhKy = DB::table('lichnghi')
                     ->where('loai_nghi', 'DinhKy')
                     ->where('thu_trong_tuan', $dow)
-                    ->whereDate('ngay_ket_thuc_ap_dung', '>=', now())
+                    ->whereDate('ngay_bat_dau_ap_dung', '<=', $ngayLamStr)
+                    ->whereDate('ngay_ket_thuc_ap_dung', '>=', $ngayLamStr)
                     ->pluck('nhan_vien_id')
                     ->toArray();
                     
+                // 3. Lọc nhân viên nghỉ đột xuất (Đã được duyệt) trong ngày làm
                 $offDotXuat = DB::table('lichnghi')
                     ->where('loai_nghi', 'DotXuat')
                     ->whereDate('ngay_nghi', $ngayLamStr)
@@ -161,17 +165,30 @@ class DonHangController extends Controller
                     ->pluck('nhan_vien_id')
                     ->toArray();
                     
-                $leaveStaffIds = array_unique(array_merge($offDinhKy, $offDotXuat));
+                // 4. Lọc nhân viên có buổi nghỉ trong ngày trùng với giờ của ca làm
+                $shiftStart = \Carbon\Carbon::parse($ngayLamStr . ' ' . $caLam['gio_bat_dau']);
+                $shiftEnd = (clone $shiftStart)->addMinutes($caLam['thoi_gian_lam_phut']);
                 
-                // 2. Lọc nhân viên trùng giờ rảnh (Overlapping CaLamViec)
-                $startTimeStr = $caLam['gio_bat_dau']; // Format "H:i" or "H:i:s"
-                $durationMins = $caLam['thoi_gian_lam_phut'];
-                $startDt = \Carbon\Carbon::parse($startTimeStr);
-                $endDt = (clone $startDt)->addMinutes($durationMins);
-                $startDtWithGap = (clone $startDt)->subMinutes(60);
-                $endDtWithGap = (clone $endDt)->addMinutes(60);
-                $newStartStr = $startDtWithGap->format('H:i:s');
-                $newEndStr = $endDtWithGap->format('H:i:s');
+                $offSessionStaffIds = DB::table('lichnghi')
+                    ->where('loai_nghi', 'DinhKy')
+                    ->whereNotNull('gio_bat_dau_nghi')
+                    ->whereNotNull('gio_ket_thuc_nghi')
+                    ->whereDate('ngay_bat_dau_ap_dung', '<=', $ngayLamStr)
+                    ->whereDate('ngay_ket_thuc_ap_dung', '>=', $ngayLamStr)
+                    ->get(['nhan_vien_id', 'gio_bat_dau_nghi', 'gio_ket_thuc_nghi'])
+                    ->filter(function ($nghi) use ($shiftStart, $shiftEnd, $ngayLamStr) {
+                        $nghiStart = \Carbon\Carbon::parse($ngayLamStr . ' ' . $nghi->gio_bat_dau_nghi);
+                        $nghiEnd = \Carbon\Carbon::parse($ngayLamStr . ' ' . $nghi->gio_ket_thuc_nghi);
+                        return ($shiftStart < $nghiEnd && $shiftEnd > $nghiStart);
+                    })
+                    ->pluck('nhan_vien_id')
+                    ->toArray();
+                    
+                $leaveStaffIds = array_unique(array_merge($offDinhKy, $offDotXuat, $offSessionStaffIds));
+                
+                // 5. Lọc nhân viên trùng lịch làm việc khác (CaLamViec) + khoảng nghỉ 1 tiếng
+                $startDtWithGap = (clone $shiftStart)->subMinutes(60);
+                $endDtWithGap = (clone $shiftEnd)->addMinutes(60);
                 
                 $overlappingStaffIds = DB::table('calamviec')
                     ->where('ngay_lam', $ngayLamStr)
@@ -194,7 +211,8 @@ class DonHangController extends Controller
                 // Nhân viên sẵn sàng
                 $availableStaffIds = array_values(array_diff($activeStaffIds, $allUnavailableStaffIds));
                 
-                // 3. Tính khoảng cách Haversine <= 3km
+                // 6. Tìm nhân viên trong phạm vi <= 10km (hoặc theo bán kính quy định),
+                // ƯU TIÊN nhân viên có tong_so_ca_hoan_thanh bé nhất trước, sau đó mới xét khoảng cách
                 if (!empty($availableStaffIds) && $donHang->vi_do && $donHang->kinh_do) {
                     $lat = $donHang->vi_do;
                     $lon = $donHang->kinh_do;
@@ -203,12 +221,13 @@ class DonHangController extends Controller
                         ->whereIn('id', $availableStaffIds)
                         ->whereNotNull('vi_do')
                         ->whereNotNull('kinh_do')
-                        ->select('id', DB::raw("
+                        ->select('id', 'tong_so_ca_hoan_thanh', DB::raw("
                             ( 6371 * acos( cos( radians($lat) ) * cos( radians( vi_do ) ) 
                             * cos( radians( kinh_do ) - radians($lon) ) 
                             + sin( radians($lat) ) * sin( radians( vi_do ) ) ) ) AS distance
                         "))
                         ->having('distance', '<=', 3)
+                        ->orderBy('tong_so_ca_hoan_thanh', 'asc')
                         ->orderBy('distance', 'asc')
                         ->first();
                         

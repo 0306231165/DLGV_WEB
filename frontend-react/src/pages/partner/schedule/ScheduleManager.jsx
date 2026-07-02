@@ -752,7 +752,7 @@ const ScheduleManager = () => {
 
 
 
-  const mapCaLamViecToFrontend = (ca) => {
+  const mapCaLamViecToFrontend = (ca, orderCounts = {}) => {
     const formatDateStr = (dateString) => {
         if (!dateString) return "";
         const parts = dateString.split("-");
@@ -772,6 +772,18 @@ const ScheduleManager = () => {
       }
     }
 
+    let bookingType = ca.don_hang?.is_lap_lai_hang_tuan ? 'RECURRING' : (ca.loai_goi_ca_lam === 'CaLe' ? 'SINGLE' : (ca.loai_goi_ca_lam === 'GoiThang' ? 'MONTHLY' : '247'));
+    let totalSessions = ca.don_hang?.tong_so_buoi;
+    let viTriCa = ca.vi_tri_ca;
+
+    // Nếu đây không phải là gói (is_package !== true) và nhân viên chỉ có số ca rất ít so với tổng gói (hoặc chỉ có 1 ca)
+    // thì hiển thị như ca lẻ (1 buổi), tránh hiện "Ca 21/50 Gói tháng" gây hiểu lầm cho nhân viên nhận lẻ
+    if (!ca.is_package && !String(ca.id).startsWith("PACKAGE_") && (orderCounts[ca.don_hang_id] <= 1 || (ca.don_hang?.tong_so_buoi && orderCounts[ca.don_hang_id] < ca.don_hang.tong_so_buoi * 0.5))) {
+      bookingType = 'SINGLE';
+      totalSessions = 1;
+      viTriCa = 1;
+    }
+
     return {
         id: ca.id,
         don_hang_id: ca.don_hang_id,
@@ -782,14 +794,14 @@ const ScheduleManager = () => {
         time: ca.gio_bat_dau ? `${ca.gio_bat_dau.slice(0,5)} - ${formatMinutesToTime(parseTimeToMinutes(ca.gio_bat_dau.slice(0,5)) + ca.thoi_gian_lam_phut)}` : "",
         address: ca.dia_chi_lam_viec,
         service: ca.dich_vu?.ten_dich_vu || ca.don_hang?.dich_vu_loai_goi?.dich_vu?.ten_dich_vu,
-        bookingType: ca.don_hang?.is_lap_lai_hang_tuan ? 'RECURRING' : (ca.loai_goi_ca_lam === 'CaLe' ? 'SINGLE' : (ca.loai_goi_ca_lam === 'GoiThang' ? 'MONTHLY' : '247')),
+        bookingType: bookingType,
         status: ca.trang_thai_ca === 'DaNhan' ? 'Sắp diễn ra' : (ca.trang_thai_ca === 'DangThucHien' ? 'Đang làm' : ca.trang_thai_ca),
         price: `${Number(ca.thuc_nhan_nv).toLocaleString('vi-VN')}đ`,
         duration: ca.is_package ? `${ca.so_ca_kha_dung} ca` : (ca.thoi_gian_lam_phut ? `${Math.round(ca.thoi_gian_lam_phut / 60)} tiếng` : ""),
         staffCount: 1, 
         jobNote: ca.don_hang?.ghi_chu_cho_nhan_vien,
-        totalSessions: ca.don_hang?.tong_so_buoi,
-        vi_tri_ca: ca.vi_tri_ca,
+        totalSessions: totalSessions,
+        vi_tri_ca: viTriCa,
         daysOfWeek: (() => {
             if (!ca.don_hang?.cac_ngay_trong_tuan) return null;
             const dayMap = {
@@ -829,18 +841,30 @@ const ScheduleManager = () => {
          nhanVienApi.getJobHistory()
       ]);
       
-      if (resAvail && resAvail.success) {
-         setJobOffers(resAvail.data.map(mapCaLamViecToFrontend));
-      }
-      if (resAccept && resAccept.success) {
-         setAcceptedJobs(resAccept.data.map(mapCaLamViecToFrontend));
-      }
-      if (resWork && resWork.success) {
-         setCalendarJobs(resWork.data.map(mapCaLamViecToFrontend));
-      }
-      if (resHist && resHist.success) {
-         setJobHistory(resHist.data.map(mapCaLamViecToFrontend));
-      }
+      const availData = resAvail && resAvail.success ? resAvail.data : [];
+      const acceptData = resAccept && resAccept.success ? resAccept.data : [];
+      const workData = resWork && resWork.success ? resWork.data : [];
+      const histData = resHist && resHist.success ? resHist.data : [];
+
+      // Dùng Map loại bỏ trùng lặp id vì ca "Đã nhận" sẽ xuất hiện ở cả acceptData và workData
+      const uniqueShiftsMap = new Map();
+      [...availData, ...acceptData, ...workData, ...histData].forEach((item) => {
+        if (item && item.id && !uniqueShiftsMap.has(item.id)) {
+          uniqueShiftsMap.set(item.id, item);
+        }
+      });
+
+      const orderCounts = {};
+      uniqueShiftsMap.forEach((item) => {
+        if (item && item.don_hang_id) {
+          orderCounts[item.don_hang_id] = (orderCounts[item.don_hang_id] || 0) + (item.is_package ? (item.so_ca_kha_dung || 2) : 1);
+        }
+      });
+
+      setJobOffers(availData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)));
+      setAcceptedJobs(acceptData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)));
+      setCalendarJobs(workData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)));
+      setJobHistory(histData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)));
     } catch (e) {
       console.error("Lỗi fetch dữ liệu ca làm việc:", e);
     }
@@ -1286,34 +1310,35 @@ const ScheduleManager = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <p className="text-slate-400 font-bold mb-2">📅 Ngày trực tuyến cố định tuần:</p>
+              <p className="text-slate-400 font-bold mb-2">📅 Ngày nghỉ cố định tuần:</p>
               <div className="flex flex-wrap gap-1.5">
-                {(() => {
-                  const workingDays = DAY_ORDER.filter(d => !(contractForm.daysOff || []).includes(d));
-                  return workingDays.map((day, idx) => (
-                    <span key={idx} className="bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded">
+                {(!contractForm.daysOff || contractForm.daysOff.length === 0) ? (
+                  <span className="text-slate-500 font-semibold italic">Không có (Làm cả tuần)</span>
+                ) : (
+                  contractForm.daysOff.map((day, idx) => (
+                    <span key={idx} className="bg-rose-100 text-rose-800 font-black px-2.5 py-0.5 rounded">
                       {day}
                     </span>
-                  ));
-                })()}
+                  ))
+                )}
               </div>
             </div>
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <p className="text-slate-400 font-bold mb-2">⏰ Khung giờ hệ thống đẩy đơn:</p>
+              <p className="text-slate-400 font-bold mb-2">⏰ Buổi nghỉ trong ngày:</p>
               <div className="space-y-1">
                 {(() => {
-                  let activeTimeSlots = [];
-                  if (contractForm.restSession === "none") activeTimeSlots = ["06:00 - 23:00"];
-                  else if (contractForm.restSession === "morning") activeTimeSlots = ["10:00 - 23:00"];
-                  else if (contractForm.restSession === "afternoon") activeTimeSlots = ["06:00 - 13:00", "17:00 - 23:00"];
-                  else if (contractForm.restSession === "evening") activeTimeSlots = ["06:00 - 17:00"];
+                  let restDisplay = "Không nghỉ (Sẵn sàng 06:00 - 23:00)";
+                  let badgeColor = "bg-emerald-500";
+                  if (contractForm.restSession === "morning") { restDisplay = "Nghỉ buổi sáng (06:00 - 10:00)"; badgeColor = "bg-amber-500"; }
+                  else if (contractForm.restSession === "afternoon") { restDisplay = "Nghỉ buổi chiều (13:00 - 17:00)"; badgeColor = "bg-amber-500"; }
+                  else if (contractForm.restSession === "evening") { restDisplay = "Nghỉ buổi tối (17:00 - 23:00)"; badgeColor = "bg-amber-500"; }
                   
-                  return activeTimeSlots.map((slot, idx) => (
-                    <p key={idx} className="font-bold text-slate-700 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      Khung {idx + 1}: {slot}
+                  return (
+                    <p className="font-bold text-slate-700 flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${badgeColor}`}></span>
+                      {restDisplay}
                     </p>
-                  ));
+                  );
                 })()}
               </div>
             </div>
