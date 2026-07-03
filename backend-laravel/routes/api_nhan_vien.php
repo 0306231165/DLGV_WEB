@@ -38,6 +38,8 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
     Route::get('/lich-nghi/cam-ket', [NhanVienController::class, 'getCamKetLichNghi']);
     Route::post('/lich-nghi/cam-ket', [NhanVienController::class, 'saveCamKetLichNghi']);
     Route::delete('/lich-nghi/cam-ket', [NhanVienController::class, 'cancelCamKetLichNghi']);
+    Route::get('/lich-nghi/dot-xuat', [NhanVienController::class, 'getBlockedDates']);
+    Route::post('/lich-nghi/dot-xuat', [NhanVienController::class, 'saveBlockedDates']);
     // Danh sách đánh giá
     Route::get('/reviews', [NhanVienController::class, 'getReviews']);
 

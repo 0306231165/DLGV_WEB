@@ -356,8 +356,22 @@ const BlockCalendarModal = ({
       setWarningJob(null);
       return;
     }
-    // Sync bản copy mỗi lần mở lại modal
-    setDraftBlocked(contractBlockedDates);
+    // Sync bản copy mỗi lần mở lại modal và đảm bảo hiển thị các ca làm việc từ calendarJobs
+    const merged = { ...contractBlockedDates };
+    calendarJobs.forEach((job) => {
+      if (job && job.dateStr) {
+        const parts = job.dateStr.split("/");
+        if (parts.length === 3) {
+          const [d, m, y] = parts;
+          const isoKey = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+          merged[isoKey] = {
+            status: merged[isoKey]?.status || "working",
+            hasActiveJob: true
+          };
+        }
+      }
+    });
+    setDraftBlocked(merged);
     if (contractForm.startDate) {
       const [y, m] = contractForm.startDate.split("-").map(Number);
       setViewYear(y);
@@ -412,22 +426,49 @@ const BlockCalendarModal = ({
   const blockedCount = monthKeys.filter((k) => draftBlocked[k].status === "blocked").length;
   const workingCount = monthKeys.filter((k) => draftBlocked[k].status === "working").length;
 
+  const getDayInfo = (day) => {
+    const dateKey = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    let info = draftBlocked[dateKey];
+    if (!info) {
+      const [y, m, d] = dateKey.split("-");
+      const displayDate = `${d}/${m}/${y}`;
+      const hasJob = calendarJobs.some((j) => j.dateStr === displayDate);
+      if (hasJob) {
+        return { status: "working", hasActiveJob: true };
+      }
+      const checkDate = new Date(viewYear, viewMonth, day);
+      const todayDate = new Date();
+      todayDate.setHours(0,0,0,0);
+      if (checkDate >= todayDate) {
+        return { status: "working", hasActiveJob: false };
+      }
+    }
+    return info;
+  };
+
   const handleDayClick = (day) => {
     const dateKey = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const info = draftBlocked[dateKey];
+    const info = getDayInfo(day);
     if (!info) return;
     if (info.hasActiveJob) {
       const [y, m, d] = dateKey.split("-");
       const displayDate = `${d}/${m}/${y}`;
-      const job = calendarJobs.find((j) => j.dateStr === displayDate);
-      setWarningJob(job || { dateStr: displayDate, id: "?", service: "Ca đã chốt" });
+      const job = calendarJobs.find((j) => j.dateStr === displayDate) || {
+        id: "CA_CHOT",
+        dateStr: displayDate,
+        service: "Ca làm việc đã nhận",
+        customer: "Khách hàng của bạn",
+        time: "Giờ hành chính",
+        bookingType: "SINGLE",
+        price: "0đ"
+      };
+      setWarningJob(job);
       return;
     }
     // Toggle trong draft, không đụng state cha
     setDraftBlocked((prev) => {
-      if (!prev[dateKey]) return prev;
-      const cur = prev[dateKey];
-      if (cur.hasActiveJob) return prev;
+      const cur = prev[dateKey] || getDayInfo(day);
+      if (!cur || cur.hasActiveJob) return prev;
       return {
         ...prev,
         [dateKey]: { ...cur, status: cur.status === "working" ? "blocked" : "working" },
@@ -436,8 +477,7 @@ const BlockCalendarModal = ({
   };
 
   const getDayStyle = (day) => {
-    const dateKey = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const info = draftBlocked[dateKey];
+    const info = getDayInfo(day);
     if (!info) return { cls: "text-slate-300 cursor-default text-opacity-50", dot: null };
     if (info.hasActiveJob)
       return { cls: "bg-amber-50 text-amber-800 border border-amber-300 cursor-pointer hover:bg-amber-100 font-bold", dot: "bg-amber-500" };
@@ -920,17 +960,58 @@ const ScheduleManager = () => {
           }));
           
           const workingDaysForBlock = VI_DAYS.filter(d => !offDays.includes(d));
-          setContractBlockedDates(
-            generateContractDays(first.ngay_bat_dau_ap_dung, first.ngay_ket_thuc_ap_dung, workingDaysForBlock, calendarJobs)
-          );
+          const generated = generateContractDays(first.ngay_bat_dau_ap_dung, first.ngay_ket_thuc_ap_dung, workingDaysForBlock, calendarJobs);
+          try {
+            const resBlocked = await nhanVienApi.getBlockedDates();
+            if (resBlocked && resBlocked.success && Array.isArray(resBlocked.data)) {
+              resBlocked.data.forEach(dStr => {
+                if (!generated[dStr]) {
+                  generated[dStr] = { status: "blocked", hasActiveJob: false };
+                } else {
+                  generated[dStr].status = "blocked";
+                }
+              });
+            }
+          } catch (e) {
+            console.error("Lỗi fetch ngày khóa:", e);
+          }
+          setContractBlockedDates(generated);
         } else {
           setHasRegisteredContract(false);
+          try {
+            const resBlocked = await nhanVienApi.getBlockedDates();
+            const generated = {};
+            if (resBlocked && resBlocked.success && Array.isArray(resBlocked.data)) {
+              resBlocked.data.forEach(dStr => {
+                generated[dStr] = { status: "blocked", hasActiveJob: false };
+              });
+            }
+            setContractBlockedDates(generated);
+          } catch (e) {
+            console.error("Lỗi fetch ngày khóa cho staff tự do:", e);
+          }
         }
       } catch (err) {
         console.error("Lỗi fetch hợp đồng:", err);
       }
     };
   
+  const handleSaveBlockedDates = async (draft) => {
+    setContractBlockedDates(draft);
+    const blockedList = Object.entries(draft)
+      .filter(([, v]) => v.status === "blocked")
+      .map(([k]) => k);
+    try {
+      const res = await nhanVienApi.saveBlockedDates(blockedList);
+      if (res && res.success) {
+        alert("Đã lưu lịch bận thành công!");
+      }
+    } catch (e) {
+      console.error("Lỗi lưu lịch bận:", e);
+      alert("Có lỗi khi lưu lịch bận xuống hệ thống!");
+    }
+  };
+
   useEffect(() => {
     fetchCamKet();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -947,7 +1028,6 @@ const ScheduleManager = () => {
       status: activeJobDates.has(d.dateStr) ? "has-jobs" : "available"
     })));
 
-    if (Object.keys(contractBlockedDates).length === 0) return;
     setContractBlockedDates((prev) => {
       const updated = { ...prev };
       let changed = false;
@@ -958,6 +1038,22 @@ const ScheduleManager = () => {
         if (v.hasActiveJob !== newHasActiveJob) {
           updated[k] = { ...v, hasActiveJob: newHasActiveJob };
           changed = true;
+        }
+      });
+      calendarJobs.forEach((job) => {
+        if (job && job.dateStr) {
+          const parts = job.dateStr.split("/");
+          if (parts.length === 3) {
+            const [d, m, y] = parts;
+            const isoKey = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+            if (!updated[isoKey] || !updated[isoKey].hasActiveJob) {
+              updated[isoKey] = {
+                status: updated[isoKey]?.status || "working",
+                hasActiveJob: true
+              };
+              changed = true;
+            }
+          }
         }
       });
       return changed ? updated : prev;
@@ -1079,22 +1175,34 @@ const ScheduleManager = () => {
     setIsCancelModalOpen(true);
   };
 
+  const workingDaysList = (contractForm.daysOff && contractForm.daysOff.length > 0)
+    ? VI_DAYS.filter(d => !contractForm.daysOff.includes(d))
+    : ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"];
+
   const affectedShifts =
     cancelType === "multi_shifts"
-      ? calcAffectedShifts(
-          contractForm.selectedDays.length > 0
-            ? contractForm.selectedDays
-            : ["Thứ 2", "Thứ 6", "Chủ Nhật"],
-          cancelDateRange.from,
-          cancelDateRange.to
-        )
+      ? calcAffectedShifts(workingDaysList, cancelDateRange.from, cancelDateRange.to)
       : null;
 
-  const submitCancelJob = () => {
+  const submitCancelJob = async () => {
     if (cancelType === "multi_shifts" && (!cancelDateRange.from || !cancelDateRange.to)) {
       alert("Vui lòng chọn khoảng ngày bạn muốn xin nghỉ!");
       return;
     }
+
+    // Gọi API xuống Backend
+    try {
+      if (cancelTargetJob && cancelTargetJob.id && cancelTargetJob.id !== "CA_CHOT" && cancelTargetJob.id !== "?") {
+        if (cancelType === "entire_package") {
+          await nhanVienApi.cancelContract(cancelTargetJob.id);
+        } else {
+          await nhanVienApi.cancelAcceptedJob(cancelTargetJob.id);
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi khi hủy ca / xin nghỉ:", err);
+    }
+
     let message = `[Xác nhận yêu cầu xin nghỉ đơn ${cancelTargetJob.id}]:\n`;
     if (cancelTargetJob.bookingType === "MONTHLY" || cancelTargetJob.bookingType === "RECURRING") {
       if (cancelType === "one_shift")
@@ -1109,6 +1217,21 @@ const ScheduleManager = () => {
     }
     message += `\n• Lý do: ${cancelReason || "Lý do cá nhân"}`;
     alert(message);
+
+    // Tự động giải phóng ngày chốt trên tờ lịch Block Calendar
+    if (cancelTargetJob.dateStr) {
+      setContractBlockedDates((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach((k) => {
+          const [y, m, d] = k.split("-");
+          if (`${d}/${m}/${y}` === cancelTargetJob.dateStr) {
+            updated[k] = { ...updated[k], hasActiveJob: false };
+          }
+        });
+        return updated;
+      });
+    }
+
     setJobHistory((prev) => [
       {
         ...cancelTargetJob,
@@ -1123,6 +1246,7 @@ const ScheduleManager = () => {
     setSelectedJob(null);
     setCancelReason("");
     setCancelDateRange({ from: "", to: "" });
+    fetchJobsData();
   };
 
   const calculateLichNghiPayload = (daysOff, restSession, startDate, endDate) => {
@@ -1988,7 +2112,7 @@ const ScheduleManager = () => {
         isOpen={isBlockCalendarOpen}
         onClose={() => setIsBlockCalendarOpen(false)}
         contractBlockedDates={contractBlockedDates}
-        onSave={(draft) => setContractBlockedDates(draft)}
+        onSave={handleSaveBlockedDates}
         onGoToCancelFlow={(job) => { setIsBlockCalendarOpen(false); openCancelWorkflow(job); }}
         calendarJobs={calendarJobs}
         contractForm={contractForm}

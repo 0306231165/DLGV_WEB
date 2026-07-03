@@ -409,6 +409,72 @@ class NhanVienController extends Controller
         }
     }
 
+    public function getBlockedDates()
+    {
+        try {
+            $nhanVienId = Auth::user()->nhanVien->id;
+            
+            $blockedDates = LichNghi::where('nhan_vien_id', $nhanVienId)
+                ->where('loai_nghi', 'DotXuat')
+                ->pluck('ngay_nghi');
+
+            return response()->json([
+                'success' => true,
+                'data' => $blockedDates
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Get Blocked Dates Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function saveBlockedDates(Request $request)
+    {
+        try {
+            $nhanVienId = Auth::user()->nhanVien->id;
+            
+            DB::beginTransaction();
+
+            // Xóa tất cả các lịch nghỉ đột xuất (khóa ngày) cũ của nhân viên này
+            LichNghi::where('nhan_vien_id', $nhanVienId)
+                ->where('loai_nghi', 'DotXuat')
+                ->delete();
+
+            // Thêm danh sách ngày bị khóa mới
+            $dates = $request->input('dates', []);
+            $insertData = [];
+            foreach ($dates as $date) {
+                $insertData[] = [
+                    'nhan_vien_id' => $nhanVienId,
+                    'loai_nghi' => 'DotXuat',
+                    'thu_trong_tuan' => null,
+                    'ngay_nghi' => $date,
+                    'gio_bat_dau_nghi' => null,
+                    'gio_ket_thuc_nghi' => null,
+                    'ngay_bat_dau_ap_dung' => null,
+                    'ngay_ket_thuc_ap_dung' => null,
+                    'ly_do' => 'Đối tác tự khóa ngày làm việc',
+                    'trang_thai_duyet' => 'DaDuyet',
+                ];
+            }
+
+            if (!empty($insertData)) {
+                LichNghi::insert($insertData);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật lịch bận cá nhân thành công!'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Save Blocked Dates Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function deposit(Request $request)
     {
         try {

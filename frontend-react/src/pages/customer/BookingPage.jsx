@@ -4258,172 +4258,132 @@ const BookingPage = () => {
                     <ErrorMsg message={errors.pet} />
                   </section>
 
-                  {(selectedPackage || preselectedStaff) && (
+                  {preselectedStaff && (
                     <section className="glass-card bg-surface-container-item rounded-2xl p-8">
                       <SectionTitle icon="badge">
                         Nhân viên phụ trách
                       </SectionTitle>
 
-                      {preselectedStaff && (
-                        <div className="mb-5 p-4 rounded-xl border-2 border-primary bg-primary/5 flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-4">
-                            <img
-                              src={preselectedStaff.avatar}
-                              alt={preselectedStaff.name}
-                              className="w-14 h-14 rounded-xl object-cover border-2 border-surface-container shadow"
-                            />
-                            <div>
-                              <p className="font-bold text-on-surface flex items-center gap-2">
-                                {preselectedStaff.name}
-                                <span
-                                  className="material-symbols-outlined text-primary text-sm"
-                                  style={{ fontVariationSettings: "'FILL' 1" }}
-                                >
-                                  verified
-                                </span>
-                              </p>
-                              <div className="flex items-center gap-1 text-sm text-on-surface-variant mt-0.5">
-                                <span
-                                  className="material-symbols-outlined text-tertiary text-sm"
-                                  style={{ fontVariationSettings: "'FILL' 1" }}
-                                >
-                                  star
-                                </span>
-                                <span className="font-semibold text-tertiary">
-                                  {preselectedStaff.rating}
-                                </span>
-                                <span>· Nhân viên Cao cấp</span>
-                              </div>
+                      <div className="mb-5 p-4 rounded-xl border-2 border-primary bg-primary/5 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={preselectedStaff.avatar}
+                            alt={preselectedStaff.name}
+                            className="w-14 h-14 rounded-xl object-cover border-2 border-surface-container shadow"
+                          />
+                          <div>
+                            <p className="font-bold text-on-surface flex items-center gap-2">
+                              {preselectedStaff.name}
+                              <span
+                                className="material-symbols-outlined text-primary text-sm"
+                                style={{ fontVariationSettings: "'FILL' 1" }}
+                              >
+                                verified
+                              </span>
+                            </p>
+                            <div className="flex items-center gap-1 text-sm text-on-surface-variant mt-0.5">
+                              <span
+                                className="material-symbols-outlined text-tertiary text-sm"
+                                style={{ fontVariationSettings: "'FILL' 1" }}
+                              >
+                                star
+                              </span>
+                              <span className="font-semibold text-tertiary">
+                                {preselectedStaff.rating}
+                              </span>
+                              <span>· Nhân viên Cao cấp</span>
                             </div>
                           </div>
-                          <button
-                            onClick={() => {
-                              setPreselectedStaff(null);
-                              setStaffSelfPick(false);
-                              setShowReplacementOptions(false);
-                              setReplacementOption("favorite");
-                            }}
-                            className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all"
-                          >
-                            <span className="material-symbols-outlined text-xl">
-                              close
-                            </span>
-                          </button>
                         </div>
-                      )}
-                      {!preselectedStaff && (
-                        <p className="text-sm text-on-surface-variant -mt-4 mb-5 flex items-start gap-2 p-3 bg-surface-container/50 rounded-xl border border-outline-variant/20">
-                          <span className="material-symbols-outlined text-base text-primary shrink-0 mt-0.5">
-                            info
+                        <button
+                          onClick={() => {
+                            setPreselectedStaff(null);
+                            setStaffSelfPick(false);
+                            setShowReplacementOptions(false);
+                            setReplacementOption("favorite");
+                          }}
+                          className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all"
+                        >
+                          <span className="material-symbols-outlined text-xl">
+                            close
                           </span>
-                          <span>
-                            Mặc định: Lịch sẽ được gửi đến tất cả nhân viên phù
-                            hợp —
-                            <strong className="text-on-surface">
-                              {" "}
-                              ai nhận trước, làm trước
-                            </strong>
-                            .
-                          </span>
-                        </p>
-                      )}
+                        </button>
+                      </div>
+
                       <div className="space-y-3">
-                        {preselectedStaff ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setShowReplacementOptions((prev) => !prev)
-                              }
-                              className={`w-full flex items-center justify-between gap-4 p-4 rounded-xl border-2 transition-all text-left ${
-                                showReplacementOptions
-                                  ? "border-primary bg-primary/5 shadow-sm"
-                                  : "border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40"
-                              }`}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowReplacementOptions((prev) => !prev)
+                          }
+                          className={`w-full flex items-center justify-between gap-4 p-4 rounded-xl border-2 transition-all text-left ${
+                            showReplacementOptions
+                              ? "border-primary bg-primary/5 shadow-sm"
+                              : "border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${showReplacementOptions ? "bg-primary/10 text-primary" : "bg-surface-container text-on-surface-variant"}`}
                             >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div
-                                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${showReplacementOptions ? "bg-primary/10 text-primary" : "bg-surface-container text-on-surface-variant"}`}
-                                >
-                                  <span className="material-symbols-outlined">
-                                    swap_horiz
-                                  </span>
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-on-surface text-base">
-                                    Phương án thay thế
-                                  </p>
-                                  <p className="text-sm text-on-surface-variant mt-0.5">
-                                    Chọn cách xử lý nếu {preselectedStaff.name}{" "}
-                                    bận lịch
-                                  </p>
-                                </div>
-                              </div>
-                              <span
-                                className={`material-symbols-outlined transition-transform ${showReplacementOptions ? "rotate-90 text-primary" : "text-on-surface-variant"}`}
-                              >
-                                chevron_right
+                              <span className="material-symbols-outlined">
+                                swap_horiz
                               </span>
-                            </button>
-                            {showReplacementOptions && (
-                              <div className="space-y-2">
-                                {REPLACEMENT_OPTIONS.map((opt) => (
-                                  <label
-                                    key={opt.id}
-                                    onClick={() => setReplacementOption(opt.id)}
-                                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                                      replacementOption === opt.id
-                                        ? opt.isDestructive
-                                          ? "border-error bg-error/5"
-                                          : "border-primary bg-primary/5 shadow-sm"
-                                        : "border-outline-variant/30 hover:bg-surface-container"
-                                    }`}
-                                  >
-                                    <div
-                                      className={`w-4 h-4 rounded-full border-2 flex shrink-0 mt-0.5 items-center justify-center ${replacementOption === opt.id ? (opt.isDestructive ? "border-error" : "border-primary") : "border-outline-variant"}`}
-                                    >
-                                      {replacementOption === opt.id && (
-                                        <div
-                                          className={`w-2 h-2 rounded-full ${opt.isDestructive ? "bg-error" : "bg-primary"}`}
-                                        ></div>
-                                      )}
-                                    </div>
-                                    <div className="flex-1">
-                                      <span
-                                        className={`text-sm font-bold ${opt.isDestructive ? "text-error" : "text-on-surface"}`}
-                                      >
-                                        {opt.label}
-                                      </span>
-                                      <p
-                                        className={`text-xs mt-0.5 leading-relaxed ${opt.isDestructive ? "text-error/80" : "text-on-surface-variant"}`}
-                                      >
-                                        {opt.desc}
-                                      </p>
-                                    </div>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <ToggleRow
-                              icon="favorite"
-                              title="Ưu tiên nhân viên yêu thích"
-                              description="Ưu tiên gửi lịch đến những nhân viên bạn đã đánh dấu yêu thích."
-                              checked={staffFavorite}
-                              onChange={() => setStaffFavorite((prev) => !prev)}
-                            />
-                            {staffFavorite && (
-                              <p className="flex items-center gap-1.5 text-sm text-on-surface-variant px-1">
-                                <span className="material-symbols-outlined text-base text-primary">
-                                  info
-                                </span>
-                                Nếu không có nhân viên yêu thích nào rảnh, hệ
-                                thống sẽ tự động chọn người phù hợp nhất.
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-on-surface text-base">
+                                Phương án thay thế
                               </p>
-                            )}
-                          </>
+                              <p className="text-sm text-on-surface-variant mt-0.5">
+                                Chọn cách xử lý nếu {preselectedStaff.name}{" "}
+                                bận lịch
+                              </p>
+                            </div>
+                          </div>
+                          <span
+                            className={`material-symbols-outlined transition-transform ${showReplacementOptions ? "rotate-90 text-primary" : "text-on-surface-variant"}`}
+                          >
+                            chevron_right
+                          </span>
+                        </button>
+                        {showReplacementOptions && (
+                          <div className="space-y-2">
+                            {REPLACEMENT_OPTIONS.map((opt) => (
+                              <label
+                                key={opt.id}
+                                onClick={() => setReplacementOption(opt.id)}
+                                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                                  replacementOption === opt.id
+                                    ? opt.isDestructive
+                                      ? "border-error bg-error/5"
+                                      : "border-primary bg-primary/5 shadow-sm"
+                                    : "border-outline-variant/30 hover:bg-surface-container"
+                                }`}
+                              >
+                                <div
+                                  className={`w-4 h-4 rounded-full border-2 flex shrink-0 mt-0.5 items-center justify-center ${replacementOption === opt.id ? (opt.isDestructive ? "border-error" : "border-primary") : "border-outline-variant"}`}
+                                >
+                                  {replacementOption === opt.id && (
+                                    <div
+                                      className={`w-2 h-2 rounded-full ${opt.isDestructive ? "bg-error" : "bg-primary"}`}
+                                    ></div>
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <span
+                                    className={`text-sm font-bold ${opt.isDestructive ? "text-error" : "text-on-surface"}`}
+                                  >
+                                    {opt.label}
+                                  </span>
+                                  <p
+                                    className={`text-xs mt-0.5 leading-relaxed ${opt.isDestructive ? "text-error/80" : "text-on-surface-variant"}`}
+                                  >
+                                    {opt.desc}
+                                  </p>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </section>

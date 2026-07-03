@@ -45,6 +45,13 @@ const nhanVienApi = {
         return axiosClient.delete('/nhan-vien/lich-nghi/cam-ket');
     },
 
+    getBlockedDates: () => {
+        return axiosClient.get('/nhan-vien/lich-nghi/dot-xuat');
+    },
+    saveBlockedDates: (dates) => {
+        return axiosClient.post('/nhan-vien/lich-nghi/dot-xuat', { dates });
+    },
+
     // Quản lý ca làm việc
     getAvailableJobs: () => {
         return axiosClient.get('/nhan-vien/ca-lam/cho-nhan');
