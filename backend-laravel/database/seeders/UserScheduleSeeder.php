@@ -46,8 +46,8 @@ class UserScheduleSeeder extends Seeder
             ['id' => 16, 'tai_khoan_id' => 21, 'cccd' => '079100000016', 'dia_chi' => 'H.Hóc Môn, TP.HCM',    'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 150, 'tong_so_ca_hoan_thanh' => 400,  'tong_gio_lam' => 1200, 'vi_do' => 10.782642, 'kinh_do' => 106.675676],
             ['id' => 17, 'tai_khoan_id' => 22, 'cccd' => '079100000017', 'dia_chi' => 'H.Bình Chánh, TP.HCM', 'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 195, 'tong_so_ca_hoan_thanh' => 600,  'tong_gio_lam' => 1800, 'vi_do' => 10.758261, 'kinh_do' => 106.69758],
             ['id' => 18, 'tai_khoan_id' => 23, 'cccd' => '079100000018', 'dia_chi' => 'H.Nhà Bè, TP.HCM',     'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 480, 'tong_so_ca_hoan_thanh' => 1800, 'tong_gio_lam' => 5400, 'vi_do' => 10.744068, 'kinh_do' => 106.659684],
-            ['id' => 19, 'tai_khoan_id' => 24, 'cccd' => '079100000019', 'dia_chi' => 'TP.Thủ Đức, TP.HCM',   'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 210, 'tong_so_ca_hoan_thanh' => 710,  'tong_gio_lam' => 2100, 'vi_do' => 10.784646, 'kinh_do' => 106.665667],
-            ['id' => 20, 'tai_khoan_id' => 25, 'cccd' => '079100000020', 'dia_chi' => 'TP.Thủ Đức, TP.HCM',   'danh_gia_sao_trung_binh' => 4.9, 'tong_so_danh_gia' => 290, 'tong_so_ca_hoan_thanh' => 1050, 'tong_gio_lam' => 3100, 'vi_do' => 10.787554, 'kinh_do' => 106.661962],
+            ['id' => 19, 'tai_khoan_id' => 24, 'cccd' => '079100000019', 'dia_chi' => 'TP.Thủ Đức, TP.HCM',   'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 0, 'tong_so_ca_hoan_thanh' => 0,  'tong_gio_lam' => 0, 'vi_do' => 10.784646, 'kinh_do' => 106.665667],
+            ['id' => 20, 'tai_khoan_id' => 25, 'cccd' => '079100000020', 'dia_chi' => 'TP.Thủ Đức, TP.HCM',   'danh_gia_sao_trung_binh' => 5.0, 'tong_so_danh_gia' => 0, 'tong_so_ca_hoan_thanh' => 0, 'tong_gio_lam' => 0, 'vi_do' => 10.787554, 'kinh_do' => 106.661962],
         ];
         DB::table('NhanVien')->insert($staffData);
 
