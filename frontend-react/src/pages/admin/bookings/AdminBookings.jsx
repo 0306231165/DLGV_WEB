@@ -34,7 +34,7 @@ const AdminBookings = () => {
   const [showFullMap, setShowFullMap] = useState(false);
   const [assigningOrderId, setAssigningOrderId] = useState(null); 
   const [assigningOrderRawId, setAssigningOrderRawId] = useState(null);
-  
+  const [modalWorkers, setModalWorkers] = useState([]);
   const [isAddingOrder, setIsAddingOrder] = useState(false);
   const [newOrderForm, setNewOrderForm] = useState({
     customer: '', location: '', date: '', time: '', service: 'Dọn dẹp Khẩn cấp'
@@ -58,9 +58,71 @@ const AdminBookings = () => {
   const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
 
   // ================= 5. CÁC HÀM CHỨC NĂNG =================
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+    const R = 6371; 
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const openAssignModal = (orderId, orderRawId) => {
     setAssigningOrderId(orderId);
     setAssigningOrderRawId(orderRawId);
+    
+    const order = orders.find(o => o.raw_id === orderRawId);
+    if (order) {
+      const orderLat = parseFloat(order.order_lat);
+      const orderLng = parseFloat(order.order_lng);
+      
+      const updatedWorkers = availableWorkers.map(worker => {
+        const dist = getDistance(orderLat, orderLng, parseFloat(worker.lat), parseFloat(worker.lng));
+        
+        const workerIdStr = `W-${worker.raw_id}`;
+        const conflictingOrders = orders.filter(o => 
+          o.worker && o.worker.id === workerIdStr && 
+          o.raw_id !== order.raw_id && 
+          ['assigned', 'in_progress', 'pending'].includes(o.status) &&
+          o.timeText === order.timeText
+        );
+        
+        let hasConflict = false;
+        if (conflictingOrders.length > 0) {
+           const orderTime = parseInt(order.timeRange.split(':')[0]) || 0;
+           for (let co of conflictingOrders) {
+               const coTime = parseInt(co.timeRange.split(':')[0]) || 0;
+               if (Math.abs(orderTime - coTime) < 3) {
+                   hasConflict = true;
+                   break;
+               }
+           }
+        }
+
+        return {
+          ...worker,
+          distValue: dist,
+          distance: dist === 999 ? 'Không xác định' : dist.toFixed(1) + ' km',
+          hasExpertise: worker.services.includes(order.serviceId),
+          isAvailable: !hasConflict
+        };
+      });
+
+      updatedWorkers.sort((a, b) => {
+        if (a.hasExpertise && !b.hasExpertise) return -1;
+        if (!a.hasExpertise && b.hasExpertise) return 1;
+        if (a.isAvailable && !b.isAvailable) return -1;
+        if (!a.isAvailable && b.isAvailable) return 1;
+        return a.distValue - b.distValue;
+      });
+
+      setModalWorkers(updatedWorkers);
+    } else {
+      setModalWorkers(availableWorkers);
+    }
   };
 
   const confirmAssignWorker = async (worker) => {
@@ -511,9 +573,9 @@ const AdminBookings = () => {
             </div>
 
             <div className="p-6 overflow-y-auto bg-white flex-1">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Nhân sự đang trực tuyến ({availableWorkers.length})</h3>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Nhân sự đang trực tuyến ({modalWorkers.length})</h3>
               <div className="flex flex-col gap-3">
-                {availableWorkers.map((worker) => (
+                {modalWorkers.map((worker) => (
                   <div key={worker.id} className="border border-slate-100 rounded-2xl p-4 flex items-center justify-between hover:border-blue-300 hover:shadow-md hover:bg-blue-50/30 transition-all group">
                     <div className="flex items-center gap-4">
                       <div className="relative">
@@ -526,6 +588,18 @@ const AdminBookings = () => {
                           <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">badge</span>{worker.role}</p>
                           <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
                           <p className="text-xs font-bold text-slate-600 flex items-center gap-1"><span className="material-symbols-outlined text-[14px] text-amber-400">star</span>{worker.rating}</p>
+                        </div>
+                        <div className="mt-1.5 flex gap-2">
+                          {worker.hasExpertise ? (
+                            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Đúng chuyên môn</span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">Khác chuyên môn</span>
+                          )}
+                          {worker.isAvailable ? (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Rảnh lịch</span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">Trùng lịch</span>
+                          )}
                         </div>
                       </div>
                     </div>

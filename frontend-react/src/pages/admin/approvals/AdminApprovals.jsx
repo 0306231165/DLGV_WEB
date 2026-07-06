@@ -99,8 +99,8 @@ const AdminApprovals = () => {
         <p className="text-sm text-slate-500 mt-1">Xem xét, xác minh danh tính và phê duyệt đối tác mới tham gia hệ thống.</p>
       </div>
 
-      {/* 3 KHỐI THỐNG KÊ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      {/* 2 KHỐI THỐNG KÊ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="bg-white p-5 rounded-2xl flex items-center gap-4 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
             <span className="material-symbols-outlined text-[24px]">assignment_ind</span>
@@ -121,15 +121,6 @@ const AdminApprovals = () => {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl flex items-center gap-4 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
-          <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
-            <span className="material-symbols-outlined text-[24px]">history</span>
-          </div>
-          <div>
-            <p className="text-[13px] font-bold text-slate-500">Thời gian TB phản hồi</p>
-            <h3 className="text-2xl font-black text-slate-800">{stats.avgResponseTime} <span className="text-base font-bold text-slate-500">giờ</span></h3>
-          </div>
-        </div>
       </div>
 
       {/* KHU VỰC CHÍNH (CHIA 2 CỘT LỚN) */}

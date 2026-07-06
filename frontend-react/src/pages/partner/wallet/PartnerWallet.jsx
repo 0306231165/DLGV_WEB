@@ -129,18 +129,28 @@ const PartnerWallet = () => {
       return;
     }
 
-    // Bước 2: Xác nhận đã nạp tiền (Demo gọi API cộng tiền)
-    try {
-      const response = await nhanVienApi.depositWallet({ amount });
-      if (response.success) {
-        alert(response.message || `Nạp ${amount.toLocaleString()}đ thành công!`);
-        closeDepositModal();
-        fetchWallet(); // Tải lại dữ liệu ví
-      } else {
-        setDepositErrorMsg(response.message || 'Có lỗi xảy ra khi nạp tiền');
-      }
-    } catch (error) {
-      setDepositErrorMsg(error.response?.data?.message || 'Có lỗi xảy ra khi gọi API nạp tiền');
+    if (depositStep === 2) {
+      // Chuyển sang bước 3: Đang kiểm tra giao dịch (Mô phỏng Webhook)
+      setDepositStep(3);
+      setDepositErrorMsg('');
+      
+      // Giả lập thời gian chờ hệ thống ngân hàng (Casso/PayOS) xử lý webhook mất khoảng 3 giây
+      setTimeout(async () => {
+        try {
+          const response = await nhanVienApi.depositWallet({ amount });
+          if (response.success) {
+            alert(response.message || `Nạp ${amount.toLocaleString()}đ thành công!`);
+            closeDepositModal();
+            fetchWallet(); // Tải lại dữ liệu ví
+          } else {
+            setDepositStep(2);
+            setDepositErrorMsg(response.message || 'Có lỗi xảy ra khi nạp tiền');
+          }
+        } catch (error) {
+          setDepositStep(2);
+          setDepositErrorMsg(error.response?.data?.message || 'Có lỗi xảy ra khi gọi API nạp tiền');
+        }
+      }, 3000);
     }
   };
 
@@ -426,7 +436,9 @@ const PartnerWallet = () => {
               
               <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="font-black text-slate-900 text-lg">
-                  {depositStep === 1 ? 'Nạp tiền vào ví' : 'Quét mã QR thanh toán'}
+                  {depositStep === 1 && 'Nạp tiền vào ví'}
+                  {depositStep === 2 && 'Quét mã QR thanh toán'}
+                  {depositStep === 3 && 'Đang kiểm tra giao dịch...'}
                 </h3>
                 <button 
                   onClick={closeDepositModal}
@@ -493,14 +505,14 @@ const PartnerWallet = () => {
                       </button>
                     </div>
                   </>
-                ) : (
+                ) : depositStep === 2 ? (
                   <>
                     <div className="flex flex-col items-center mb-6">
                       <p className="text-sm text-slate-600 mb-4 text-center">
                         Mở App ngân hàng hoặc Ví điện tử để quét mã QR bên dưới.
                       </p>
                       
-                      <div className="p-2 border-2 border-emerald-500 rounded-2xl mb-4 bg-white shadow-sm inline-block">
+                      <div className="p-2 border-2 border-emerald-500 rounded-2xl mb-4 bg-white shadow-sm inline-block relative">
                         {/* URL tạo QR động của VietQR, có truyền số tiền vào */}
                         <img 
                           src={`https://img.vietqr.io/image/vcb-1025537651-compact2.png?amount=${parseRawNumber(depositInput)}&addInfo=NAP%20TIEN%20VI%20DON%20DEP&accountName=CLEAN%20TRUST`}
@@ -544,6 +556,15 @@ const PartnerWallet = () => {
                       </button>
                     </div>
                   </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 px-4">
+                    <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-6"></div>
+                    <h4 className="font-bold text-slate-800 text-base mb-2">Đang chờ nhận tiền...</h4>
+                    <p className="text-sm text-slate-500 text-center max-w-[280px]">
+                      Hệ thống đang kiểm tra giao dịch tự động từ ngân hàng. Quá trình này có thể mất vài giây đến vài phút. 
+                      Vui lòng không đóng cửa sổ này!
+                    </p>
+                  </div>
                 )}
               </form>
             </div>
