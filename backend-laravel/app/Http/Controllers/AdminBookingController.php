@@ -19,9 +19,12 @@ class AdminBookingController extends Controller
             ->leftJoin('taikhoan as nv_tk', 'donhang.nhan_vien_duoc_yeu_cau_id', '=', 'nv_tk.id')
             ->select(
                 'donhang.id',
+                'dichvu.id as serviceId',
                 'dichvu.ten_dich_vu as serviceType',
                 'donhang.ho_ten_thuc_te as customer',
                 'donhang.dia_chi_thuc_te as location',
+                'donhang.vi_do as order_lat',
+                'donhang.kinh_do as order_lng',
                 'donhang.ngay_bat_dau',
                 'donhang.gio_lam_mac_dinh',
                 'donhang.trang_thai_don',
@@ -86,10 +89,13 @@ class AdminBookingController extends Controller
             return [
                 'id' => '#CT-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
                 'raw_id' => $order->id,
+                'serviceId' => $order->serviceId,
                 'serviceType' => $order->serviceType,
                 'serviceColor' => $serviceColor,
                 'customer' => $order->customer,
                 'location' => $order->location,
+                'order_lat' => $order->order_lat,
+                'order_lng' => $order->order_lng,
                 'timeText' => $timeText,
                 'timeRange' => $timeRange,
                 'timeStatus' => $timeStatus,
@@ -103,17 +109,27 @@ class AdminBookingController extends Controller
             ->join('nhanvien', 'taikhoan.id', '=', 'nhanvien.tai_khoan_id')
             ->where('taikhoan.loai_tai_khoan', 'NhanVien')
             ->where('taikhoan.trang_thai', 'HoatDong')
-            ->select('taikhoan.id', 'taikhoan.ho_ten', 'taikhoan.avatar')
+            ->select('taikhoan.id', 'taikhoan.ho_ten', 'taikhoan.avatar', 'nhanvien.id as nhanvien_id', 'nhanvien.vi_do', 'nhanvien.kinh_do', 'nhanvien.danh_gia_sao_trung_binh')
             ->get();
 
-        $availableWorkers = $workersRaw->map(function($w) {
+        $nhanvienIds = $workersRaw->pluck('nhanvien_id')->toArray();
+        $nvDichVu = DB::table('nhanvien_dichvu')
+            ->whereIn('nhan_vien_id', $nhanvienIds)
+            ->get();
+        $nvDichVuGrouped = $nvDichVu->groupBy('nhan_vien_id');
+
+        $availableWorkers = $workersRaw->map(function($w) use ($nvDichVuGrouped) {
+            $services = isset($nvDichVuGrouped[$w->nhanvien_id]) ? $nvDichVuGrouped[$w->nhanvien_id]->pluck('dich_vu_id')->toArray() : [];
             return [
                 'id' => 'W-' . $w->id,
                 'raw_id' => $w->id,
                 'name' => $w->ho_ten,
-                'role' => 'Chuyên viên', // Có thể join lấy dịch vụ chính của họ sau
-                'rating' => 4.8, // Giả lập hoặc lấy từ DB
-                'distance' => rand(1, 10) . '.' . rand(0, 9) . ' km', // Giả lập khoảng cách
+                'role' => 'Chuyên viên', 
+                'rating' => $w->danh_gia_sao_trung_binh ?? 4.8, 
+                'lat' => $w->vi_do,
+                'lng' => $w->kinh_do,
+                'services' => $services,
+                'distance' => null, // Sẽ được tính ở Frontend
                 'avatar' => $w->avatar
             ];
         });
