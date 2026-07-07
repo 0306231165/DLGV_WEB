@@ -715,8 +715,93 @@ const BlockCalendarModal = ({
   );
 };
 
+// ===== NOTIFICATION MODAL =====
+const NotificationModal = ({ isOpen, onClose, title, message, type }) => {
+  if (!isOpen) return null;
+  
+  const getIconAndColors = () => {
+    switch (type) {
+      case "success":
+        return {
+          icon: "check_circle",
+          iconBg: "bg-emerald-100 text-emerald-600 border border-emerald-200",
+          btnBg: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/25",
+        };
+      case "error":
+        return {
+          icon: "error",
+          iconBg: "bg-rose-100 text-rose-600 border border-rose-200",
+          btnBg: "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/25",
+        };
+      case "warning":
+        return {
+          icon: "warning",
+          iconBg: "bg-amber-100 text-amber-600 border border-amber-200",
+          btnBg: "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/25",
+        };
+      default:
+        return {
+          icon: "info",
+          iconBg: "bg-blue-100 text-blue-600 border border-blue-200",
+          btnBg: "bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/25",
+        };
+    }
+  };
+
+  const { icon, iconBg, btnBg } = getIconAndColors();
+
+  return createPortal(
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[999999] p-4 animate-in fade-in duration-200" style={{ pointerEvents: "all" }}>
+      <div 
+        className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full overflow-hidden transform transition-all scale-100 p-6 text-center space-y-4"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center shadow-inner ${iconBg}`}>
+          <span className="material-symbols-outlined text-3xl font-bold">{icon}</span>
+        </div>
+        
+        <div className="space-y-2">
+          <h3 className="text-lg font-black text-slate-800 tracking-tight">{title}</h3>
+          <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line font-medium px-2">
+            {message}
+          </p>
+        </div>
+
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className={`w-full py-3 px-6 rounded-xl font-bold text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${btnBg}`}
+          >
+            <span>Đã hiểu & Đóng</span>
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // ===== MAIN COMPONENT =====
 const ScheduleManager = () => {
+  const [notifyModal, setNotifyModal] = useState({ isOpen: false, title: "", message: "", type: "info" });
+
+  const alert = (msg) => {
+    let type = "info";
+    let title = "Thông báo từ hệ thống";
+    if (typeof msg === "string") {
+      const lower = msg.toLowerCase();
+      if (lower.includes("lỗi") || lower.includes("thất bại") || lower.includes("không được") || lower.includes("vui lòng") || lower.includes("tối đa")) {
+        type = lower.includes("vui lòng") || lower.includes("tối đa") ? "warning" : "error";
+        title = lower.includes("vui lòng") || lower.includes("tối đa") ? "Lưu ý từ hệ thống" : "Có lỗi xảy ra";
+      } else if (lower.includes("thành công") || lower.includes("đã ") || lower.includes("[thành công]")) {
+        type = "success";
+        title = "Thao tác thành công";
+      }
+    }
+    setNotifyModal({ isOpen: true, title, message: msg, type });
+  };
+
   const [activeTab, setActiveTab] = useState("calendar");
   const [hasRegisteredContract, setHasRegisteredContract] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
@@ -2252,6 +2337,15 @@ const ScheduleManager = () => {
           </div>
         </div>
       )}
+
+      {/* NOTIFICATION MODAL */}
+      <NotificationModal
+        isOpen={notifyModal.isOpen}
+        onClose={() => setNotifyModal({ ...notifyModal, isOpen: false })}
+        title={notifyModal.title}
+        message={notifyModal.message}
+        type={notifyModal.type}
+      />
     </div>
   );
 };
