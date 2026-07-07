@@ -304,6 +304,7 @@ class NhanVienController extends Controller
                     return [
                         'id' => $txn->ma_giao_dich,
                         'type' => $type,
+                        'loai_giao_dich' => $txn->loai_giao_dich,
                         'amount' => (float)$txn->so_tien,
                         'date' => \Carbon\Carbon::parse($txn->thoi_gian)->format('Y-m-d'),
                         'status' => $txn->trang_thai,
@@ -472,6 +473,52 @@ class NhanVienController extends Controller
             DB::rollBack();
             \Illuminate\Support\Facades\Log::error("Save Blocked Dates Error: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function nhanLuong(Request $request)
+    {
+        try {
+            $request->validate([
+                'amount' => 'required|numeric|min:1',
+            ]);
+
+            $taiKhoan = $request->user();
+            $viTien = \App\Models\ViTien::where('tai_khoan_id', $taiKhoan->id)->first();
+            
+            if (!$viTien) {
+                $viTien = \App\Models\ViTien::create([
+                    'tai_khoan_id' => $taiKhoan->id,
+                    'so_du' => 0
+                ]);
+            }
+
+            DB::beginTransaction();
+            
+            $viTien->so_du += $request->amount;
+            $viTien->save();
+            
+            $noiDung = $request->input('noi_dung', $request->input('description', 'Nhận lương ca làm'));
+            if (empty($noiDung)) $noiDung = 'Nhận lương ca làm';
+
+            \App\Models\GiaoDichVi::create([
+                'ma_giao_dich' => 'SAL' . time() . rand(100, 999),
+                'vi_tien_id' => $viTien->id,
+                'loai_giao_dich' => 'NhanLuongCaLam',
+                'loai_bien_dong' => 'Tang',
+                'so_tien' => $request->amount,
+                'so_du_sau_giao_dich' => $viTien->so_du,
+                'noi_dung' => $noiDung,
+                'trang_thai' => 'ThanhCong',
+                'thoi_gian' => now()
+            ]);
+            
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Nhận lương thành công!', 'balance' => $viTien->so_du]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Nhan Luong Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Lỗi nhận lương: ' . $e->getMessage()], 500);
         }
     }
 

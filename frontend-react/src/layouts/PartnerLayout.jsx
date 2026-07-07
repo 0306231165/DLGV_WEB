@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { SimulatedTimeProvider } from "../contexts/SimulatedTimeContext";
+import SidebarTimeSimulator from "../components/partner/SidebarTimeSimulator";
 
 const PartnerLayout = () => {
   const navigate = useNavigate();
@@ -105,14 +107,17 @@ const PartnerLayout = () => {
   // Nếu rơi vào trang không cần layout, trả về Outlet trống hoàn toàn (Full màn hình)
   if (isMinimalLayoutPage) {
     return (
-      <main className="min-h-screen w-full bg-white">
-        <Outlet />
-      </main>
+      <SimulatedTimeProvider>
+        <main className="min-h-screen w-full bg-white">
+          <Outlet />
+        </main>
+      </SimulatedTimeProvider>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/70 flex text-slate-800 antialiased font-sans">
+    <SimulatedTimeProvider>
+      <div className="min-h-screen bg-slate-100/70 flex text-slate-800 antialiased font-sans">
       {/* SIDEBAR BÊN TRÁI */}
       <aside className="w-72 bg-white text-slate-800 flex flex-col fixed h-full border-r border-slate-200/60 shadow-sm z-30">
         <div className="h-20 flex items-center px-6 border-b border-slate-100 gap-3">
@@ -153,6 +158,9 @@ const PartnerLayout = () => {
             </NavLink>
           ))}
         </nav>
+
+        {/* WIDGET GIẢ LẬP THỜI GIAN */}
+        <SidebarTimeSimulator />
 
         <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center gap-3">
           <span className="relative flex h-2.5 w-2.5">
@@ -385,6 +393,7 @@ const PartnerLayout = () => {
         </main>
       </div>
     </div>
+    </SimulatedTimeProvider>
   );
 };
 

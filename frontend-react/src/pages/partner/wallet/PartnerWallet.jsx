@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import nhanVienApi from '../../../api/nhanVienApi';
+import { useSimulatedTime } from '../../../contexts/SimulatedTimeContext';
 
 const PartnerWallet = () => {
+  const { simulatedTime } = useSimulatedTime();
   const [balance, setBalance] = useState(0); 
   const [transactionHistory, setTransactionHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ const PartnerWallet = () => {
 
   // Logic lọc dữ liệu theo ngày
   const getFilteredTransactions = () => {
-    const today = new Date();
+    const today = new Date(simulatedTime || new Date());
     today.setHours(0, 0, 0, 0);
     
     return transactionHistory.filter(txn => {
@@ -309,16 +311,23 @@ const PartnerWallet = () => {
                             <div className="text-[11px] text-slate-400 mt-0.5">{displayDate(txn.date)}</div>
                           </td>
                           <td className="p-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-                              ${txn.type === 'deposit' || txn.type === 'income' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                              {txn.type === 'deposit' && 'Nạp tiền'}
-                              {txn.type === 'income' && 'Thu nhập'}
-                              {txn.type === 'withdraw' && 'Rút tiền'}
-                              {txn.type === 'penalty' && 'Khấu trừ'}
-                            </span>
+                            {(() => {
+                              const descText = txn.description || txn.noi_dung || txn.note || "";
+                              const isIncome = txn.type === 'income' || txn.loai_giao_dich === 'income' || txn.type === 'NhanLuongCaLam' || txn.loai_giao_dich === 'NhanLuongCaLam' || /lương|ca làm|thu nhập|quyết toán/i.test(descText);
+                              const isDeposit = !isIncome && (txn.type === 'deposit' || txn.loai_giao_dich === 'NapTien' || txn.loai_giao_dich === 'deposit');
+                              return (
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold shadow-sm
+                                  ${isDeposit || isIncome ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : 'bg-rose-50 text-rose-700 border border-rose-200/60'}`}>
+                                  {isDeposit && 'Nạp tiền'}
+                                  {isIncome && 'Nhận lương ca làm'}
+                                  {txn.type === 'withdraw' && 'Rút tiền'}
+                                  {txn.type === 'penalty' && 'Khấu trừ'}
+                                </span>
+                              );
+                            })()}
                           </td>
-                          <td className="p-4 text-slate-600 max-w-xs truncate">{txn.description}</td>
-                          <td className={`p-4 text-right font-bold ${txn.type === 'deposit' || txn.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}`}>
+                          <td className="p-4 text-slate-600 max-w-xs truncate font-medium">{txn.description || txn.noi_dung || txn.note || 'Giao dịch ví'}</td>
+                          <td className={`p-4 text-right font-black text-base ${txn.type === 'deposit' || txn.type === 'income' || txn.loai_giao_dich === 'NhanLuongCaLam' || /lương|ca làm|thu nhập|quyết toán/i.test(txn.description || txn.noi_dung || txn.note || "") ? 'text-emerald-600' : 'text-slate-800'}`}>
                             {txn.type === 'deposit' || txn.type === 'income' ? '+' : '-'}{txn.amount.toLocaleString()}đ
                           </td>
                         </tr>

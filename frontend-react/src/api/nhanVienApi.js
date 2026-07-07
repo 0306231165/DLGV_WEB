@@ -29,6 +29,9 @@ const nhanVienApi = {
     depositWallet: (data) => {
         return axiosClient.post('/nhan-vien/wallet/deposit', data);
     },
+    nhanLuongWallet: (data) => {
+        return axiosClient.post('/nhan-vien/wallet/nhan-luong', data);
+    },
     withdrawWallet: (data) => {
         return axiosClient.post('/nhan-vien/wallet/withdraw', data);
     },

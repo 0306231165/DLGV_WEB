@@ -15,6 +15,7 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
     // Ví và Thu nhập
     Route::get('/wallet', [NhanVienController::class, 'wallet']);
     Route::post('/wallet/deposit', [NhanVienController::class, 'deposit']);
+    Route::post('/wallet/nhan-luong', [NhanVienController::class, 'nhanLuong']);
     Route::post('/wallet/withdraw', [NhanVienController::class, 'withdraw']);
 
     // Quản lý ca làm việc (Nhận ca / Cập nhật tiến độ dọn dẹp)

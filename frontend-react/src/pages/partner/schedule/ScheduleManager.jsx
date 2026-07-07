@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import nhanVienApi from "../../../api/nhanVienApi";
+import { useSimulatedTime } from "../../../contexts/SimulatedTimeContext";
 // ===== PORTAL ROOT (singleton) =====
 let _portalRoot = null;
 const getPortalRoot = () => {
@@ -13,7 +14,7 @@ const getPortalRoot = () => {
   return _portalRoot;
 };
 
-const TODAY = new Date();
+let TODAY = new Date();
 
 // ===== CUSTOM DATE PICKER =====
 const CustomDatePicker = ({ value, onChange, min, max, label, disabled }) => {
@@ -377,7 +378,7 @@ const BlockCalendarModal = ({
       setViewYear(y);
       setViewMonth(m - 1);
     } else {
-      const now = new Date();
+      const now = new Date(TODAY);
       setViewYear(now.getFullYear());
       setViewMonth(now.getMonth());
     }
@@ -437,7 +438,7 @@ const BlockCalendarModal = ({
         return { status: "working", hasActiveJob: true };
       }
       const checkDate = new Date(viewYear, viewMonth, day);
-      const todayDate = new Date();
+      const todayDate = new Date(TODAY);
       todayDate.setHours(0,0,0,0);
       if (checkDate >= todayDate) {
         return { status: "working", hasActiveJob: false };
@@ -486,7 +487,7 @@ const BlockCalendarModal = ({
     return { cls: "bg-emerald-50 text-emerald-800 border border-emerald-200 cursor-pointer hover:bg-emerald-100 font-bold", dot: "bg-emerald-400" };
   };
 
-  const today = new Date();
+  const today = new Date(TODAY);
   const isToday = (day) =>
     today.getFullYear() === viewYear &&
     today.getMonth() === viewMonth &&
@@ -784,6 +785,9 @@ const NotificationModal = ({ isOpen, onClose, title, message, type }) => {
 
 // ===== MAIN COMPONENT =====
 const ScheduleManager = () => {
+  const { simulatedTime } = useSimulatedTime();
+  if (simulatedTime) TODAY = simulatedTime;
+
   const [notifyModal, setNotifyModal] = useState({ isOpen: false, title: "", message: "", type: "info" });
 
   const alert = (msg) => {
@@ -809,7 +813,7 @@ const ScheduleManager = () => {
 
   const generateTimelineDays = () => {
     const days = [];
-    const t = new Date();
+    const t = new Date(TODAY);
     const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
     for (let i = 0; i < 7; i++) {
       const d = new Date(t);
@@ -825,8 +829,27 @@ const ScheduleManager = () => {
     return days;
   };
 
-  const [timelineDays, setTimelineDays] = useState(generateTimelineDays());
-  const [selectedDate, setSelectedDate] = useState(generateTimelineDays()[0].dateStr);
+  const [calendarJobs, setCalendarJobs] = useState([]);
+  const [jobOffers, setJobOffers] = useState([]);
+  const [acceptedJobs, setAcceptedJobs] = useState([]);
+  const [jobHistory, setJobHistory] = useState([]);
+
+  const [timelineDays, setTimelineDays] = useState(() => generateTimelineDays());
+  const [selectedDate, setSelectedDate] = useState(() => generateTimelineDays()[0].dateStr);
+
+  useEffect(() => {
+    if (simulatedTime) {
+      TODAY = simulatedTime;
+      const newDays = generateTimelineDays();
+      const activeJobDates = new Set(calendarJobs.map((j) => j.dateStr));
+      setTimelineDays(newDays.map(d => ({
+        ...d,
+        status: activeJobDates.has(d.dateStr) ? "has-jobs" : "available"
+      })));
+      setSelectedDate(newDays[0].dateStr);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simulatedTime, calendarJobs]);
 
   const [contractForm, setContractForm] = useState(() => {
     const minStart = new Date(TODAY);
@@ -857,11 +880,6 @@ const ScheduleManager = () => {
   
 
   const [selectedJob, setSelectedJob] = useState(null);
-
-  const [calendarJobs, setCalendarJobs] = useState([]);
-  const [jobOffers, setJobOffers] = useState([]);
-  const [acceptedJobs, setAcceptedJobs] = useState([]);
-  const [jobHistory, setJobHistory] = useState([]);
 
   // ── Logic helpers ──────────────────────────────────────────────────────────
   const parseTimeToMinutes = (timeStr) => {
@@ -1610,6 +1628,7 @@ const ScheduleManager = () => {
                   const [d, m, y] = day.dateStr.split("/");
                   const contractKey = `${y}-${m}-${d}`;
                   const isBlocked = contractBlockedDates[contractKey]?.status === "blocked";
+                  const hasJob = day.status === "has-jobs" || calendarJobs.some(j => j.dateStr === day.dateStr);
                   return (
                     <div
                       key={day.dateStr}
@@ -1618,7 +1637,7 @@ const ScheduleManager = () => {
                     >
                       <span className="text-[10px] opacity-80 uppercase tracking-tight">{day.label}</span>
                       <span className="text-sm font-black my-0.5">{day.dateStr.split("/")[0]}</span>
-                      <span className={`w-1.5 h-1.5 rounded-full ${isBlocked ? "bg-rose-500" : day.status === "has-jobs" ? "bg-amber-400" : "bg-emerald-400"}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${isBlocked ? "bg-rose-500" : hasJob ? "bg-amber-400" : "bg-emerald-400"}`} />
                     </div>
                   );
                 })}
