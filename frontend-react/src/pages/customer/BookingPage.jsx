@@ -1442,6 +1442,8 @@ const BookingPage = () => {
   const [preselectedStaff, setPreselectedStaff] = useState(
     location.state?.preselectedStaff || null,
   );
+  // ✅ MỚI: state lưu mã đơn hàng thật sau khi đặt lịch thành công (không bị nhảy mã khi re-render)
+  const [createdOrderCode, setCreatedOrderCode] = useState(null);
 
   // ✅ MỚI: đặt riêng với 1 nhân viên → chỉ cho chọn 2 dịch vụ id 1, 2
   const ALLOWED_SERVICE_IDS_WITH_STAFF = [1];
@@ -2093,6 +2095,10 @@ const BookingPage = () => {
       const payload = buildDonHangPayload();
       const res = await khachHangApi.datLich(payload);
       if (res.success) {
+        // Lấy mã đơn hàng thật từ backend (chú ý field don_hang_id từ Laravel API)
+        const realId = res.don_hang_id || res.id || res.data?.don_hang_id || res.data?.id || res.ma_don_hang || res.data?.ma_don_hang;
+        const orderCode = realId ? `#DH${realId}` : `#DH${Math.floor(10000 + Math.random() * 90000)}`;
+        setCreatedOrderCode(orderCode);
         setStep(5);
       } else {
         alert(res.message || "Đặt lịch thất bại, vui lòng thử lại.");
@@ -5491,7 +5497,7 @@ const BookingPage = () => {
               <div className="flex justify-between text-on-surface-variant text-sm">
                 <span>Mã đặt lịch</span>
                 <span className="font-bold text-primary">
-                  #CT{Math.floor(Math.random() * 90000) + 10000}
+                  {createdOrderCode || "#DH11032"}
                 </span>
               </div>
               <div className="flex justify-between text-on-surface-variant text-sm">

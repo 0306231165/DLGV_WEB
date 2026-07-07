@@ -137,6 +137,22 @@ class UserScheduleSeeder extends Seeder
         // ══════════════════════════════════════════════════════════════════
         // 22. LichNghi
         // ══════════════════════════════════════════════════════════════════
-        
+        $lichNghiList = [];
+        for ($i = 1; $i <= 20; $i++) {
+            $isMondayOff = $i <= 10;
+            $lichNghiList[] = [
+                'nhan_vien_id' => $i,
+                'loai_nghi' => 'DinhKy',
+                'thu_trong_tuan' => $isMondayOff ? 1 : 0, // 1: Thứ 2, 0: Chủ nhật
+                'ngay_nghi' => null,
+                'gio_bat_dau_nghi' => null, // null: Nghỉ trọn ngày (đồng bộ với ScheduleManager.jsx)
+                'gio_ket_thuc_nghi' => null, // null: Nghỉ trọn ngày
+                'ngay_bat_dau_ap_dung' => now()->startOfYear()->toDateString(),
+                'ngay_ket_thuc_ap_dung' => now()->endOfYear()->addYear()->toDateString(),
+                'ly_do' => $isMondayOff ? 'Lịch nghỉ cố định hàng tuần (Thứ 2)' : 'Lịch nghỉ cố định hàng tuần (Chủ Nhật)',
+                'trang_thai_duyet' => 'DaDuyet',
+            ];
+        }
+        DB::table('LichNghi')->insert($lichNghiList);
     }
 }

@@ -1553,26 +1553,86 @@ const BookingDetailPage = () => {
                 Chi tiết thanh toán
               </h3>
               <div className="space-y-3 text-sm mb-5 pb-4 border-b border-outline-variant/20">
-                <div className="flex justify-between text-on-surface-variant font-medium">
-                  <span>Phí dịch vụ cơ bản</span>
-                  <span className="font-bold text-on-surface">{fmt(booking.payment.basePrice)}</span>
+                <div className="flex justify-between text-on-surface-variant/70 text-xs italic">
+                  <span>
+                    {booking.payment.is247 ? 'Phí dịch vụ cơ bản (1 ngày • tham khảo)' : 'Phí dịch vụ cơ bản (1 buổi • tham khảo)'}
+                  </span>
+                  <span>
+                    {fmt(booking.payment.unitBasePrice || booking.payment.basePrice)}
+                  </span>
                 </div>
-                {booking.payment.extrasPrice > 0 && (
+                {(booking.payment.isPackage || booking.payment.is247 || booking.payment.sessionCount > 1) && (
+                  <div className="flex justify-between text-on-surface font-semibold pl-1">
+                    <span>
+                      • Thành tiền gói ({booking.payment.is247 ? `${booking.payment.soNgay247 || booking.payment.sessionCount} ngày` : `${booking.payment.sessionCount} buổi${booking.payment.soThang ? ` · Gói ${booking.payment.soThang} tháng` : ''}`})
+                    </span>
+                    <span className="font-bold text-on-surface text-[15px]">
+                      {fmt(booking.payment.totalBasePrice || booking.payment.basePrice)}
+                    </span>
+                  </div>
+                )}
+                {booking.payment.extrasList && booking.payment.extrasList.length > 0 ? (
+                  booking.payment.extrasList.map((ext, idx) => {
+                    const isMulti = booking.payment.isPackage || booking.payment.is247 || booking.payment.sessionCount > 1;
+                    return isMulti ? (
+                      <React.Fragment key={idx}>
+                        <div className="flex justify-between text-on-surface-variant/70 text-xs italic">
+                          <span>Đơn giá {ext.name} (1 buổi • tham khảo)</span>
+                          <span>+{fmt(ext.unitPrice || ext.price * ext.qty)}</span>
+                        </div>
+                        <div className="flex justify-between text-on-surface font-semibold pl-1">
+                          <span>• Thành tiền {ext.name} ({booking.payment.sessionCount} buổi)</span>
+                          <span className="font-bold text-on-surface text-[15px]">+{fmt(ext.totalPrice || ext.price * ext.qty * booking.payment.sessionCount)}</span>
+                        </div>
+                      </React.Fragment>
+                    ) : (
+                      <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
+                        <span>• {ext.name} {ext.qty > 1 ? `(x${ext.qty})` : ''}</span>
+                        <span className="font-bold text-on-surface">+{fmt(ext.price * ext.qty)}</span>
+                      </div>
+                    );
+                  })
+                ) : booking.payment.extrasPrice > 0 ? (
                   <div className="flex justify-between text-on-surface-variant font-medium">
-                    <span>Dịch vụ cộng thêm</span>
+                    <span>• Dịch vụ cộng thêm</span>
                     <span className="font-bold text-on-surface">+{fmt(booking.payment.extrasPrice)}</span>
                   </div>
-                )}
-                {booking.payment.travelFee > 0 && (
-                  <div className="flex justify-between text-on-surface-variant font-medium">
-                    <span>Phí di chuyển xa</span>
-                    <span className="font-bold text-on-surface">+{fmt(booking.payment.travelFee)}</span>
+                ) : null}
+                {booking.payment.urgentFee > 0 && (
+                  <div className="flex justify-between text-amber-700 font-medium">
+                    <span>⚡ Phí đặt lịch gấp</span>
+                    <span className="font-bold">+{fmt(booking.payment.urgentFee)}</span>
                   </div>
                 )}
-                {booking.payment.discount > 0 && (
+                {booking.payment.premiumFee > 0 && (
+                  <div className="flex justify-between text-amber-700 font-medium">
+                    <span>👑 Phí nhân viên cao cấp</span>
+                    <span className="font-bold">+{fmt(booking.payment.premiumFee)}</span>
+                  </div>
+                )}
+                {booking.payment.selfPickFee > 0 && (
+                  <div className="flex justify-between text-amber-700 font-medium">
+                    <span>⭐ Phí chọn nhân viên yêu thích</span>
+                    <span className="font-bold">+{fmt(booking.payment.selfPickFee)}</span>
+                  </div>
+                )}
+                {(() => {
+                  const otherTravel = (booking.payment.travelFee || 0) - (booking.payment.urgentFee || 0) - (booking.payment.premiumFee || 0) - (booking.payment.selfPickFee || 0);
+                  return otherTravel > 0 ? (
+                    <div className="flex justify-between text-on-surface-variant font-medium">
+                      <span>Phí di chuyển / phụ thu khác</span>
+                      <span className="font-bold text-on-surface">+{fmt(otherTravel)}</span>
+                    </div>
+                  ) : null;
+                })()}
+                {(booking.payment.discount > 0 || booking.payment.tldGiamGoi > 0) && (
                   <div className="flex justify-between text-primary font-bold">
-                    <span>Khuyến mãi áp dụng</span>
-                    <span>-{fmt(booking.payment.discount)}</span>
+                    <span>
+                      Giảm giá {booking.payment.tldGiamGoi > 0 ? `(${booking.payment.tldGiamGoi}%)` : 'khuyến mãi'}
+                    </span>
+                    <span>
+                      -{fmt(booking.payment.discount > 0 ? booking.payment.discount : Math.round((booking.payment.totalBasePrice || booking.payment.basePrice) * (booking.payment.tldGiamGoi / 100)))}
+                    </span>
                   </div>
                 )}
               </div>

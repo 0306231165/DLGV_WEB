@@ -13,19 +13,20 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ── Hooks ─────────────────────────────────────────────────────
   const { login, isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  // Trang user định vào trước khi bị redirect về /login
-  const from = location.state?.from?.pathname || "/";
+  // Trang user định vào trước khi bị redirect về /login (lấy cả pathname và state như selectedPackage, preselectedStaff)
+  const fromLocation = location.state?.from;
+  const fromPath = typeof fromLocation === "object" ? `${fromLocation.pathname || ""}${fromLocation.search || ""}${fromLocation.hash || ""}` : (fromLocation || "/");
+  const fromState = typeof fromLocation === "object" ? fromLocation.state : null;
 
-  // Nếu đã login rồi mà vào /login → đá thẳng về trang trước
+  // Nếu đã login rồi mà vào /login → đá thẳng về trang trước kèm state
   useEffect(() => {
     if (isLoggedIn && !loading) {
-      navigate(from, { replace: true });
+      navigate(fromPath, { replace: true, state: fromState });
     }
-  }, [isLoggedIn, loading, navigate, from]);
+  }, [isLoggedIn, loading, navigate, fromPath, fromState]);
 
   // ── Mouse parallax effect (giữ nguyên) ────────────────────────
   const shape1Ref = useRef(null);
@@ -61,8 +62,8 @@ export default function LoginPage() {
       // Lưu vào AuthContext (context tự lưu vào localStorage)
       login(data.token, data.role, data.user);
 
-      // Redirect về trang user định vào, hoặc về trang chủ
-      navigate(from, { replace: true });
+      // Redirect về trang user định vào (kèm state), hoặc về trang chủ
+      navigate(fromPath, { replace: true, state: fromState });
     } catch (err) {
       // err.message đến từ response interceptor của axiosClient
       setError(err.message || "Đăng nhập thất bại. Vui lòng thử lại.");
@@ -421,6 +422,7 @@ export default function LoginPage() {
               Chưa có tài khoản?{" "}
               <Link
                 to="/register"
+                state={location.state}
                 className="text-primary font-bold hover:underline decoration-primary/30 underline-offset-4"
               >
                 Đăng ký ngay

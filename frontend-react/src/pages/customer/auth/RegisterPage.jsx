@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import authApi from "../../../api/authApi";
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   // 1. Các State quản lý Form Đăng ký
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -59,8 +62,8 @@ export default function RegisterPage() {
       setIsLoading(true);
       await authApi.registerKhachHang(registerData);
 
-      alert("Đăng ký tài khoản thành công!");
-      window.location.href = "/login";
+      alert("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
+      navigate("/login", { state: location.state });
     } catch (error) {
       console.error("Lỗi đăng ký nhận được từ API:", error);
 
@@ -530,12 +533,13 @@ export default function RegisterPage() {
             {/* Chuyển sang Đăng nhập */}
             <p className="mt-8 text-center font-body-md text-on-surface-variant">
               Đã có tài khoản?{" "}
-              <a
+              <Link
                 className="text-primary font-bold hover:underline decoration-primary/30 underline-offset-4"
-                href="/login"
+                to="/login"
+                state={location.state}
               >
                 Đăng nhập ngay
-              </a>
+              </Link>
             </p>
           </div>
         </div>

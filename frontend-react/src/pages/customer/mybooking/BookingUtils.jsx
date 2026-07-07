@@ -440,6 +440,12 @@ export const mapApiToBookingDetailFormat = (dh) => {
     }
   }
 
+  const sessionCountVal = Number(is247 ? (dh.so_ngay_goi_247 || dh.tong_so_buoi || 1) : (dh.tong_so_buoi || 1));
+  const unitBasePriceVal = Number(dh.don_gia_co_ban || Math.round((Number(dh.tong_tien_ban_dau || dh.tong_tien_cuoi_cung) - extrasPrice) / sessionCountVal));
+  const totalBasePriceVal = unitBasePriceVal * sessionCountVal;
+  const tldGiamVal = Number(dh.tld_giam_goi_thang || dh.tld_giam_goi || (dh.so_thang_goi_thang == 1 ? 5 : dh.so_thang_goi_thang == 3 ? 10 : dh.so_thang_goi_thang >= 6 ? 15 : (is247 ? 5 : 0)));
+  const packageDiscountMoney = Math.round(totalBasePriceVal * (tldGiamVal / 100));
+
   const base = {
     id: dh.id.toString(),
     code: `DH-${dh.id.toString().padStart(6, '0')}`,
@@ -479,12 +485,34 @@ export const mapApiToBookingDetailFormat = (dh) => {
       method: paymentMethod,
       methodIcon: dh.phuong_thuc_tt === 'TienMat' ? 'payments' : dh.phuong_thuc_tt === 'ViTien' ? 'account_balance_wallet' : 'smartphone',
       status: dh.trang_thai_thanh_toan === 'DaThanhToan' ? 'Đã thanh toán' : 'Chưa thanh toán',
-      basePrice: Number(dh.tong_tien_ban_dau || dh.tong_tien_cuoi_cung),
+      basePrice: totalBasePriceVal,
+      unitBasePrice: unitBasePriceVal,
+      totalBasePrice: totalBasePriceVal,
       extrasPrice: extrasPrice,
+      extrasList: (dh.dich_vu_them_da_chon || []).map(ext => {
+        const unitP = Number(ext.pivot?.gia_luc_dat || 0);
+        const qty = ext.pivot?.so_luong || 1;
+        return {
+          name: ext.dich_vu_them?.ten_dv_them || ext.ten_dv_them || 'Dịch vụ thêm',
+          qty: qty,
+          price: unitP,
+          unitPrice: unitP * qty,
+          totalPrice: unitP * qty * sessionCountVal
+        };
+      }),
       travelFee: travelFee,
-      discount: Number(dh.tien_giam_giu || 0),
+      urgentFee: Number(dh.phu_phi_dat_gap || 0),
+      premiumFee: Number(dh.phu_phi_cao_cap || 0),
+      selfPickFee: Number(dh.phu_phi_chon_nhan_vien || 0),
+      discount: Math.max(packageDiscountMoney, Number(dh.tong_tien_ban_dau || 0) + travelFee - Number(dh.tong_tien_cuoi_cung || 0)),
       total: Number(dh.tong_tien_cuoi_cung),
       sessionPrice: isPackage && dh.tong_so_buoi > 0 ? Math.round(Number(dh.tong_tien_cuoi_cung) / dh.tong_so_buoi) : Number(dh.tong_tien_cuoi_cung),
+      isPackage: isPackage,
+      is247: is247,
+      sessionCount: sessionCountVal,
+      soThang: dh.so_thang_goi_thang || 0,
+      soNgay247: dh.so_ngay_goi_247 || 0,
+      tldGiamGoi: tldGiamVal
     },
   };
   const staffObj = firstCa?.nhan_vien?.tai_khoan || dh.nhan_vien_yeu_cau?.tai_khoan;

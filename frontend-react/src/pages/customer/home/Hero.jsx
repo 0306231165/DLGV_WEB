@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Hero = () => {
   return (
@@ -16,12 +17,20 @@ const Hero = () => {
           Trải nghiệm dịch vụ vệ sinh chuyên nghiệp, mang đến không gian sống thoáng đãng, sạch sẽ và an toàn. Đội ngũ tận tâm, uy tín hàng đầu.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <button className="bg-primary text-on-primary px-8 py-4 rounded-xl font-h3 text-[20px] hover:bg-primary-container transition-all shadow-md shadow-primary/20 w-full sm:w-auto">
+          <Link 
+            to="/booking" 
+            className="bg-primary text-on-primary px-8 py-4 rounded-xl font-h3 text-[20px] hover:bg-primary-container transition-all shadow-md shadow-primary/20 w-full sm:w-auto text-center flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-2xl">calendar_month</span>
             Đặt lịch ngay
-          </button>
-          <button className="bg-surface text-primary border border-primary/20 px-8 py-4 rounded-xl font-h3 text-[20px] hover:bg-surface-container transition-all w-full sm:w-auto">
+          </Link>
+          <Link 
+            to="/services" 
+            className="bg-surface text-primary border border-primary/20 px-8 py-4 rounded-xl font-h3 text-[20px] hover:bg-surface-container transition-all w-full sm:w-auto text-center flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-2xl">cleaning_services</span>
             Tìm hiểu thêm
-          </button>
+          </Link>
         </div>
       </div>
     </section>
