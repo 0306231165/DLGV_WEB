@@ -18,8 +18,8 @@ const nhanVienApi = {
     },
 
     // GET /api/nhan-vien/dashboard
-    getDashboard: () => {
-        return axiosClient.get('/nhan-vien/dashboard');
+    getDashboard: (params) => {
+        return axiosClient.get('/nhan-vien/dashboard', { params });
     },
 
     // GET /api/nhan-vien/wallet
