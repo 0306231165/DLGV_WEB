@@ -7,6 +7,13 @@ const AdminLayout = () => {
   const location = useLocation();
   const { logout } = useAuth();
   
+  // Lấy thông tin admin từ localStorage
+  const adminUserStr = localStorage.getItem('ADMIN_USER');
+  const adminUser = adminUserStr ? JSON.parse(adminUserStr) : null;
+  const adminName = adminUser?.ho_ten || adminUser?.name || 'Quản trị viên';
+  const adminId = adminUser?.id ? `ADM-${adminUser.id.toString().padStart(3, '0')}` : 'ADM-001';
+  const adminInitials = adminName.substring(0, 2).toUpperCase();
+
   // Khai báo các trang không cần layout (ví dụ: đăng nhập admin)
   const isMinimalLayoutPage = ['/admin/login'].includes(location.pathname);
 
@@ -38,6 +45,7 @@ const AdminLayout = () => {
     { path: '/admin/reports', icon: 'bar_chart', label: 'Doanh thu & Thống kê' },
     { path: '/admin/complain', icon: 'feedback', label: 'Khiếu nại & Phản hồi' },
     { path: '/admin/reviews', icon: 'star', label: 'Đánh giá & Nhận xét' },
+     { path: '/admin/employee-stats', icon: 'analytics', label: 'Thống kê nhân viên' },
   ];
 
   if (isMinimalLayoutPage) {
@@ -103,7 +111,7 @@ const AdminLayout = () => {
       <div className="flex-1 pl-72 flex flex-col min-h-screen">
         <header className="h-20 bg-white border-b border-slate-200/60 fixed top-0 right-0 left-72 z-20 flex items-center justify-between px-8 shadow-sm">
           <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-            Xin chào, <span className="text-blue-600">Quản trị viên</span> 🛡️
+            Xin chào, <span className="text-blue-600">{adminName}</span> 🛡️
           </h2>
 
           <div className="flex items-center gap-5">
@@ -114,11 +122,11 @@ const AdminLayout = () => {
                 className="flex items-center gap-3 p-1.5 pr-3 rounded-full hover:bg-slate-50 border border-slate-100 transition-colors focus:outline-none shadow-sm cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center border-2 border-blue-500 font-black">
-                  AD
+                  {adminInitials}
                 </div>
                 <div className="hidden md:flex flex-col text-left">
-                  <span className="text-xs font-bold text-slate-700 leading-none">Super Admin</span>
-                  <span className="text-[10px] text-slate-400 mt-1">Mã: ADM-001</span>
+                  <span className="text-xs font-bold text-slate-700 leading-none">{adminName}</span>
+                  <span className="text-[10px] text-slate-400 mt-1">Mã: {adminId}</span>
                 </div>
                 <span className="material-symbols-outlined text-slate-400 text-sm group-hover/avatar:rotate-180 transition-transform duration-200">keyboard_arrow_down</span>
               </button>
