@@ -122,6 +122,17 @@ const nhanVienApi = {
     getRoomOrderDetails: (roomId) => {
         return axiosClient.get(`/nhan-vien/phong-chat/${roomId}/chi-tiet-don`);
     },
+
+    // ─── THÔNG BÁO CHO NHÂN VIÊN ───
+    getNotifications: () => {
+        return axiosClient.get('/nhan-vien/thong-bao');
+    },
+    markNotificationRead: (id) => {
+        return axiosClient.post(`/nhan-vien/thong-bao/${id}/doc`);
+    },
+    markAllNotificationsRead: () => {
+        return axiosClient.post('/nhan-vien/thong-bao/doc-tat-ca');
+    },
 };
 
 export default nhanVienApi;

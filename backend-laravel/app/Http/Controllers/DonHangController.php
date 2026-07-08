@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\DonHang;
+use App\Models\ThongBao;
+use App\Models\PhongChat;
+use App\Models\TinNhan;
 
 class DonHangController extends Controller
 {
@@ -543,6 +546,35 @@ class DonHangController extends Controller
             $caLamViec->trang_thai_ca = 'KhachHuy';
             $caLamViec->save();
 
+            // Gửi thông báo cho nhân viên nếu ca đã có nhân viên nhận
+            if ($caLamViec->nhan_vien_id) {
+                ThongBao::create([
+                    'loai_nguoi_nhan' => 'NhanVien',
+                    'nguoi_nhan_id'   => $caLamViec->nhan_vien_id,
+                    'tieu_de'         => '🚨 Khách hàng đã hủy lịch làm việc',
+                    'noi_dung'        => "Khách hàng {$khachHang->ho_ten} đã hủy ca làm việc ngày " . \Carbon\Carbon::parse($caLamViec->ngay_lam)->format('d/m/Y') . " lúc " . \Carbon\Carbon::parse($caLamViec->gio_bat_dau)->format('H:i') . ".",
+                    'loai_doi_tuong'  => 'DonHang',
+                    'doi_tuong_id'    => $caLamViec->don_hang_id,
+                    'ngay_tao'        => now(),
+                    'is_da_doc'       => false
+                ]);
+
+                $phongChat = PhongChat::where('don_hang_id', $caLamViec->don_hang_id)
+                    ->where('nhan_vien_id', $caLamViec->nhan_vien_id)
+                    ->first();
+                if ($phongChat) {
+                    TinNhan::create([
+                        'phong_chat_id'  => $phongChat->id,
+                        'nguoi_gui_loai' => 'KhachHang',
+                        'nguoi_gui_id'   => $khachHang->id,
+                        'noi_dung'       => "⚠️ [Hệ thống] Khách hàng đã hủy ca làm việc ngày " . \Carbon\Carbon::parse($caLamViec->ngay_lam)->format('d/m/Y') . " (" . \Carbon\Carbon::parse($caLamViec->gio_bat_dau)->format('H:i') . ").",
+                        'thoi_gian_gui'  => now()
+                    ]);
+                    $phongChat->thoi_gian_nhan_tin_cuoi = now();
+                    $phongChat->save();
+                }
+            }
+
             // Lưu log lịch sử hủy
             \App\Models\YeuCauXuLy::create([
                 'loai_cap_do_yeu_cau' => 'CaLam',
@@ -596,15 +628,50 @@ class DonHangController extends Controller
                 ->whereNotIn('trang_thai_ca', ['DaHuy', 'KhachHuy', 'NhanVienHuy', 'DaHoanThanh'])
                 ->get();
 
+            $notifiedStaffIds = [];
+
             foreach ($caLamViecs as $ca) {
                 // Xóa các yêu cầu dời lịch/đổi nhân viên đang chờ
                 \App\Models\YeuCauXuLy::where('ca_lam_viec_id', $ca->id)
                     ->where('trang_thai_duyet', 'ChoXuLy')
                     ->delete();
 
+                if ($ca->nhan_vien_id && !in_array($ca->nhan_vien_id, $notifiedStaffIds)) {
+                    $notifiedStaffIds[] = $ca->nhan_vien_id;
+                }
+
                 // Cập nhật trạng thái ca
                 $ca->trang_thai_ca = 'KhachHuy';
                 $ca->save();
+            }
+
+            // Gửi thông báo cho từng nhân viên phụ trách ca làm trong đơn
+            foreach ($notifiedStaffIds as $nvId) {
+                ThongBao::create([
+                    'loai_nguoi_nhan' => 'NhanVien',
+                    'nguoi_nhan_id'   => $nvId,
+                    'tieu_de'         => '🚨 Khách hàng đã hủy toàn bộ đơn hàng',
+                    'noi_dung'        => "Khách hàng {$khachHang->ho_ten} đã hủy toàn bộ đơn hàng #DH-" . str_pad($donHang->id, 6, '0', STR_PAD_LEFT) . ". Các ca làm việc liên quan đã được hủy.",
+                    'loai_doi_tuong'  => 'DonHang',
+                    'doi_tuong_id'    => $donHang->id,
+                    'ngay_tao'        => now(),
+                    'is_da_doc'       => false
+                ]);
+
+                $phongChat = PhongChat::where('don_hang_id', $donHang->id)
+                    ->where('nhan_vien_id', $nvId)
+                    ->first();
+                if ($phongChat) {
+                    TinNhan::create([
+                        'phong_chat_id'  => $phongChat->id,
+                        'nguoi_gui_loai' => 'KhachHang',
+                        'nguoi_gui_id'   => $khachHang->id,
+                        'noi_dung'       => "⚠️ [Hệ thống] Khách hàng đã hủy toàn bộ đơn hàng/gói dịch vụ này.",
+                        'thoi_gian_gui'  => now()
+                    ]);
+                    $phongChat->thoi_gian_nhan_tin_cuoi = now();
+                    $phongChat->save();
+                }
             }
 
             // Lưu log lịch sử hủy

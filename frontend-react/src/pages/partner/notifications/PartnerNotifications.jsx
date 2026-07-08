@@ -1,86 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import nhanVienApi from '../../../api/nhanVienApi';
 
 const PartnerNotifications = () => {
-  // Mock data toàn bộ thông báo (Giống bên Layout nhưng nhiều dữ liệu hơn để test cuộn/lọc)
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'Lịch thi Test: Đi chợ & Nấu ăn',
-      desc: 'Hệ thống đã xếp lịch thi cho bạn vào lúc 13:00 - 15:00 ngày 15/06/2026. Vui lòng mang theo CCCD và có mặt đúng giờ để làm bài kiểm tra tay nghề.',
-      time: '10 phút trước',
-      date: '15/06/2026',
-      isRead: false,
-      type: 'exam',
-      icon: 'model_training',
-      bgIcon: 'bg-amber-100 text-amber-600'
-    },
-    {
-      id: 2,
-      title: 'Yêu cầu đổi lịch làm việc thất bại',
-      desc: 'Đơn hàng Tổng vệ sinh sâu #CT-9912 tại Quận 1 không chấp nhận dời lịch từ phía đối tác. Khách hàng đang cần gấp, vui lòng thực hiện đúng thời gian đã cam kết.',
-      time: '2 giờ trước',
-      date: '15/06/2026',
-      isRead: false,
-      type: 'warning',
-      icon: 'warning',
-      bgIcon: 'bg-rose-100 text-rose-600'
-    },
-    {
-      id: 3,
-      title: 'Ví tài khoản tăng +350.000đ',
-      desc: 'Tiền công đơn hàng Tổng vệ sinh sâu #CT-9877 đã được duyệt thanh toán và cộng vào ví của bạn. Kiểm tra mục Ví & Thu nhập để biết thêm chi tiết.',
-      time: 'Hôm qua',
-      date: '14/06/2026',
-      isRead: true,
-      type: 'wallet',
-      icon: 'account_balance_wallet',
-      bgIcon: 'bg-emerald-100 text-emerald-600'
-    },
-    {
-      id: 4,
-      title: 'Đánh giá 5 sao từ Khách hàng',
-      desc: 'Chị Mai Anh (Quận 3) vừa đánh giá bạn 5 sao kèm lời khen: "Dọn dẹp rất kỹ và sạch sẽ, đóng gói rác cẩn thận, thái độ vô cùng lịch sự". Thưởng hiệu suất +10 điểm uy tín.',
-      time: '2 ngày trước',
-      date: '13/06/2026',
-      isRead: true,
-      type: 'review',
-      icon: 'star',
-      bgIcon: 'bg-yellow-100 text-yellow-600'
-    },
-    {
-      id: 5,
-      title: 'Cập nhật chính sách thưởng Tuần mới',
-      desc: 'CleanTrust thông báo chương trình đua top hiệu suất tuần từ 15/06 đến 22/06. Hoàn thành trên 8 đơn hàng nhận ngay voucher thưởng 200.000đ vào ví.',
-      time: '3 ngày trước',
-      date: '12/06/2026',
-      isRead: true,
-      type: 'system',
-      icon: 'campaign',
-      bgIcon: 'bg-blue-100 text-blue-600'
-    }
-  ]);
-
+  const [notifications, setNotifications] = useState([]);
   const [activeTab, setActiveTab] = useState('all'); // 'all' hoặc 'unread'
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Tải danh sách thông báo thực từ API
+  const fetchNotifications = async () => {
+    try {
+      const res = await nhanVienApi.getNotifications();
+      if (res && res.success && Array.isArray(res.data)) {
+        const formatted = res.data.map((item) => {
+          const dateObj = new Date(item.ngay_tao || Date.now());
+          return {
+            id: item.id,
+            title: item.tieu_de || 'Thông báo hệ thống',
+            desc: item.noi_dung || '',
+            time: dateObj.toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+            date: dateObj.toLocaleDateString('vi-VN'),
+            isRead: Boolean(item.is_da_doc),
+            type: item.tieu_de?.includes('hủy') ? 'warning' : 'system',
+            icon: item.tieu_de?.includes('hủy') ? 'warning' : 'notifications',
+            bgIcon: item.tieu_de?.includes('hủy')
+              ? 'bg-rose-100 text-rose-600'
+              : 'bg-emerald-100 text-emerald-600',
+          };
+        });
+        setNotifications(formatted);
+      }
+    } catch (e) {
+      console.error('Lỗi khi tải thông báo nhân viên:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Đếm số lượng thông báo chưa đọc
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   // Xử lý click đọc từng thông báo
-  const handleReadItem = (id) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, isRead: true } : n)
-    );
+  const handleReadItem = async (id) => {
+    try {
+      await nhanVienApi.markNotificationRead(id);
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+      );
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Đọc tất cả
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  const handleMarkAllAsRead = async () => {
+    try {
+      await nhanVienApi.markAllNotificationsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  // Xóa một thông báo (Nếu cần)
+  // Xóa một thông báo trên giao diện
   const handleDeleteItem = (id, e) => {
-    e.stopPropagation(); // Ngăn sự kiện click vào item
+    e.stopPropagation();
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 

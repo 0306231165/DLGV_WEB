@@ -172,6 +172,17 @@ const PartnerMessagePage = () => {
 
   // Component render nội dung tin nhắn
   const renderMessageContent = (msg, index, messages) => {
+    if (msg.text && (msg.text.includes('[Hệ thống]') || msg.text.startsWith('⚠️'))) {
+      return (
+        <div key={msg.id} className="flex justify-center my-3 w-full">
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-2.5 rounded-2xl max-w-[85%] text-center shadow-sm">
+            <p className="text-xs font-bold whitespace-pre-wrap">{msg.text}</p>
+            <span className="text-[10px] text-rose-400 block mt-1">{msg.time}</span>
+          </div>
+        </div>
+      );
+    }
+
     const isMe = msg.sender === 'staff';
     const showAvatar = !isMe && (index === 0 || messages[index - 1].sender === 'staff');
 

@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { SimulatedTimeProvider } from "../contexts/SimulatedTimeContext";
 import SidebarTimeSimulator from "../components/partner/SidebarTimeSimulator";
+import nhanVienApi from "../api/nhanVienApi";
 
 const PartnerLayout = () => {
   const navigate = useNavigate();
@@ -19,63 +20,62 @@ const PartnerLayout = () => {
 
   // ================= STATE QUẢN LÝ THÔNG BÁO CHUYÊN SÂU =================
   const [notiTab, setNotiTab] = useState("all"); // 'all' hoặc 'unread'
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Lịch thi Test: Đi chợ & Nấu ăn",
-      desc: "Hệ thống đã xếp lịch thi cho bạn vào lúc 13:00 - 15:00 ngày 15/06/2026.",
-      time: "10 phút trước",
-      isRead: false,
-      type: "exam",
-      icon: "model_training",
-      bgIcon: "bg-amber-100 text-amber-600",
-    },
-    {
-      id: 2,
-      title: "Yêu cầu đổi lịch làm việc thất bại",
-      desc: "Đơn hàng #CT-9912 tại Quận 1 không chấp nhận dời lịch. Vui lòng làm đúng giờ.",
-      time: "2 giờ trước",
-      isRead: false,
-      type: "warning",
-      icon: "warning",
-      bgIcon: "bg-rose-100 text-rose-600",
-    },
-    {
-      id: 3,
-      title: "Ví tài khoản tăng +350.000đ",
-      desc: "Tiền công đơn hàng Tổng vệ sinh sâu #CT-9877 đã được cộng vào ví của bạn.",
-      time: "Hôm qua",
-      isRead: true,
-      type: "wallet",
-      icon: "account_balance_wallet",
-      bgIcon: "bg-emerald-100 text-emerald-600",
-    },
-    {
-      id: 4,
-      title: "Đánh giá 5 sao từ Khách hàng",
-      desc: 'Chị Mai Anh vừa đánh giá bạn 5 sao kèm lời khen: "Dọn dẹp rất kỹ và sạch sẽ".',
-      time: "2 ngày trước",
-      isRead: true,
-      type: "review",
-      icon: "star",
-      bgIcon: "bg-yellow-100 text-yellow-600",
-    },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+
+  // Tải thông báo thực từ API và polling mỗi 15 giây
+  const fetchNotifications = async () => {
+    try {
+      const res = await nhanVienApi.getNotifications();
+      if (res && res.success && Array.isArray(res.data)) {
+        const formatted = res.data.map((item) => ({
+          id: item.id,
+          title: item.tieu_de || "Thông báo hệ thống",
+          desc: item.noi_dung || "",
+          time: new Date(item.ngay_tao || Date.now()).toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }) + " " + new Date(item.ngay_tao || Date.now()).toLocaleDateString("vi-VN"),
+          isRead: Boolean(item.is_da_doc),
+          type: "alert",
+          icon: item.tieu_de?.includes("hủy") ? "warning" : "notifications",
+          bgIcon: item.tieu_de?.includes("hủy")
+            ? "bg-rose-100 text-rose-600"
+            : "bg-emerald-100 text-emerald-600",
+        }));
+        setNotifications(formatted);
+      }
+    } catch (e) {
+      console.error("Lỗi khi tải thông báo nhân viên:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   // Tính toán số lượng thông báo chưa đọc thực tế
   const unreadNotificationsCount = notifications.filter(
     (n) => !n.isRead,
   ).length;
 
-  // Lấy danh sách hiển thị dựa theo Tab và Giới hạn tối đa 3 item
+  // Lấy danh sách hiển thị dựa theo Tab và Giới hạn tối đa 5 item
   const filteredNotifications = notifications
     .filter((n) => notiTab === "all" || !n.isRead)
-    .slice(0, 3);
+    .slice(0, 5);
 
   // Xử lý đánh dấu đọc tất cả
-  const handleMarkAllAsRead = (e) => {
-    e.stopPropagation(); // Tránh kích hoạt sự kiện ngoài ý muốn
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const handleMarkAllAsRead = async (e) => {
+    e.stopPropagation();
+    try {
+      await nhanVienApi.markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Danh mục thanh Menu bên trái
@@ -188,6 +188,12 @@ const PartnerLayout = () => {
                 <span className="material-symbols-outlined text-[23px] group-hover/noti:rotate-12 transition-transform">
                   notifications
                 </span>
+                {unreadNotificationsCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600 border border-white"></span>
+                  </span>
+                )}
               </button>
 
               <div className="absolute right-0 top-full invisible opacity-0 group-hover/noti:visible group-hover/noti:opacity-100 w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 transform origin-top-right scale-95 group-hover/noti:scale-100 transition-all duration-200 select-none">

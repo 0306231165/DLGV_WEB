@@ -3,6 +3,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\NhanVienController;
 use App\Http\Controllers\CaLamViecController;
 use App\Http\Controllers\PhongChatController;
+use App\Http\Controllers\ThongBaoController;
 
 Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien')->group(function () {
 
@@ -48,5 +49,12 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
     Route::get('/dich-vu-dang-ky', [NhanVienController::class, 'getSkills']);
     Route::post('/dich-vu-dang-ky/{id}/dang-ky', [NhanVienController::class, 'registerSkill']);
     Route::delete('/dich-vu-dang-ky/{id}/huy', [NhanVienController::class, 'cancelSkill']);
+
+    // Thông báo cho nhân viên
+    Route::prefix('thong-bao')->group(function () {
+        Route::get('/', [ThongBaoController::class, 'getStaffNotifications']);
+        Route::post('/{id}/doc', [ThongBaoController::class, 'markStaffAsRead']);
+        Route::post('/doc-tat-ca', [ThongBaoController::class, 'markAllStaffAsRead']);
+    });
 
 });

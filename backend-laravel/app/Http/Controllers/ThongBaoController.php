@@ -86,4 +86,67 @@ class ThongBaoController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Đã xóa thông báo']);
     }
+
+    /**
+     * Lấy danh sách thông báo của Nhân viên hiện tại
+     */
+    public function getStaffNotifications(Request $request)
+    {
+        $nhanVien = \Illuminate\Support\Facades\Auth::user()->nhanVien;
+        if (!$nhanVien) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy tài khoản nhân viên'], 404);
+        }
+
+        $notifications = ThongBao::where('loai_nguoi_nhan', 'NhanVien')
+            ->where('nguoi_nhan_id', $nhanVien->id)
+            ->orderBy('ngay_tao', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $notifications
+        ]);
+    }
+
+    /**
+     * Đánh dấu 1 thông báo của nhân viên là đã đọc
+     */
+    public function markStaffAsRead(Request $request, $id)
+    {
+        $nhanVien = \Illuminate\Support\Facades\Auth::user()->nhanVien;
+        if (!$nhanVien) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy tài khoản nhân viên'], 404);
+        }
+
+        $notification = ThongBao::where('id', $id)
+            ->where('loai_nguoi_nhan', 'NhanVien')
+            ->where('nguoi_nhan_id', $nhanVien->id)
+            ->first();
+
+        if ($notification) {
+            $notification->is_da_doc = true;
+            $notification->save();
+        }
+
+        return response()->json(['success' => true, 'message' => 'Đã đánh dấu đọc']);
+    }
+
+    /**
+     * Đánh dấu tất cả thông báo của nhân viên là đã đọc
+     */
+    public function markAllStaffAsRead(Request $request)
+    {
+        $nhanVien = \Illuminate\Support\Facades\Auth::user()->nhanVien;
+        if (!$nhanVien) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy tài khoản nhân viên'], 404);
+        }
+
+        ThongBao::where('loai_nguoi_nhan', 'NhanVien')
+            ->where('nguoi_nhan_id', $nhanVien->id)
+            ->where('is_da_doc', false)
+            ->update(['is_da_doc' => true]);
+
+        return response()->json(['success' => true, 'message' => 'Đã đánh dấu đọc tất cả']);
+    }
 }
+
