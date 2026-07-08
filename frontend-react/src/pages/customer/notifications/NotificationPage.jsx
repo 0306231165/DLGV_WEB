@@ -1,41 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// MOCK dữ liệu thông báo hệ thống CleanTrust
-const MOCK_ALL_NOTIFICATIONS = [
-  { id: 1, tieu_de: '🎉 Đặt lịch thành công', noi_dung: 'Đơn lịch dọn dẹp hằng ngày #102 của bạn đã được hệ thống tiếp nhận thành công.', ngay_tao: '5 phút trước', is_da_doc: false, loai_doi_tuong: 'Booking', doi_tuong_id: 102 },
-  { id: 2, tieu_de: '💼 Nhân viên đã nhận lịch', noi_dung: 'Chị Trần Thị Mai đã xác nhận tham gia ca làm việc ngày mai (09/06) tại nhà của bạn.', ngay_tao: '1 giờ trước', is_da_doc: false, loai_doi_tuong: 'Booking', doi_tuong_id: 102 },
-  { id: 3, tieu_de: '💰 Biến động số dư ví', noi_dung: 'Tài khoản ví CleanTrust của bạn đã thanh toán tự động 200.000đ cho đơn lịch #102.', ngay_tao: '4 giờ trước', is_da_doc: true, loai_doi_tuong: 'Transaction', doi_tuong_id: 5501 },
-  { id: 4, tieu_de: '🔥 Khuyến mãi độc quyền cuối tuần', noi_dung: 'Nhập ngay mã CLEAN50 để nhận ưu đãi giảm giá 50.000đ cho tất cả các dịch vụ Tổng vệ sinh (Deep Clean). Áp dụng duy nhất tuần này!', ngay_tao: '2 ngày trước', is_da_doc: true, loai_doi_tuong: 'Promotion', doi_tuong_id: 12 },
-  { id: 5, tieu_de: '⭐ Hãy đánh giá dịch vụ', noi_dung: 'Ca làm việc đơn #098 ngày 05/06 đã hoàn thành. Hãy gửi phản hồi về nhân viên để hệ thống tối ưu chất lượng tốt hơn nhé.', ngay_tao: '3 ngày trước', is_da_doc: true, loai_doi_tuong: 'Review', doi_tuong_id: 0 },
-];
+import khachHangApi from '../../../api/khachHangApi';
 
 const NotificationPage = () => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState(MOCK_ALL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
 
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const res = await khachHangApi.getNotifications();
+      if (res && res.success) {
+        setNotifications(res.data || []);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải thông báo:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
   // Đọc đơn lẻ và chuyển hướng tới trang tính năng tương ứng
-  const markAsRead = (id, targetRoute) => {
+  const markAsRead = async (id, targetRoute) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_da_doc: true } : n));
+    try {
+      await khachHangApi.markNotificationRead(id);
+    } catch (error) {
+      console.error('Lỗi đánh dấu đã đọc:', error);
+    }
     if (targetRoute) navigate(targetRoute);
   };
 
   // Đánh dấu đọc tất cả
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, is_da_doc: true })));
+    try {
+      await khachHangApi.markAllNotificationsRead();
+    } catch (error) {
+      console.error('Lỗi đánh dấu đã đọc tất cả:', error);
+    }
   };
 
   // Xóa thông báo khỏi danh sách
-  const deleteNotification = (id, e) => {
+  const deleteNotification = async (id, e) => {
     e.stopPropagation(); // Không kích hoạt sự kiện click thẻ cha
     setNotifications(prev => prev.filter(n => n.id !== id));
+    try {
+      await khachHangApi.deleteNotification(id);
+    } catch (error) {
+      console.error('Lỗi xóa thông báo:', error);
+    }
   };
 
   // Lọc thông báo theo tab
   const filteredNotifications = notifications.filter(n => {
-    if (activeTab === 'booking') return n.loai_doi_tuong === 'Booking';
-    if (activeTab === 'promo') return n.loai_doi_tuong === 'Promotion';
+    if (activeTab === 'booking') return n.loai_doi_tuong === 'Booking' || n.loai_doi_tuong === 'DonHang' || n.loai_doi_tuong === 'CaLamViec';
+    if (activeTab === 'promo') return n.loai_doi_tuong === 'Promotion' || n.loai_doi_tuong === 'KhuyenMai';
     return true;
   });
 
@@ -102,19 +128,19 @@ const NotificationPage = () => {
             let iconStyle = 'bg-primary/10 text-primary';
             let targetRoute = null;
 
-            if (item.loai_doi_tuong === 'Booking') {
+            if (item.loai_doi_tuong === 'Booking' || item.loai_doi_tuong === 'DonHang' || item.loai_doi_tuong === 'CaLamViec') {
               iconName = 'calendar_month';
               iconStyle = 'bg-secondary-container text-on-secondary-container';
               targetRoute = `/my-bookings/${item.doi_tuong_id}`;
-            } else if (item.loai_doi_tuong === 'Transaction') {
+            } else if (item.loai_doi_tuong === 'Transaction' || item.loai_doi_tuong === 'ViTien') {
               iconName = 'account_balance_wallet';
               iconStyle = 'bg-emerald-500/10 text-emerald-600';
               targetRoute = '/wallet';
-            } else if (item.loai_doi_tuong === 'Promotion') {
+            } else if (item.loai_doi_tuong === 'Promotion' || item.loai_doi_tuong === 'KhuyenMai') {
               iconName = 'redeem';
               iconStyle = 'bg-amber-500/10 text-amber-600';
               targetRoute = '/promotions';
-            } else if (item.loai_doi_tuong === 'Review') {
+            } else if (item.loai_doi_tuong === 'Review' || item.loai_doi_tuong === 'DanhGia') {
               iconName = 'star_rate';
               iconStyle = 'bg-primary/10 text-primary';
               targetRoute = '/my-bookings/history';

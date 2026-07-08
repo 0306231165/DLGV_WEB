@@ -1,60 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-
-// MOCK dữ liệu thực tế (Ví dụ danh sách trả về rất nhiều phần tử)
-const MOCK_QUICK_NOTIFICATIONS = [
-  {
-    id: 1,
-    tieu_de: "🎉 Đặt lịch thành công",
-    noi_dung: "Đơn lịch dọn dẹp #102 của bạn đã được hệ thống tiếp nhận.",
-    ngay_tao: "5 phút trước",
-    is_da_doc: false,
-    loai_doi_tuong: "Booking",
-  },
-  {
-    id: 2,
-    tieu_de: "💼 Nhân viên đã nhận lịch",
-    noi_dung:
-      "Chị Trần Thị Mai đã xác nhận tham gia ca làm việc ngày mai của bạn.",
-    ngay_tao: "1 giờ trước",
-    is_da_doc: false,
-    loai_doi_tuong: "Booking",
-  },
-  {
-    id: 3,
-    tieu_de: "🔥 Khuyến mãi độc quyền",
-    noi_dung: "Nhập mã CLEAN50 giảm ngay 50% cho dịch vụ dọn định kỳ tuần này.",
-    ngay_tao: "2 ngày trước",
-    is_da_doc: true,
-    loai_doi_tuong: "Promotion",
-  },
-  {
-    id: 4,
-    tieu_de: "💰 Biến động số dư ví",
-    noi_dung:
-      "Tài khoản ví CleanTrust của bạn đã thanh toán tự động 200.000đ cho đơn lịch #102.",
-    ngay_tao: "4 ngày trước",
-    is_da_doc: true,
-    loai_doi_tuong: "Transaction",
-  },
-  {
-    id: 5,
-    tieu_de: "⭐ Hãy đánh giá dịch vụ",
-    noi_dung:
-      "Ca làm việc đơn #098 đã hoàn thành. Hãy gửi phản hồi về nhân viên nhé.",
-    ngay_tao: "5 ngày trước",
-    is_da_doc: true,
-    loai_doi_tuong: "Review",
-  },
-];
+import khachHangApi from "../../api/khachHangApi";
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const { isLoggedIn, user, logout } = useAuth();
-  const [notifications, setNotifications] = useState(MOCK_QUICK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      khachHangApi.getNotifications()
+        .then(res => {
+          if (res && res.success) {
+            setNotifications(res.data || []);
+          }
+        })
+        .catch(err => console.error("Lỗi lấy thông báo header:", err));
+    } else {
+      setNotifications([]);
+    }
+  }, [isLoggedIn, location.pathname]);
 
   // Đếm tổng số thông báo chưa đọc thực tế trong toàn hệ thống
   const unreadCount = notifications.filter((n) => !n.is_da_doc).length;
@@ -74,12 +42,24 @@ const Header = () => {
     navigate("/");
   };
 
-  const handleMarkAsRead = (id, loai_doi_tuong) => {
+  const handleMarkAsRead = async (id, item) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_da_doc: true } : n)),
     );
-    if (loai_doi_tuong === "Booking") {
-      navigate("/my-bookings");
+    try {
+      await khachHangApi.markNotificationRead(id);
+    } catch (e) {
+      console.error("Lỗi đọc thông báo header:", e);
+    }
+    const loai = item.loai_doi_tuong;
+    if (loai === "Booking" || loai === "DonHang" || loai === "CaLamViec") {
+      navigate(item.doi_tuong_id ? `/my-bookings/${item.doi_tuong_id}` : "/my-bookings");
+    } else if (loai === "Transaction" || loai === "ViTien") {
+      navigate("/wallet");
+    } else if (loai === "Promotion" || loai === "KhuyenMai") {
+      navigate("/promotions");
+    } else if (loai === "Review" || loai === "DanhGia") {
+      navigate("/my-bookings/history");
     }
   };
 
@@ -161,7 +141,7 @@ const Header = () => {
                         <div
                           key={item.id}
                           onClick={() =>
-                            handleMarkAsRead(item.id, item.loai_doi_tuong)
+                            handleMarkAsRead(item.id, item)
                           }
                           className={`p-4 hover:bg-surface-variant/30 cursor-pointer transition-colors flex gap-3 relative items-center ${
                             !item.is_da_doc ? "bg-primary/[0.02]" : "bg-white"

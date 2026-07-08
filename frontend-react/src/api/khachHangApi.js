@@ -145,6 +145,16 @@ const khachHangApi = {
         axiosClient.get(`/khach-hang/phong-chat/${phongChatId}/tin-nhan`),
     sendMessage: (phongChatId, data) =>
         axiosClient.post(`/khach-hang/phong-chat/${phongChatId}/gui-tin`, data),
+
+    // ─── Thông báo ────────────────────────────────────────────────────────────
+    getNotifications: () =>
+        axiosClient.get('/khach-hang/thong-bao'),
+    markNotificationRead: (id) =>
+        axiosClient.post(`/khach-hang/thong-bao/${id}/doc`),
+    markAllNotificationsRead: () =>
+        axiosClient.post('/khach-hang/thong-bao/doc-tat-ca'),
+    deleteNotification: (id) =>
+        axiosClient.delete(`/khach-hang/thong-bao/${id}`),
 };
 
 export default khachHangApi;

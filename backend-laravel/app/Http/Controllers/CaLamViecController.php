@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CaLamViec;
 use App\Models\DonHang;
+use App\Models\ThongBao;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -242,6 +243,17 @@ class CaLamViecController extends Controller
                     'trang_thai_phong' => 'DangHoatDong',
                     'thoi_gian_nhan_tin_cuoi' => now()
                 ]);
+
+                ThongBao::create([
+                    'loai_nguoi_nhan' => 'KhachHang',
+                    'nguoi_nhan_id' => $donHang->khach_hang_id,
+                    'tieu_de' => '💼 Nhân viên đã nhận gói dịch vụ',
+                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' đã xác nhận nhận thực hiện gói lịch dọn dẹp của bạn.',
+                    'loai_doi_tuong' => 'DonHang',
+                    'doi_tuong_id' => $donHangId,
+                    'ngay_tao' => now(),
+                    'is_da_doc' => false
+                ]);
             }
             
             return response()->json(['success' => true, 'message' => 'Nhận gói lịch thành công']);
@@ -271,6 +283,17 @@ class CaLamViecController extends Controller
             ], [
                 'trang_thai_phong' => 'DangHoatDong',
                 'thoi_gian_nhan_tin_cuoi' => now()
+            ]);
+
+            ThongBao::create([
+                'loai_nguoi_nhan' => 'KhachHang',
+                'nguoi_nhan_id' => $donHang->khach_hang_id,
+                'tieu_de' => '💼 Nhân viên đã nhận lịch làm việc',
+                'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' đã xác nhận nhận thực hiện ca làm việc ngày ' . \Carbon\Carbon::parse($ca->ngay_lam)->format('d/m/Y') . ' lúc ' . \Carbon\Carbon::parse($ca->gio_bat_dau)->format('H:i') . '.',
+                'loai_doi_tuong' => 'DonHang',
+                'doi_tuong_id' => $donHang->id,
+                'ngay_tao' => now(),
+                'is_da_doc' => false
             ]);
         }
         
@@ -304,6 +327,18 @@ class CaLamViecController extends Controller
                 }
                 $donHang->trang_thai_don = 'DaHuy';
                 $donHang->save();
+
+                ThongBao::create([
+                    'loai_nguoi_nhan' => 'KhachHang',
+                    'nguoi_nhan_id' => $donHang->khach_hang_id,
+                    'tieu_de' => '⚠️ Nhân viên từ chối lịch chỉ định',
+                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia gói lịch chỉ định của bạn. Đơn hàng đã bị hủy theo yêu cầu không đổi nhân viên của bạn.',
+                    'loai_doi_tuong' => 'DonHang',
+                    'doi_tuong_id' => $donHang->id,
+                    'ngay_tao' => now(),
+                    'is_da_doc' => false
+                ]);
+
                 return response()->json(['success' => true, 'message' => 'Đã từ chối. Đơn hàng bị hủy do khách không muốn đổi nhân viên.']);
             } else {
                 foreach ($cas as $ca) {
@@ -311,6 +346,20 @@ class CaLamViecController extends Controller
                     $ca->trang_thai_ca = 'ChoNhanVienTuDoNhan';
                     $ca->save();
                 }
+
+                if ($donHang) {
+                    ThongBao::create([
+                        'loai_nguoi_nhan' => 'KhachHang',
+                        'nguoi_nhan_id' => $donHang->khach_hang_id,
+                        'tieu_de' => '⚠️ Nhân viên từ chối lịch chỉ định',
+                        'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia gói lịch chỉ định của bạn. Lịch đã được chuyển sang chế độ tự do trên chợ việc cho các nhân viên khác nhận.',
+                        'loai_doi_tuong' => 'DonHang',
+                        'doi_tuong_id' => $donHang->id,
+                        'ngay_tao' => now(),
+                        'is_da_doc' => false
+                    ]);
+                }
+
                 return response()->json(['success' => true, 'message' => 'Đã từ chối gói lịch. Lịch được đẩy lên chợ việc.']);
             }
         }
@@ -327,11 +376,36 @@ class CaLamViecController extends Controller
                 $donHang->trang_thai_don = 'DaHuy';
                 $donHang->save();
 
+                ThongBao::create([
+                    'loai_nguoi_nhan' => 'KhachHang',
+                    'nguoi_nhan_id' => $donHang->khach_hang_id,
+                    'tieu_de' => '⚠️ Nhân viên từ chối lịch chỉ định',
+                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia lịch chỉ định của bạn. Đơn hàng đã bị hủy theo yêu cầu không đổi nhân viên.',
+                    'loai_doi_tuong' => 'DonHang',
+                    'doi_tuong_id' => $donHang->id,
+                    'ngay_tao' => now(),
+                    'is_da_doc' => false
+                ]);
+
                 return response()->json(['success' => true, 'message' => 'Đã từ chối. Đơn hàng bị hủy do khách không muốn đổi nhân viên.']);
             } else {
                 $ca->nhan_vien_id = null;
                 $ca->trang_thai_ca = 'ChoNhanVienTuDoNhan'; // Đẩy ra chợ việc
                 $ca->save();
+
+                if ($donHang) {
+                    ThongBao::create([
+                        'loai_nguoi_nhan' => 'KhachHang',
+                        'nguoi_nhan_id' => $donHang->khach_hang_id,
+                        'tieu_de' => '⚠️ Nhân viên từ chối lịch chỉ định',
+                        'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia lịch chỉ định của bạn. Lịch đã được chuyển sang chế độ tự do cho các nhân viên khác nhận.',
+                        'loai_doi_tuong' => 'DonHang',
+                        'doi_tuong_id' => $donHang->id,
+                        'ngay_tao' => now(),
+                        'is_da_doc' => false
+                    ]);
+                }
+
                 return response()->json(['success' => true, 'message' => 'Đã từ chối lịch. Lịch được đẩy lên chợ việc.']);
             }
         }
@@ -377,6 +451,17 @@ class CaLamViecController extends Controller
                     $ca->donHang->trang_thai_don = 'DaHoanThanh';
                     $ca->donHang->save();
                 }
+
+                ThongBao::create([
+                    'loai_nguoi_nhan' => 'KhachHang',
+                    'nguoi_nhan_id' => $ca->donHang->khach_hang_id,
+                    'tieu_de' => '⭐ Ca làm việc đã hoàn thành',
+                    'noi_dung' => 'Ca làm việc ngày ' . \Carbon\Carbon::parse($ca->ngay_lam)->format('d/m/Y') . ' đã được nhân viên ' . Auth::user()->nhanVien->ho_ten . ' hoàn thành. Hãy gửi phản hồi đánh giá nhé!',
+                    'loai_doi_tuong' => 'DonHang',
+                    'doi_tuong_id' => $ca->don_hang_id,
+                    'ngay_tao' => now(),
+                    'is_da_doc' => false
+                ]);
             }
             
             return response()->json(['success' => true, 'message' => 'Đã hoàn thành ca làm việc']);
@@ -401,6 +486,20 @@ class CaLamViecController extends Controller
             $ca->nhan_vien_id = null;
             $ca->trang_thai_ca = 'ChoNhanVienTuDoNhan';
             $ca->save();
+
+            $donHang = DonHang::find($ca->don_hang_id);
+            if ($donHang) {
+                ThongBao::create([
+                    'loai_nguoi_nhan' => 'KhachHang',
+                    'nguoi_nhan_id' => $donHang->khach_hang_id,
+                    'tieu_de' => '🚨 Nhân viên đã hủy ca làm việc',
+                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' đã hủy nhận ca làm việc ngày ' . \Carbon\Carbon::parse($ca->ngay_lam)->format('d/m/Y') . ' lúc ' . \Carbon\Carbon::parse($ca->gio_bat_dau)->format('H:i') . '. Lịch của bạn đã được đẩy lại lên hệ thống để nhân viên khác nhận.',
+                    'loai_doi_tuong' => 'DonHang',
+                    'doi_tuong_id' => $donHang->id,
+                    'ngay_tao' => now(),
+                    'is_da_doc' => false
+                ]);
+            }
 
             return response()->json(['success' => true, 'message' => 'Đã hủy nhận ca. Lịch được đưa trở lại chợ việc.']);
         }
@@ -432,6 +531,20 @@ class CaLamViecController extends Controller
             ]);
 
         if ($affectedRows > 0) {
+            $donHang = DonHang::find($don_hang_id);
+            if ($donHang) {
+                ThongBao::create([
+                    'loai_nguoi_nhan' => 'KhachHang',
+                    'nguoi_nhan_id' => $donHang->khach_hang_id,
+                    'tieu_de' => '🚨 Nhân viên đã hủy hợp đồng làm việc',
+                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' đã hủy tiếp tục thực hiện các ca làm việc còn lại của hợp đồng #' . $don_hang_id . '. Các lịch chưa làm đã được đẩy lại lên chợ việc.',
+                    'loai_doi_tuong' => 'DonHang',
+                    'doi_tuong_id' => $don_hang_id,
+                    'ngay_tao' => now(),
+                    'is_da_doc' => false
+                ]);
+            }
+
             return response()->json(['success' => true, 'message' => "Đã hủy toàn bộ $affectedRows ca làm việc còn lại của hợp đồng. Lịch đã được đẩy lên chợ việc."]);
         }
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\KhuyenMaiController;
 use App\Http\Controllers\KhachHangController;
 use App\Http\Controllers\ViTienController;
 use App\Http\Controllers\NhanVienController;
+use App\Http\Controllers\ThongBaoController;
 
 Route::middleware(['auth:sanctum', 'ability:role:khach-hang'])->prefix('khach-hang')->group(function () {
 
@@ -70,4 +71,12 @@ Route::middleware(['auth:sanctum', 'ability:role:khach-hang'])->prefix('khach-ha
     Route::get('/phong-chat/danh-sach', [PhongChatController::class, 'getCustomerRooms']);
     Route::get('/phong-chat/{id}/tin-nhan', [PhongChatController::class, 'getMessages']);
     Route::post('/phong-chat/{id}/gui-tin', [PhongChatController::class, 'sendMessage']);
+
+    // ─── Thông báo ────────────────────────────────────────────────────────────
+    Route::prefix('thong-bao')->group(function () {
+        Route::get('/', [ThongBaoController::class, 'getCustomerNotifications']);
+        Route::post('/{id}/doc', [ThongBaoController::class, 'markAsRead']);
+        Route::post('/doc-tat-ca', [ThongBaoController::class, 'markAllAsRead']);
+        Route::delete('/{id}', [ThongBaoController::class, 'destroy']);
+    });
 });
