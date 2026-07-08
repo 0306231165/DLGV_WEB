@@ -12,24 +12,16 @@ export const useSimulatedTime = () => {
   return context;
 };
 
-// Helper tìm thời điểm Chủ Nhật 23:59:59 của tuần chứa ngày date
-const getSundayEndOfWeek = (date) => {
+// Helper tìm thời điểm 23:59:59 của ngày cuối cùng trong tháng chứa ngày date
+const getMonthEnd = (date) => {
   const d = new Date(date);
-  const day = d.getDay(); // 0: CN, 1: T2, ..., 6: T7
-  const diffToSunday = day === 0 ? 0 : 7 - day;
-  d.setDate(d.getDate() + diffToSunday);
-  d.setHours(23, 59, 59, 999);
-  return d;
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
 };
 
-// Helper tìm Thứ 2 00:00:00 của tuần chứa ngày date
-const getMondayStartOfWeek = (date) => {
+// Helper tìm thời điểm 00:00:00 của ngày 1 trong tháng chứa ngày date
+const getMonthStart = (date) => {
   const d = new Date(date);
-  const day = d.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diffToMonday);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
 };
 
 const formatDateShort = (d) => {
@@ -63,12 +55,11 @@ export const SimulatedTimeProvider = ({ children }) => {
     return null;
   };
 
-  // Hàm quyết toán cho tuần vừa qua
-  // Hàm quyết toán cho tuần vừa qua hoặc khoảng thời gian tua vượt qua
-  const triggerWeeklySettlement = async (prevDate, newDate) => {
-    const monday = getMondayStartOfWeek(prevDate);
-    const targetDate = newDate || getSundayEndOfWeek(prevDate);
-    const weekRangeStr = `Từ ${formatDateShort(monday)} đến ${formatDateShort(targetDate)}`;
+  // Hàm quyết toán cho tháng vừa qua hoặc khoảng thời gian tua vượt qua
+  const triggerMonthlySettlement = async (prevDate, newDate) => {
+    const monthStart = getMonthStart(prevDate);
+    const targetDate = getMonthEnd(prevDate);
+    const monthRangeStr = `Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()} (Từ ${formatDateShort(monthStart)} đến ${formatDateShort(targetDate)})`;
 
     try {
       // Lấy lịch sử công việc và ca làm việc để tổng hợp số ca hoàn thành
@@ -82,12 +73,12 @@ export const SimulatedTimeProvider = ({ children }) => {
         ...(resWork?.data || [])
       ];
 
-      // Lọc các ca trong khoảng từ Thứ 2 gần nhất đến ngày kết thúc đã chọn
-      const jobsInWeek = allJobs.filter(job => {
+      // Lọc các ca trong khoảng từ ngày 1 của tháng cũ đến ngày kết thúc đã chọn
+      const jobsInMonth = allJobs.filter(job => {
         const jobDate = parseDateStr(job.dateStr || job.ngay_lam);
         if (!jobDate) return false;
         jobDate.setHours(12, 0, 0, 0);
-        const inRange = jobDate >= monday && jobDate <= targetDate;
+        const inRange = jobDate >= monthStart && jobDate <= targetDate;
         if (!inRange) return false;
 
         // Chỉ duyệt các ca làm việc có trang_thai_ca = DaHoanThanh
@@ -96,8 +87,8 @@ export const SimulatedTimeProvider = ({ children }) => {
         return isCompleted;
       });
 
-      let jobCount = jobsInWeek.length;
-      let totalAmount = jobsInWeek.reduce((sum, job) => {
+      let jobCount = jobsInMonth.length;
+      let totalAmount = jobsInMonth.reduce((sum, job) => {
         const price = Number(job.thuc_nhan_nv || job.price || 250000);
         return sum + (isNaN(price) ? 250000 : price);
       }, 0);
@@ -109,36 +100,36 @@ export const SimulatedTimeProvider = ({ children }) => {
           loai_giao_dich: "NhanLuongCaLam",
           type: "NhanLuongCaLam",
           loai: "NhanLuongCaLam",
-          description: `Nhận lương ca làm (${jobCount} ca hoàn thành - ${weekRangeStr})`,
-          noi_dung: `Nhận lương ca làm (${jobCount} ca hoàn thành - ${weekRangeStr})`,
-          note: `Nhận lương ca làm (${jobCount} ca hoàn thành - ${weekRangeStr})`
+          description: `Nhận lương ca làm (${jobCount} ca hoàn thành - Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()})`,
+          noi_dung: `Nhận lương ca làm (${jobCount} ca hoàn thành - Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()})`,
+          note: `Nhận lương ca làm (${jobCount} ca hoàn thành - Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()})`
         }).catch(err => console.log("Lỗi deposit wallet simulation:", err));
       }
 
       // Hiển thị Modal chúc mừng quyết toán
       setSettlementModal({
         isOpen: true,
-        weekRangeStr,
+        weekRangeStr: monthRangeStr,
         jobCount,
         totalAmount,
         isSuccess: true,
-        message: `Hệ thống đã kiểm tra và chốt sổ ${weekRangeStr}.\nTổng cộng ${jobCount} ca làm việc (Đã hoàn thành). Thu nhập +${totalAmount.toLocaleString("vi-VN")}đ đã được chuyển thẳng vào Ví của bạn!`
+        message: `Hệ thống đã kiểm tra và chốt sổ ${monthRangeStr}.\nTổng cộng ${jobCount} ca làm việc (Đã hoàn thành). Thu nhập +${totalAmount.toLocaleString("vi-VN")}đ đã được chuyển thẳng vào Ví của bạn!`
       });
 
     } catch (error) {
-      console.error("Lỗi khi quyết toán tuần giả lập:", error);
+      console.error("Lỗi khi quyết toán tháng giả lập:", error);
     }
   };
 
-  // Hàm thay đổi thời gian giả lập (có kiểm tra ranh giới tuần)
+  // Hàm thay đổi thời gian giả lập (có kiểm tra ranh giới tháng)
   const setSimulatedTime = (newDate) => {
     setSimulatedTimeState((prevDate) => {
-      const prevSundayEnd = getSundayEndOfWeek(prevDate);
+      const prevMonthEnd = getMonthEnd(prevDate);
       
-      // Nếu thời gian mới tiến vượt qua 23:59:59 Chủ Nhật của tuần cũ -> Kích hoạt quyết toán tuần
-      if (newDate.getTime() > prevSundayEnd.getTime() && newDate > prevDate) {
+      // Nếu thời gian mới tiến vượt qua 23:59:59 ngày cuối cùng của tháng cũ -> Kích hoạt quyết toán tháng
+      if (newDate.getTime() > prevMonthEnd.getTime() && newDate > prevDate) {
         // Trigger asynchronous settlement
-        triggerWeeklySettlement(prevDate, newDate);
+        triggerMonthlySettlement(prevDate, newDate);
       }
       return newDate;
     });
@@ -184,9 +175,9 @@ export const SimulatedTimeProvider = ({ children }) => {
             
             <div className="space-y-2">
               <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-black rounded-full uppercase tracking-wider border border-emerald-200">
-                Tự động quyết toán tuần
+                Tự động quyết toán tháng
               </span>
-              <h3 className="text-xl font-black text-slate-800 tracking-tight">Chốt Sổ Thu Nhập Tuần!</h3>
+              <h3 className="text-xl font-black text-slate-800 tracking-tight">Chốt Sổ Thu Nhập Tháng!</h3>
               <p className="text-xs font-bold text-slate-500">{settlementModal.weekRangeStr}</p>
               
               <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-3 flex items-center justify-around">
