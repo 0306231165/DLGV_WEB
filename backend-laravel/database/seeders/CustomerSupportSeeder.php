@@ -31,14 +31,6 @@ class CustomerSupportSeeder extends Seeder
         DB::table('ThongBao')->insert([
             [
                 'loai_nguoi_nhan' => 'KhachHang', 'nguoi_nhan_id' => 1,
-                'tieu_de' => '🎉 Đặt lịch thành công',
-                'noi_dung' => 'Đơn lịch dọn dẹp hằng ngày #1 của bạn đã được hệ thống tiếp nhận thành công.',
-                'ngay_tao' => Carbon::now()->subMinutes(5),
-                'is_da_doc' => false,
-                'loai_doi_tuong' => 'Booking', 'doi_tuong_id' => 1
-            ],
-            [
-                'loai_nguoi_nhan' => 'KhachHang', 'nguoi_nhan_id' => 1,
                 'tieu_de' => '💼 Nhân viên đã nhận lịch',
                 'noi_dung' => 'Chị Trần Thị Mai đã xác nhận tham gia ca làm việc ngày mai (09/06) tại nhà của bạn.',
                 'ngay_tao' => Carbon::now()->subHours(1),
@@ -60,14 +52,6 @@ class CustomerSupportSeeder extends Seeder
                 'ngay_tao' => Carbon::now()->subDays(2),
                 'is_da_doc' => true,
                 'loai_doi_tuong' => 'Promotion', 'doi_tuong_id' => 3
-            ],
-            [
-                'loai_nguoi_nhan' => 'KhachHang', 'nguoi_nhan_id' => 1,
-                'tieu_de' => '⭐ Hãy đánh giá dịch vụ',
-                'noi_dung' => 'Ca làm việc đơn #2 ngày 05/06 đã hoàn thành. Hãy gửi phản hồi về nhân viên để hệ thống tối ưu chất lượng tốt hơn nhé.',
-                'ngay_tao' => Carbon::now()->subDays(3),
-                'is_da_doc' => true,
-                'loai_doi_tuong' => 'Review', 'doi_tuong_id' => 2
             ],
         ]);
 

@@ -962,6 +962,9 @@ const ScheduleManager = () => {
         district: district,
         paymentMethod: ca.don_hang?.phuong_thuc_tt,
         trang_thai_ca: ca.trang_thai_ca,
+        rawDate: ca.ngay_lam,
+        rawStartTime: ca.gio_bat_dau,
+        durationMinutes: ca.thoi_gian_lam_phut || 120,
         ca_lam_247: ca.don_hang?.ca_lam_247,
         dichVuThem: (() => {
             if (!ca.chi_tiet_dich_vu_them) return null;
@@ -1976,42 +1979,105 @@ const ScheduleManager = () => {
 
               {/* ACTION BUTTONS */}
               <div className="pt-3 border-t border-slate-100 space-y-2">
-                {selectedJob.origin === "calendar" && (
-                  <div className="space-y-2">
-                    {selectedJob.status === "Sắp diễn ra" && (
-                      <button
-                        onClick={() => handleCancelAcceptedJob(selectedJob.id)}
-                        className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2 rounded-xl border border-rose-200 transition-all text-xs"
-                      >
-                        Hủy ca làm đã nhận
-                      </button>
-                    )}
-                    {selectedJob.status === "Sắp diễn ra" && (selectedJob.bookingType === "MONTHLY" || selectedJob.bookingType === "247") && (
-                      <button
-                        onClick={() => handleCancelAcceptedPackage(selectedJob.id)}
-                        className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold py-2 rounded-xl border border-rose-300 transition-all text-xs"
-                      >
-                        Hủy hết hợp đồng
-                      </button>
-                    )}
-                    {selectedJob.status === "Sắp diễn ra" && (
-                      <button
-                        onClick={() => handleUpdateProgress(selectedJob.id)}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs"
-                      >
-                        Bấm chấm công (Vào làm)
-                      </button>
-                    )}
-                    {selectedJob.status === "Đang làm" && (
-                      <button
-                        onClick={() => handleUpdateProgress(selectedJob.id)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs"
-                      >
-                        Hoàn thành ca làm việc
-                      </button>
-                    )}
-                  </div>
-                )}
+                {selectedJob.origin === "calendar" && (() => {
+                  let canCheckIn = true;
+                  let canCheckOut = true;
+                  let checkInReason = "";
+                  let checkOutReason = "";
+
+                  if (selectedJob && selectedJob.rawDate && selectedJob.rawStartTime) {
+                    try {
+                      const shiftStart = new Date(`${selectedJob.rawDate}T${selectedJob.rawStartTime}`);
+                      const shiftEnd = new Date(shiftStart.getTime() + (selectedJob.durationMinutes || 120) * 60000);
+                      const allowCheckInTime = new Date(shiftStart.getTime() - 10 * 60000); // Cho phép trước 10 phút
+
+                      const currentSimTime = TODAY ? new Date(TODAY) : new Date();
+
+                      canCheckIn = currentSimTime >= allowCheckInTime;
+                      canCheckOut = currentSimTime >= shiftEnd;
+
+                      const allowStr = allowCheckInTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+                      const endStr = shiftEnd.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+                      if (!canCheckIn) {
+                        checkInReason = `Mở lúc ${allowStr} (Trước 10p)`;
+                      }
+                      if (!canCheckOut) {
+                        checkOutReason = `Khóa đến giờ kết thúc ca (${endStr})`;
+                      }
+                    } catch (e) {
+                      canCheckIn = true;
+                      canCheckOut = true;
+                    }
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      {selectedJob.status === "Sắp diễn ra" && (
+                        <button
+                          onClick={() => handleCancelAcceptedJob(selectedJob.id)}
+                          className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2 rounded-xl border border-rose-200 transition-all text-xs"
+                        >
+                          Hủy ca làm đã nhận
+                        </button>
+                      )}
+                      {selectedJob.status === "Sắp diễn ra" && (selectedJob.bookingType === "MONTHLY" || selectedJob.bookingType === "247") && (
+                        <button
+                          onClick={() => handleCancelAcceptedPackage(selectedJob.id)}
+                          className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold py-2 rounded-xl border border-rose-300 transition-all text-xs"
+                        >
+                          Hủy hết hợp đồng
+                        </button>
+                      )}
+                      {selectedJob.status === "Sắp diễn ra" && (
+                        <button
+                          disabled={!canCheckIn}
+                          onClick={() => canCheckIn && handleUpdateProgress(selectedJob.id)}
+                          className={`w-full font-bold py-2.5 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-1.5 ${
+                            canCheckIn
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md"
+                              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                          }`}
+                        >
+                          {canCheckIn ? (
+                            <>
+                              <span className="material-symbols-outlined text-sm">play_arrow</span>
+                              Bấm chấm công (Vào làm)
+                            </>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined text-sm">lock</span>
+                              Chưa đến giờ chấm công ({checkInReason})
+                            </>
+                          )}
+                        </button>
+                      )}
+                      {selectedJob.status === "Đang làm" && (
+                        <button
+                          disabled={!canCheckOut}
+                          onClick={() => canCheckOut && handleUpdateProgress(selectedJob.id)}
+                          className={`w-full font-bold py-2.5 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-1.5 ${
+                            canCheckOut
+                              ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-md"
+                              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                          }`}
+                        >
+                          {canCheckOut ? (
+                            <>
+                              <span className="material-symbols-outlined text-sm">check_circle</span>
+                              Hoàn thành ca làm việc
+                            </>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined text-sm">lock</span>
+                              Hoàn thành ca làm việc ({checkOutReason})
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
                 {selectedJob.origin === "offers" && (
                   <div className="flex gap-2">
                     {selectedJob.type === "DIRECT" && (
