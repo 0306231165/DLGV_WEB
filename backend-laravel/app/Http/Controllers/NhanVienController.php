@@ -229,28 +229,28 @@ class NhanVienController extends Controller
             $targetDate = $simulatedDateStr ? \Carbon\Carbon::parse($simulatedDateStr) : now();
 
             $monthStart = $targetDate->copy()->startOfMonth()->toDateString();
-            $currentDateStr = $targetDate->toDateString();
+            $monthEnd = $targetDate->copy()->endOfMonth()->toDateString();
 
-            // 1. Thu nhập trong tháng (từ ngày 1 đến ngày giả lập hiện tại)
+            // 1. Thu nhập trong tháng (từ ngày 1 đến cuối tháng của tháng được chọn)
             $thuNhapThangNay = DB::table('CaLamViec')
                 ->where('nhan_vien_id', $nhanVien->id)
                 ->where('trang_thai_ca', 'DaHoanThanh')
-                ->whereBetween('ngay_lam', [$monthStart, $currentDateStr])
+                ->whereBetween('ngay_lam', [$monthStart, $monthEnd])
                 ->sum('thuc_nhan_nv');
 
-            // 2. Số ca hoàn thành trong tháng (từ ngày 1 đến ngày giả lập hiện tại)
+            // 2. Số ca hoàn thành trong tháng (từ ngày 1 đến cuối tháng của tháng được chọn)
             $caHoanThanhThangNay = DB::table('CaLamViec')
                 ->where('nhan_vien_id', $nhanVien->id)
                 ->where('trang_thai_ca', 'DaHoanThanh')
-                ->whereBetween('ngay_lam', [$monthStart, $currentDateStr])
+                ->whereBetween('ngay_lam', [$monthStart, $monthEnd])
                 ->count();
 
 
-            // 3. Đánh giá sao trung bình trong tháng (từ mùng 1 đến ngày giả lập hiện tại)
+            // 3. Đánh giá sao trung bình trong tháng
             $avgRatingThang = DB::table('CaLamViec')
                 ->where('nhan_vien_id', $nhanVien->id)
                 ->where('trang_thai_ca', 'DaHoanThanh')
-                ->whereBetween('ngay_lam', [$monthStart, $currentDateStr])
+                ->whereBetween('ngay_lam', [$monthStart, $monthEnd])
                 ->whereNotNull('sao_danh_gia')
                 ->avg('sao_danh_gia');
             $danhGiaSaoThang = $avgRatingThang > 0 ? (float)$avgRatingThang : 5.0;
@@ -281,7 +281,7 @@ class NhanVienController extends Controller
             $higherRankCount = DB::table('CaLamViec')
                 ->select('nhan_vien_id')
                 ->where('trang_thai_ca', 'DaHoanThanh')
-                ->whereBetween('ngay_lam', [$monthStart, $targetDate->copy()->endOfMonth()->toDateString()])
+                ->whereBetween('ngay_lam', [$monthStart, $monthEnd])
                 ->whereNotNull('nhan_vien_id')
                 ->groupBy('nhan_vien_id')
                 ->havingRaw('COUNT(*) > ?', [$caHoanThanhThangNay])

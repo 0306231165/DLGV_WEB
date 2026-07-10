@@ -25,6 +25,88 @@ const PartnerWallet = () => {
   const [depositInput, setDepositInput] = useState('');
   const [depositErrorMsg, setDepositErrorMsg] = useState('');
 
+  // State quản lý Modal Chi tiết Giao dịch & Danh sách ca làm việc
+  const [detailModal, setDetailModal] = useState({
+    isOpen: false,
+    txn: null,
+    loadingJobs: false,
+    jobs: [],
+    month: null,
+    year: null
+  });
+
+  const handleOpenDetail = async (txn) => {
+    // Tìm tháng/năm trong nội dung giao dịch (VD: "Tháng 7/2026")
+    const desc = txn.description || txn.noi_dung || txn.note || "";
+    const match = desc.match(/Tháng\s*0?(\d+)\/(\d{4})/i);
+    let targetMonth = null;
+    let targetYear = null;
+
+    if (match) {
+      targetMonth = Number(match[1]);
+      targetYear = Number(match[2]);
+    } else if (txn.date) {
+      const d = new Date(txn.date);
+      targetMonth = d.getMonth() + 1;
+      targetYear = d.getFullYear();
+    }
+
+    setDetailModal({
+      isOpen: true,
+      txn,
+      loadingJobs: true,
+      jobs: [],
+      month: targetMonth,
+      year: targetYear
+    });
+
+    try {
+      const [resHist, resWork] = await Promise.all([
+        nhanVienApi.getJobHistory().catch(() => ({ success: false, data: [] })),
+        nhanVienApi.getWorkingSchedule().catch(() => ({ success: false, data: [] }))
+      ]);
+
+      const allJobs = [
+        ...(resHist?.data || []),
+        ...(resWork?.data || [])
+      ];
+
+      // Lọc ca làm việc hoàn thành trong tháng/năm đó
+      const completedJobs = allJobs.filter(job => {
+        const dateStr = job.dateStr || job.ngay_lam;
+        if (!dateStr) return false;
+        
+        let jobDate = null;
+        const parts = dateStr.split("/");
+        if (parts.length === 3) {
+          jobDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        } else {
+          const isoParts = dateStr.split(" ")[0].split("-");
+          if (isoParts.length === 3) {
+            jobDate = new Date(Number(isoParts[0]), Number(isoParts[1]) - 1, Number(isoParts[2]));
+          }
+        }
+        if (!jobDate) return false;
+
+        const isSameMonth = (jobDate.getMonth() + 1) === targetMonth && jobDate.getFullYear() === targetYear;
+        if (!isSameMonth) return false;
+
+        const status = job.trang_thai_ca || job.status || job.trang_thai || "";
+        const isCompleted = status === "DaHoanThanh" || status === "DA_HOAN_THANH" || status === "completed" || status === "hoan_thanh" || job.isCompleted === true;
+        return isCompleted;
+      });
+
+      setDetailModal(prev => ({
+        ...prev,
+        loadingJobs: false,
+        jobs: completedJobs
+      }));
+    } catch (error) {
+      console.error("Lỗi tải danh sách ca làm chi tiết:", error);
+      setDetailModal(prev => ({ ...prev, loadingJobs: false, jobs: [] }));
+    }
+  };
+
   const fetchWallet = async () => {
     try {
       const response = await nhanVienApi.getWallet();
@@ -327,8 +409,18 @@ const PartnerWallet = () => {
                             })()}
                           </td>
                           <td className="p-4 text-slate-600 max-w-xs truncate font-medium">{txn.description || txn.noi_dung || txn.note || 'Giao dịch ví'}</td>
-                          <td className={`p-4 text-right font-black text-base ${txn.type === 'deposit' || txn.type === 'income' || txn.loai_giao_dich === 'NhanLuongCaLam' || /lương|ca làm|thu nhập|quyết toán/i.test(txn.description || txn.noi_dung || txn.note || "") ? 'text-emerald-600' : 'text-slate-800'}`}>
-                            {txn.type === 'deposit' || txn.type === 'income' ? '+' : '-'}{txn.amount.toLocaleString()}đ
+                          <td className="p-4 text-right">
+                            <div className={`font-black text-base ${txn.type === 'deposit' || txn.type === 'income' || txn.loai_giao_dich === 'NhanLuongCaLam' || /lương|ca làm|thu nhập|quyết toán/i.test(txn.description || txn.noi_dung || txn.note || "") ? 'text-emerald-600' : 'text-slate-800'}`}>
+                              {txn.type === 'deposit' || txn.type === 'income' ? '+' : '-'}{txn.amount.toLocaleString()}đ
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDetail(txn)}
+                              className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition-all cursor-pointer shadow-2xs"
+                            >
+                              <span className="material-symbols-outlined text-xs">visibility</span>
+                              Chi tiết
+                            </button>
                           </td>
                         </tr>
                       ))
@@ -576,6 +668,148 @@ const PartnerWallet = () => {
                   </div>
                 )}
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL CHI TIẾT GIAO DỊCH & CA LÀM VIỆC */}
+        {detailModal.isOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[85vh]">
+              
+              {/* MODAL HEADER */}
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200">
+                    <span className="material-symbols-outlined text-xl">receipt_long</span>
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-900 text-lg leading-tight">Chi tiết Giao dịch & Quyết toán</h3>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Mã GD: <span className="font-bold text-slate-700">{detailModal.txn?.id}</span> • Ngày {displayDate(detailModal.txn?.date)}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setDetailModal(prev => ({ ...prev, isOpen: false }))}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              {/* MODAL BODY */}
+              <div className="p-5 overflow-y-auto space-y-5">
+                {/* Khối tóm tắt số tiền & nội dung */}
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/70 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Nội dung quyết toán</span>
+                    <p className="text-sm font-bold text-slate-800 mt-0.5">
+                      {detailModal.txn?.description || detailModal.txn?.noi_dung || detailModal.txn?.note || "Giao dịch ví"}
+                    </p>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <span className="text-xs font-bold text-slate-400 uppercase">Số tiền giao dịch</span>
+                    <p className="text-2xl font-black text-emerald-600">
+                      +{Number(detailModal.txn?.amount || 0).toLocaleString()}đ
+                    </p>
+                  </div>
+                </div>
+
+                {/* Danh sách ca làm việc chi tiết */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-emerald-600 text-base">work_history</span>
+                      Danh sách ca làm việc hoàn thành
+                      {detailModal.month && detailModal.year && (
+                        <span className="text-xs font-normal text-slate-500">(Tháng {detailModal.month}/{detailModal.year})</span>
+                      )}
+                    </h4>
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                      {detailModal.jobs.length} ca
+                    </span>
+                  </div>
+
+                  {detailModal.loadingJobs ? (
+                    <div className="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+                      <div className="w-8 h-8 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+                      <span className="text-xs font-medium">Đang tải chi tiết các ca làm việc...</span>
+                    </div>
+                  ) : detailModal.jobs.length > 0 ? (
+                    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                      {/* Bảng cuộn dọc max-h-[280px] */}
+                      <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="sticky top-0 bg-slate-100 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 z-10">
+                            <tr>
+                              <th className="p-3.5">Mã ca / Ngày</th>
+                              <th className="p-3.5">Dịch vụ & Khách hàng</th>
+                              <th className="p-3.5">Khung giờ</th>
+                              <th className="p-3.5 text-right">Thu nhập ca</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 text-xs">
+                            {detailModal.jobs.map((job, idx) => {
+                              const price = Number(job.thuc_nhan_nv || job.price || 250000);
+                              return (
+                                <tr key={job.id || idx} className="hover:bg-slate-50 transition-colors">
+                                  <td className="p-3.5 font-bold text-slate-700">
+                                    #{job.id || (idx + 1)}
+                                    <div className="text-[11px] font-normal text-slate-400 mt-0.5">
+                                      {job.dateStr || job.ngay_lam || "N/A"}
+                                    </div>
+                                  </td>
+                                  <td className="p-3.5">
+                                    <div className="font-bold text-slate-800">
+                                      {job.ten_dich_vu || job.serviceName || "Dịch vụ dọn dẹp"}
+                                    </div>
+                                    <div className="text-slate-500 text-[11px] mt-0.5">
+                                      {job.ten_khach_hang || job.khach_hang_ten || "Khách hàng"}
+                                    </div>
+                                  </td>
+                                  <td className="p-3.5 text-slate-600 font-medium">
+                                    {job.timeSlot || job.gio_bat_dau || "08:00 - 12:00"}
+                                  </td>
+                                  <td className="p-3.5 text-right font-black text-emerald-600 text-sm">
+                                    +{price.toLocaleString()}đ
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Footer tổng hợp ca */}
+                      <div className="bg-slate-50 px-4 py-3 border-t border-slate-200 flex items-center justify-between text-xs font-bold">
+                        <span className="text-slate-600">
+                          Tổng hợp ({detailModal.jobs.length} ca hoàn thành):
+                        </span>
+                        <span className="text-emerald-700 text-sm font-black">
+                          +{detailModal.jobs.reduce((sum, job) => sum + Number(job.thuc_nhan_nv || job.price || 250000), 0).toLocaleString()}đ
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500 font-medium">
+                      Giao dịch này là quyết toán/thu nhập trực tiếp hoặc không có ca làm cụ thể nào được lưu trong giai đoạn này.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* MODAL FOOTER */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDetailModal(prev => ({ ...prev, isOpen: false }))}
+                  className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  Đóng chi tiết
+                </button>
+              </div>
+
             </div>
           </div>
         )}
