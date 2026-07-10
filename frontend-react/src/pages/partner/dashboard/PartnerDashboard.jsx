@@ -93,7 +93,7 @@ const PartnerDashboard = () => {
 
       {/* KHỐI 2: THỐNG KÊ CÁ NHÂN THEO THÁNG GIẢ LẬP (Được thêm mới theo yêu cầu) */}
       <div className="space-y-4 pt-4 border-t border-slate-200">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-md">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-md">
           <div>
             <span className="inline-block px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
               Thống kê cá nhân • {thangHienThi}
@@ -102,10 +102,6 @@ const PartnerDashboard = () => {
             <p className="text-xs text-slate-300 mt-1">
               Truy vấn theo ngày giả lập và trạng thái ca làm việc hoàn thành.
             </p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/10 text-right shrink-0">
-            <p className="text-xs text-slate-300 font-medium">Xếp hạng thi đua</p>
-            <p className="text-xl font-black text-amber-300 mt-0.5">{xepHangThang}</p>
           </div>
         </div>
 
@@ -157,7 +153,7 @@ const PartnerDashboard = () => {
               </div>
             </div>
             <div className="mt-4">
-              <h3 className="text-lg font-black text-purple-600 truncate">{xepHangThang}</h3>
+              <h3 className="text-base font-black text-purple-600 leading-snug">{xepHangThang}</h3>
               <p className="text-[11px] text-slate-400 mt-0.5">Theo hiệu suất toàn hệ thống</p>
             </div>
           </div>

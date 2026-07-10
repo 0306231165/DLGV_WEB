@@ -278,18 +278,25 @@ class NhanVienController extends Controller
             }
 
             // 6. Xếp hạng trong tháng của nhân viên
-            $higherRankCount = DB::table('CaLamViec')
-                ->select('nhan_vien_id')
-                ->where('trang_thai_ca', 'DaHoanThanh')
-                ->whereBetween('ngay_lam', [$monthStart, $monthEnd])
-                ->whereNotNull('nhan_vien_id')
-                ->groupBy('nhan_vien_id')
-                ->havingRaw('COUNT(*) > ?', [$caHoanThanhThangNay])
-                ->get()
-                ->count();
+            $totalStaff = max(NhanVien::count(), 1); // Lấy số lượng nhân viên thực tế trong hệ thống
 
-            $rank = $higherRankCount + 1;
-            $totalStaff = max(NhanVien::count(), 152); // Đảm bảo số lượng hiển thị thực tế hoặc quy mô mẫu
+            if ($caHoanThanhThangNay > 0) {
+                $higherRankCount = DB::table('CaLamViec')
+                    ->select('nhan_vien_id')
+                    ->where('trang_thai_ca', 'DaHoanThanh')
+                    ->whereBetween('ngay_lam', [$monthStart, $monthEnd])
+                    ->whereNotNull('nhan_vien_id')
+                    ->groupBy('nhan_vien_id')
+                    ->havingRaw('COUNT(*) > ?', [$caHoanThanhThangNay])
+                    ->get()
+                    ->count();
+
+                $rank = $higherRankCount + 1;
+                $xepHangThangStr = "Vị trí thứ {$rank} / {$totalStaff} nhân viên";
+            } else {
+                $rank = 0;
+                $xepHangThangStr = "Chưa xếp hạng (0 ca)";
+            }
 
             // 7. Thưởng dự kiến theo KPIs / Số ca hoàn thành
             $thuongDuKien = 0;
@@ -341,7 +348,7 @@ class NhanVienController extends Controller
                     'ca_hoan_thanh_thang' => $caHoanThanhThangNay,
                     'danh_gia_sao' => $danhGiaSao,
                     'danh_gia_sao_thang' => $danhGiaSaoThang,
-                    'xep_hang_thang' => "#$rank / $totalStaff nhân viên",
+                    'xep_hang_thang' => $xepHangThangStr,
                     'thuong_du_kien' => $thuongDuKien,
                     'ca_tiep_theo' => $caTiepTheoData
                 ]
