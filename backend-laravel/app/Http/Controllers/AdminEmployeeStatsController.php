@@ -15,29 +15,37 @@ class AdminEmployeeStatsController extends Controller
         try {
             $nhanViens = NhanVien::with('taiKhoan')->get();
             $now = Carbon::now();
-            $startOfWeek = $now->copy()->startOfWeek();
-            $endOfWeek = $now->copy()->endOfWeek();
+            
+            $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : $now->copy()->startOfMonth();
+            $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date'))->endOfDay() : $now->copy()->endOfDay();
 
             $stats = [];
 
             foreach ($nhanViens as $nv) {
-                // Lấy tất cả ca làm việc của nhân viên
-                $totalShifts = CaLamViec::where('nhan_vien_id', $nv->id)->count();
+                // Bỏ qua những nhân viên có tài khoản bị khóa (trạng thái khác HoatDong)
+                if (isset($nv->taiKhoan) && $nv->taiKhoan->trang_thai !== 'HoatDong') {
+                    continue;
+                }
 
-                // Lấy danh sách ID đơn hàng liên quan đến các ca làm việc của nhân viên này
-                $donHangIds = CaLamViec::where('nhan_vien_id', $nv->id)
-                                       ->pluck('don_hang_id')
-                                       ->unique();
+                // Lấy tất cả ca làm việc của nhân viên trong khoảng thời gian
+                $caLamViecsQuery = CaLamViec::where('nhan_vien_id', $nv->id)
+                                            ->whereBetween('ngay_lam', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
 
-                // Tính tổng tiền nhân viên kiếm được trên web (Tất cả đơn hàng hoàn thành mà nhân viên có làm ca)
+                $totalShifts = (clone $caLamViecsQuery)->count();
+
+                // Lấy danh sách ID đơn hàng liên quan đến các ca làm việc của nhân viên này trong kỳ
+                $donHangIds = (clone $caLamViecsQuery)->pluck('don_hang_id')->unique();
+
+                // Tính tổng tiền nhân viên kiếm được trên web trong kỳ
                 $totalWebEarnings = DonHang::whereIn('id', $donHangIds)
                                            ->where('trang_thai_don', 'DaHoanThanh')
                                            ->sum('tong_tien_cuoi_cung');
 
-                // Tính tổng số tiền theo tuần hiện tại
+                // Doanh thu kỳ (giữ nguyên biến weeklyEarnings để frontend đọc)
+                // Ta vẫn có thể gán nó bằng totalWebEarnings vì đều tính trong cùng 1 kỳ
                 $weeklyEarnings = DonHang::whereIn('id', $donHangIds)
                                          ->where('trang_thai_don', 'DaHoanThanh')
-                                         ->whereBetween('ngay_tao', [$startOfWeek, $endOfWeek])
+                                         ->whereBetween('ngay_tao', [$startDate, $endDate])
                                          ->sum('tong_tien_cuoi_cung');
 
                 $stats[] = [

@@ -12,6 +12,7 @@ use App\Http\Controllers\KhieuNaiController;
 use App\Http\Controllers\AdminApprovalController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\AdminEmployeeStatsController;
+use App\Http\Controllers\AdminServiceStatsController;
 // --- CÁC ROUTE ĐANG LÀM GIAO DIỆN CHƯA CẦN BẢO MẬT (Để ra ngoài này) ---
 Route::prefix('admin')->group(function () {
     Route::get('/users', [AdminAccountController::class, 'index']);
@@ -36,6 +37,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/recent-orders', [AdminDashboardController::class, 'recentOrders']);
     Route::get('/reports', [AdminDashboardController::class, 'getReports']);
     Route::get('/employee-stats', [AdminEmployeeStatsController::class, 'index']);
+    Route::get('/service-stats', [AdminServiceStatsController::class, 'index']);
 });
 
 // --- CÁC ROUTE CẦN ĐĂNG NHẬP MỚI ĐƯỢC XEM (Để trong này) ---

@@ -45,7 +45,8 @@ const AdminLayout = () => {
     { path: '/admin/reports', icon: 'bar_chart', label: 'Doanh thu & Thống kê' },
     { path: '/admin/complain', icon: 'feedback', label: 'Khiếu nại & Phản hồi' },
     { path: '/admin/reviews', icon: 'star', label: 'Đánh giá & Nhận xét' },
-     { path: '/admin/employee-stats', icon: 'analytics', label: 'Thống kê nhân viên' },
+     { path: '/admin/employee-stats', icon: 'analytics', label: 'Thống kê theo nhân viên' },
+     { path: '/admin/service-stats', icon: 'category', label: 'Thống kê theo dịch vụ' },
   ];
 
   if (isMinimalLayoutPage) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const EmployeeStats = () => {
+const ServiceStats = () => {
   const getStartOfMonth = () => {
     const d = new Date();
     d.setDate(1);
@@ -25,10 +25,7 @@ const EmployeeStats = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      // Giả sử dùng baseURL trong axiosClient hoặc fetch thẳng.
-      // Do không được sửa axiosClient.js, ta dùng axios trực tiếp hoặc axiosClient.
-      // Các page khác có thể đang dùng url localhost:8000.
-      const response = await axios.get('http://127.0.0.1:8000/api/admin/employee-stats', {
+      const response = await axios.get('http://127.0.0.1:8000/api/admin/service-stats', {
         params: {
           start_date: startDate,
           end_date: endDate
@@ -58,8 +55,8 @@ const EmployeeStats = () => {
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 flex flex-col h-full animate-fade-in-up">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Thống kê Nhân viên</h2>
-          <p className="text-sm text-slate-500 mt-1">Tổng quan doanh thu và số ca làm việc của tất cả nhân viên</p>
+          <h2 className="text-xl font-bold text-slate-800">Thống kê Dịch vụ</h2>
+          <p className="text-sm text-slate-500 mt-1">Tổng quan số lượng gói đã đặt và doanh thu theo dịch vụ</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -105,55 +102,40 @@ const EmployeeStats = () => {
             <thead>
               <tr className="bg-slate-50/80 border-y border-slate-100">
                 <th className="py-4 px-4 font-semibold text-sm text-slate-600 w-16 text-center">ID</th>
-                <th className="py-4 px-4 font-semibold text-sm text-slate-600">Nhân viên</th>
-                <th className="py-4 px-4 font-semibold text-sm text-slate-600 text-center">Số điện thoại</th>
-                <th className="py-4 px-4 font-semibold text-sm text-slate-600 text-center">Trạng thái</th>
-                <th className="py-4 px-4 font-semibold text-sm text-slate-600 text-center">Tổng ca làm</th>
-                <th className="py-4 px-4 font-semibold text-sm text-slate-600 text-right">Doanh thu kỳ</th>
+                <th className="py-4 px-4 font-semibold text-sm text-slate-600">Dịch vụ</th>
+                <th className="py-4 px-4 font-semibold text-sm text-slate-600 text-center">Số gói đã đặt</th>
                 <th className="py-4 px-4 font-semibold text-sm text-slate-600 text-right">Tổng doanh thu</th>
               </tr>
             </thead>
             <tbody>
-              {stats.map((nv, index) => (
+              {stats.map((dv, index) => (
                 <tr 
-                  key={nv.id} 
+                  key={dv.id} 
                   className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
                 >
-                  <td className="py-3 px-4 text-sm text-slate-500 text-center font-medium">#{nv.id}</td>
+                  <td className="py-3 px-4 text-sm text-slate-500 text-center font-medium">#{dv.id}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <img src={nv.avatar} alt="avatar" className="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-sm" />
-                      <span className="font-semibold text-sm text-slate-800">{nv.ho_ten}</span>
+                      <img src={dv.hinh_anh} alt="hinh-anh" className="w-12 h-12 rounded-lg object-cover border border-slate-200 shadow-sm" />
+                      <span className="font-semibold text-sm text-slate-800">{dv.ten_dich_vu}</span>
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-sm text-slate-600 text-center font-medium">{nv.so_dien_thoai}</td>
                   <td className="py-3 px-4 text-center">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide border ${
-                      nv.trang_thai === 'HoatDong' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                      'bg-rose-50 text-rose-600 border-rose-100'
-                    }`}>
-                      {nv.trang_thai === 'HoatDong' ? 'Hoạt động' : nv.trang_thai}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 font-bold text-sm">
-                      {nv.tong_ca_lam_viec}
+                    <span className="inline-flex items-center justify-center min-w-[32px] h-8 px-2 rounded-lg bg-indigo-50 text-indigo-600 font-bold text-sm">
+                      {dv.so_goi_da_dat}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <span className="font-bold text-sm text-emerald-600">{formatCurrency(nv.doanh_thu_tuan)}</span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <span className="font-bold text-sm text-blue-600">{formatCurrency(nv.tong_doanh_thu_web)}</span>
+                    <span className="font-bold text-sm text-blue-600">{formatCurrency(dv.tong_doanh_thu)}</span>
                   </td>
                 </tr>
               ))}
               
               {stats.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-slate-500">
+                  <td colSpan="4" className="py-12 text-center text-slate-500">
                     <span className="material-symbols-outlined text-4xl mb-3 text-slate-300">inbox</span>
-                    <p>Không có dữ liệu nhân viên nào.</p>
+                    <p>Không có dữ liệu dịch vụ nào.</p>
                   </td>
                 </tr>
               )}
@@ -165,4 +147,4 @@ const EmployeeStats = () => {
   );
 };
 
-export default EmployeeStats;
+export default ServiceStats;

@@ -88,6 +88,7 @@ import AdminComplain from "../pages/admin/complain/AdminComplain";
 import AdminLogin from "../pages/admin/login/AdminLogin";
 import AdminReviews from "../pages/admin/reviews/AdminReviews";
 import EmployeeStats from "../pages/admin/employee-stats/EmployeeStats";
+import ServiceStats from "../pages/admin/service-stats/ServiceStats";
 //------------------------------------------------------------------------------------------
 
 const AppRouter = () => {
@@ -388,6 +389,7 @@ const AppRouter = () => {
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="employee-stats" element={<EmployeeStats />} />
+          <Route path="service-stats" element={<ServiceStats />} />
           <Route path="complain" element={<AdminComplain />} />
           <Route path="reviews" element={<AdminReviews />} />
 
