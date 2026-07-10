@@ -716,6 +716,212 @@ const BlockCalendarModal = ({
   );
 };
 
+// ===== CANCEL JOB MODAL =====
+const CancelJobModal = ({ isOpen, onClose, job, cancelType, onConfirmCancel }) => {
+  const [selectedReason, setSelectedReason] = useState("Sức khỏe đột xuất không đảm bảo");
+  const [customNote, setCustomNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statsData, setStatsData] = useState({ count: 0, list: [] });
+
+  // Tính ngày cuối tháng
+  const currentSim = TODAY ? new Date(TODAY) : new Date();
+  const currentMonth = currentSim.getMonth() + 1;
+  const currentYear = currentSim.getFullYear();
+  const lastDayOfMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+  useEffect(() => {
+    if (isOpen) {
+      nhanVienApi
+        .getCancelStatistics({ month: currentMonth, year: currentYear })
+        .then((res) => {
+          if (res && res.success) {
+            setStatsData({ count: res.count || 0, list: res.data || [] });
+          }
+        })
+        .catch((e) => console.error("Lỗi tải thống kê hủy:", e));
+    }
+  }, [isOpen, currentMonth, currentYear]);
+
+  if (!isOpen || !job) return null;
+
+  const cancelCount = statsData.count;
+  const isOverLimit = cancelCount >= 5;
+
+  const quickReasons = [
+    "Sức khỏe đột xuất không đảm bảo",
+    "Phương tiện di chuyển gặp sự cố trên đường",
+    "Gia đình có việc khẩn cấp đột xuất",
+    "Khách hàng đề nghị dời/hủy lịch",
+    "Lý do cá nhân khác",
+  ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const finalReason = customNote ? `${selectedReason} - Chi tiết: ${customNote}` : selectedReason;
+    setIsSubmitting(true);
+    await onConfirmCancel(job, cancelType, finalReason);
+    setIsSubmitting(false);
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[999999] p-4 animate-in fade-in duration-200" style={{ pointerEvents: "all" }}>
+      <div
+        className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden flex flex-col max-h-[92vh]"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-rose-600 p-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-2xl">warning</span>
+            <div>
+              <h3 className="font-bold text-base">
+                {cancelType === "CONTRACT" ? "Yêu cầu Hủy toàn bộ Hợp đồng" : "Yêu cầu Hủy ca làm việc"}
+              </h3>
+              <p className="text-[11px] text-rose-100">
+                Dữ liệu sẽ được tạo và lưu vào bảng YeuCauXuLy
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full hover:bg-rose-700 flex items-center justify-center transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 text-xs">
+          {/* Thông tin ca cần hủy */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-slate-500 uppercase text-[10px]">Đơn dịch vụ</span>
+              <span className="font-black text-rose-600 text-xs">Mã #{job.id}</span>
+            </div>
+            <p className="font-extrabold text-slate-800 text-sm">{job.service}</p>
+            <p className="text-slate-600 font-medium">Khách hàng: <strong>{job.customer}</strong> · {job.dateStr} ({job.time})</p>
+          </div>
+
+          {/* Cảnh báo số lần hủy lịch trong tháng từ YeuCauXuLy */}
+          <div className={`p-4 rounded-2xl border space-y-2.5 ${isOverLimit ? "bg-rose-50 border-rose-300" : "bg-amber-50 border-amber-200"}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-extrabold text-sm text-slate-800">
+                <span className="material-symbols-outlined text-amber-600">history</span>
+                <span>Thống kê hủy ca tháng {currentMonth}/{currentYear} (Từ 01/{String(currentMonth).padStart(2, "0")} đến {lastDayOfMonth}/{String(currentMonth).padStart(2, "0")})</span>
+              </div>
+              <span className={`px-2.5 py-0.5 rounded-full font-black text-xs ${isOverLimit ? "bg-rose-600 text-white" : "bg-amber-500 text-white"}`}>
+                Đã hủy: {cancelCount} ca
+              </span>
+            </div>
+
+            {/* Bảng chi tiết từ YeuCauXuLy */}
+            {cancelCount > 0 ? (
+              <div className="bg-white/90 rounded-xl p-2.5 border border-slate-200 max-h-40 overflow-y-auto space-y-2">
+                {statsData.list.map((c, idx) => (
+                  <div key={c.id || idx} className="text-[11px] text-slate-700 border-b border-slate-100 last:border-0 pb-2 space-y-0.5">
+                    <div className="flex justify-between items-center font-extrabold text-slate-800">
+                      <span>#{c.id} · {c.loai_cap_do_yeu_cau} ({c.loai_cap_do_yeu_cau === "CaLam" ? `ca_lam_id: ${c.ca_lam_viec_id}` : `don_hang_id: ${c.don_hang_id}`})</span>
+                      <span className="text-[10px] text-slate-400">{c.thoi_gian}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Loại: <strong className="text-rose-600">{c.loai_yeu_cau}</strong></span>
+                      <span>Duyệt: <strong className="text-emerald-600">{c.trang_thai_duyet}</strong></span>
+                    </div>
+                    <p className="text-slate-600 italic">Lý do: &ldquo;{c.ly_do}&rdquo;</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-600 text-[11px] italic">Bạn chưa hủy ca nào trong tháng {currentMonth}/{currentYear} (từ ngày 01 đến {lastDayOfMonth}).</p>
+            )}
+
+            {/* Cảnh báo khóa tài khoản nếu >= 5 */}
+            <div className="pt-1 border-t border-amber-200/60">
+              {cancelCount >= 5 ? (
+                <p className="text-rose-700 font-extrabold leading-relaxed flex items-start gap-1.5">
+                  <span className="material-symbols-outlined text-base shrink-0 mt-0.5">gpp_bad</span>
+                  <span>
+                    CẢNH BÁO NGHIÊM TRỌNG: Bạn đã hủy {cancelCount} ca trong tháng! Nếu tiếp tục vượt quá 5 ca, hệ thống sẽ cảnh báo vi phạm và KHÓA TÀI KHOẢN nhân viên.
+                  </span>
+                </p>
+              ) : (
+                <p className="text-amber-800 font-medium leading-relaxed">
+                  Quy định hệ thống: Nhân viên hủy quá 5 ca làm việc trong 1 tháng sẽ bị cảnh báo và khóa tài khoản tạm thời.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Chọn lý do hủy */}
+          <div className="space-y-2">
+            <label className="block font-extrabold text-slate-700 uppercase tracking-wide text-[11px]">
+              Chọn lý do hủy lịch <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-1 gap-1.5">
+              {quickReasons.map((r) => (
+                <button
+                  type="button"
+                  key={r}
+                  onClick={() => setSelectedReason(r)}
+                  className={`text-left px-3.5 py-2 rounded-xl border font-semibold transition-all flex items-center justify-between ${
+                    selectedReason === r
+                      ? "bg-rose-50 border-rose-500 text-rose-800 ring-1 ring-rose-400"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span>{r}</span>
+                  {selectedReason === r && <span className="material-symbols-outlined text-rose-600 text-sm">check_circle</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Ghi chú thêm lý do */}
+          <div className="space-y-1.5">
+            <label className="block font-extrabold text-slate-700 uppercase tracking-wide text-[11px]">
+              Ghi chú chi tiết lý do (Tùy chọn)
+            </label>
+            <textarea
+              rows={2}
+              value={customNote}
+              onChange={(e) => setCustomNote(e.target.value)}
+              placeholder="Nhập thêm mô tả chi tiết nếu cần..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400 text-slate-800 text-xs font-medium"
+            />
+          </div>
+
+          {/* Footer */}
+          <div className="pt-2 flex gap-2.5">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={onClose}
+              className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl transition-all"
+            >
+              Đóng / Giữ lại lịch
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-xl shadow-lg shadow-rose-500/20 transition-all flex items-center justify-center gap-1.5"
+            >
+              {isSubmitting ? (
+                <span>Đang gửi yêu cầu...</span>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-sm">send</span>
+                  <span>Xác nhận Hủy ca</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // ===== NOTIFICATION MODAL =====
 const NotificationModal = ({ isOpen, onClose, title, message, type }) => {
   if (!isOpen) return null;
@@ -789,6 +995,11 @@ const ScheduleManager = () => {
   if (simulatedTime) TODAY = simulatedTime;
 
   const [notifyModal, setNotifyModal] = useState({ isOpen: false, title: "", message: "", type: "info" });
+  const [cancelModalState, setCancelModalState] = useState({
+    isOpen: false,
+    job: null,
+    cancelType: "SINGLE",
+  });
 
   const alert = (msg) => {
     let type = "info";
@@ -1168,37 +1379,40 @@ const ScheduleManager = () => {
 
 
 
-  const handleCancelAcceptedJob = async (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn hủy nhận ca làm này không? Lịch sẽ được đưa trở lại chợ việc.")) {
-      try {
-        const res = await nhanVienApi.cancelAcceptedJob(id);
-        if (res && res.success) {
-          alert(res.message || "Đã hủy ca.");
-          fetchJobsData();
-          setSelectedJob(null);
-        } else {
-          alert(res?.message || "Hủy ca thất bại");
-        }
-      } catch (e) {
-        alert("Lỗi khi hủy ca.");
-      }
-    }
+  const handleCancelAcceptedJob = (id) => {
+    const job =
+      acceptedJobs.find((j) => j.id === id) ||
+      calendarJobs.find((j) => j.id === id) ||
+      selectedJob;
+    setCancelModalState({ isOpen: true, job: job || selectedJob, cancelType: "SINGLE" });
   };
 
-  const handleCancelAcceptedPackage = async (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn hủy toàn bộ phần còn lại của hợp đồng này? Tất cả các ca chưa làm sẽ được đẩy lên chợ việc.")) {
-      try {
-        const res = await nhanVienApi.cancelContract(id);
-        if (res && res.success) {
-          alert(res.message || "Đã hủy hợp đồng.");
-          fetchJobsData();
-          setSelectedJob(null);
-        } else {
-          alert(res?.message || "Hủy hợp đồng thất bại");
-        }
-      } catch (e) {
-        alert("Lỗi khi hủy hợp đồng.");
+  const handleCancelAcceptedPackage = (id) => {
+    const job =
+      acceptedJobs.find((j) => j.id === id) ||
+      calendarJobs.find((j) => j.id === id) ||
+      selectedJob;
+    setCancelModalState({ isOpen: true, job: job || selectedJob, cancelType: "CONTRACT" });
+  };
+
+  const handleConfirmCancelFromModal = async (job, cancelType, reason) => {
+    try {
+      let res;
+      if (cancelType === "CONTRACT") {
+        res = await nhanVienApi.cancelContract(job.id, { ly_do: reason });
+      } else {
+        res = await nhanVienApi.cancelAcceptedJob(job.id, { ly_do: reason });
       }
+      if (res && res.success) {
+        alert(res.message || "Đã gửi yêu cầu hủy và tạo dữ liệu YeuCauXuLy thành công.");
+        setCancelModalState({ isOpen: false, job: null, cancelType: "SINGLE" });
+        fetchJobsData();
+        setSelectedJob(null);
+      } else {
+        alert(res?.message || "Hủy ca thất bại");
+      }
+    } catch (e) {
+      alert("Lỗi khi gửi yêu cầu hủy.");
     }
   };
 
@@ -2422,6 +2636,16 @@ const ScheduleManager = () => {
           </div>
         </div>
       )}
+
+      {/* CANCEL JOB MODAL */}
+      <CancelJobModal
+        isOpen={cancelModalState.isOpen}
+        onClose={() => setCancelModalState({ isOpen: false, job: null, cancelType: "SINGLE" })}
+        job={cancelModalState.job}
+        cancelType={cancelModalState.cancelType}
+        onConfirmCancel={handleConfirmCancelFromModal}
+        historyJobs={jobHistory || []}
+      />
 
       {/* NOTIFICATION MODAL */}
       <NotificationModal

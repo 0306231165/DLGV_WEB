@@ -487,6 +487,20 @@ class CaLamViecController extends Controller
             $ca->trang_thai_ca = 'ChoNhanVienTuDoNhan';
             $ca->save();
 
+            \App\Models\YeuCauXuLy::create([
+                'loai_cap_do_yeu_cau' => 'CaLam',
+                'don_hang_id' => null,
+                'ca_lam_viec_id' => $ca->id,
+                'nguoi_yeu_cau_loai' => 'NhanVien',
+                'nguoi_yeu_cau_id' => $nhanVienId,
+                'loai_yeu_cau' => 'HuyCaLe',
+                'ly_do' => $request->input('ly_do', 'Nhân viên hủy ca làm việc'),
+                'trang_thai_duyet' => 'DaDuyet',
+                'so_tien_hoan_tra' => 0,
+                'so_tien_phat' => 0,
+                'thoi_gian' => now()
+            ]);
+
             $donHang = DonHang::find($ca->don_hang_id);
             if ($donHang) {
                 ThongBao::create([
@@ -531,6 +545,20 @@ class CaLamViecController extends Controller
             ]);
 
         if ($affectedRows > 0) {
+            \App\Models\YeuCauXuLy::create([
+                'loai_cap_do_yeu_cau' => 'DonHang',
+                'don_hang_id' => $don_hang_id,
+                'ca_lam_viec_id' => null,
+                'nguoi_yeu_cau_loai' => 'NhanVien',
+                'nguoi_yeu_cau_id' => $nhanVienId,
+                'loai_yeu_cau' => 'HuyDonToanGoi',
+                'ly_do' => $request->input('ly_do', 'Nhân viên hủy hợp đồng làm việc'),
+                'trang_thai_duyet' => 'DaDuyet',
+                'so_tien_hoan_tra' => 0,
+                'so_tien_phat' => 0,
+                'thoi_gian' => now()
+            ]);
+
             $donHang = DonHang::find($don_hang_id);
             if ($donHang) {
                 ThongBao::create([
@@ -549,6 +577,34 @@ class CaLamViecController extends Controller
         }
 
         return response()->json(['success' => false, 'message' => 'Không có ca làm việc nào chưa bắt đầu để hủy'], 400);
+    }
+
+    /**
+     * Thống kê hủy ca trong tháng (trực tiếp từ bảng YeuCauXuLy)
+     */
+    public function getCancelStatistics(Request $request)
+    {
+        $nhanVienId = Auth::user()->nhanVien->id;
+        $month = (int) $request->input('month', date('m'));
+        $year = (int) $request->input('year', date('Y'));
+
+        $startOfMonth = \Carbon\Carbon::createFromDate($year, $month, 1)->startOfDay();
+        $endOfMonth = (clone $startOfMonth)->endOfMonth()->endOfDay();
+
+        $list = \App\Models\YeuCauXuLy::where('nguoi_yeu_cau_loai', 'NhanVien')
+            ->where('nguoi_yeu_cau_id', $nhanVienId)
+            ->whereIn('loai_yeu_cau', ['HuyCaLe', 'HuyDonToanGoi'])
+            ->whereBetween('thoi_gian', [$startOfMonth, $endOfMonth])
+            ->orderBy('thoi_gian', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'count' => $list->count(),
+            'data' => $list,
+            'start_date' => $startOfMonth->format('d/m/Y'),
+            'end_date' => $endOfMonth->format('d/m/Y')
+        ]);
     }
 
     /**

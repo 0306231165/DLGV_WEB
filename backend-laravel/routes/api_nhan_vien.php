@@ -24,6 +24,7 @@ Route::middleware(['auth:sanctum', 'ability:role:nhan-vien'])->prefix('nhan-vien
     Route::get('/ca-lam/da-nhan', [CaLamViecController::class, 'getAcceptedJobs']); 
     Route::get('/ca-lam/lich-lam-viec', [CaLamViecController::class, 'getWorkingSchedule']); 
     Route::get('/ca-lam/lich-su', [CaLamViecController::class, 'getJobHistory']); 
+    Route::get('/ca-lam/thong-ke-huy', [CaLamViecController::class, 'getCancelStatistics']); 
     Route::post('/ca-lam/{id}/bam-nhan', [CaLamViecController::class, 'acceptJob']); 
     Route::post('/ca-lam/{id}/tu-choi', [CaLamViecController::class, 'rejectJob']); 
     Route::post('/ca-lam/{id}/huy-ca', [CaLamViecController::class, 'cancelAcceptedJob']);

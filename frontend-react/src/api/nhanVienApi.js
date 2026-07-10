@@ -68,17 +68,20 @@ const nhanVienApi = {
     getJobHistory: () => {
         return axiosClient.get('/nhan-vien/ca-lam/lich-su');
     },
+    getCancelStatistics: (params = {}) => {
+        return axiosClient.get('/nhan-vien/ca-lam/thong-ke-huy', { params });
+    },
     acceptJob: (caLamViecId) => {
         return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/bam-nhan`);
     },
     rejectJob: (caLamViecId) => {
         return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/tu-choi`);
     },
-    cancelAcceptedJob: (caLamViecId) => {
-        return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/huy-ca`);
+    cancelAcceptedJob: (caLamViecId, data = {}) => {
+        return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/huy-ca`, data);
     },
-    cancelContract: (caLamViecId) => {
-        return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/huy-hop-dong`);
+    cancelContract: (caLamViecId, data = {}) => {
+        return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/huy-hop-dong`, data);
     },
     updateProgress: (caLamViecId) => {
         return axiosClient.put(`/nhan-vien/ca-lam/${caLamViecId}/cap-nhat`);
