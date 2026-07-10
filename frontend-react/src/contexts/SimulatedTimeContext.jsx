@@ -55,10 +55,12 @@ export const SimulatedTimeProvider = ({ children }) => {
     return null;
   };
 
-  // Hàm quyết toán cho tháng vừa qua hoặc khoảng thời gian tua vượt qua
-  const triggerMonthlySettlement = async (prevDate, newDate) => {
-    const monthStart = getMonthStart(prevDate);
-    const targetDate = getMonthEnd(prevDate);
+  // Hàm quyết toán cho tháng liền trước của newDate
+  const triggerMonthlySettlement = async (newDate) => {
+    // Ngày đại diện cho tháng liền trước newDate
+    const monthToSettleDate = new Date(newDate.getFullYear(), newDate.getMonth() - 1, 15);
+    const monthStart = getMonthStart(monthToSettleDate);
+    const targetDate = getMonthEnd(monthToSettleDate);
     const monthRangeStr = `Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()} (Từ ${formatDateShort(monthStart)} đến ${formatDateShort(targetDate)})`;
 
     try {
@@ -73,7 +75,7 @@ export const SimulatedTimeProvider = ({ children }) => {
         ...(resWork?.data || [])
       ];
 
-      // Lọc các ca trong khoảng từ ngày 1 của tháng cũ đến ngày kết thúc đã chọn
+      // Lọc các ca trong khoảng từ ngày 1 đến ngày cuối của tháng liền trước
       const jobsInMonth = allJobs.filter(job => {
         const jobDate = parseDateStr(job.dateStr || job.ngay_lam);
         if (!jobDate) return false;
@@ -93,17 +95,23 @@ export const SimulatedTimeProvider = ({ children }) => {
         return sum + (isNaN(price) ? 250000 : price);
       }, 0);
 
-      // Gọi API cộng tiền vào ví với loai_giao_dich là NhanLuongCaLam
-      if (totalAmount > 0) {
-        await nhanVienApi.nhanLuongWallet({
-          amount: totalAmount,
-          loai_giao_dich: "NhanLuongCaLam",
-          type: "NhanLuongCaLam",
-          loai: "NhanLuongCaLam",
-          description: `Nhận lương ca làm (${jobCount} ca hoàn thành - Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()})`,
-          noi_dung: `Nhận lương ca làm (${jobCount} ca hoàn thành - Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()})`,
-          note: `Nhận lương ca làm (${jobCount} ca hoàn thành - Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()})`
-        }).catch(err => console.log("Lỗi deposit wallet simulation:", err));
+      // Gọi API quyết toán tháng (backend sẽ kiểm tra bảng GiaoDichVi cột thoi_gian để tránh quyết toán trùng lặp)
+      const resSalary = await nhanVienApi.nhanLuongWallet({
+        amount: totalAmount,
+        loai_giao_dich: "NhanLuongCaLam",
+        type: "NhanLuongCaLam",
+        loai: "NhanLuongCaLam",
+        month: monthStart.getMonth() + 1,
+        year: monthStart.getFullYear(),
+        description: `Nhận lương ca làm (${jobCount} ca hoàn thành - Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()})`,
+        noi_dung: `Nhận lương ca làm (${jobCount} ca hoàn thành - Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()})`,
+        note: `Nhận lương ca làm (${jobCount} ca hoàn thành - Tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()})`
+      }).catch(err => ({ success: false }));
+
+      // Nếu backend báo tháng này đã được quyết toán & chốt sổ trước đó trong GiaoDichVi -> Bỏ qua, không hiện modal lặp lại
+      if (resSalary?.already_settled) {
+        console.log(`Lương tháng ${monthStart.getMonth() + 1}/${monthStart.getFullYear()} đã tồn tại trong GiaoDichVi, không quyết toán lại.`);
+        return;
       }
 
       // Hiển thị Modal chúc mừng quyết toán
@@ -124,12 +132,10 @@ export const SimulatedTimeProvider = ({ children }) => {
   // Hàm thay đổi thời gian giả lập (có kiểm tra ranh giới tháng)
   const setSimulatedTime = (newDate) => {
     setSimulatedTimeState((prevDate) => {
-      const prevMonthEnd = getMonthEnd(prevDate);
-      
-      // Nếu thời gian mới tiến vượt qua 23:59:59 ngày cuối cùng của tháng cũ -> Kích hoạt quyết toán tháng
-      if (newDate.getTime() > prevMonthEnd.getTime() && newDate > prevDate) {
-        // Trigger asynchronous settlement
-        triggerMonthlySettlement(prevDate, newDate);
+      // Khi chuyển sang bất kỳ tháng/năm nào khác với tháng/năm hiện tại -> Kích hoạt quyết toán cho tháng liền trước newDate
+      const isDifferentMonth = newDate.getMonth() !== prevDate.getMonth() || newDate.getFullYear() !== prevDate.getFullYear();
+      if (isDifferentMonth) {
+        triggerMonthlySettlement(newDate);
       }
       return newDate;
     });

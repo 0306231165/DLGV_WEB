@@ -560,7 +560,7 @@ class NhanVienController extends Controller
     {
         try {
             $request->validate([
-                'amount' => 'required|numeric|min:1',
+                'amount' => 'required|numeric|min:0',
             ]);
 
             $taiKhoan = $request->user();
@@ -573,13 +573,40 @@ class NhanVienController extends Controller
                 ]);
             }
 
+            $month = (int) $request->input('month', date('m'));
+            $year = (int) $request->input('year', date('Y'));
+
+            $startOfMonth = \Carbon\Carbon::createFromDate($year, $month, 1)->startOfDay();
+            $endOfMonth = (clone $startOfMonth)->endOfMonth()->endOfDay();
+
+            // Kiểm tra trong bảng GiaoDichVi cột thoi_gian xem đã nhận lương tháng này chưa
+            $exists = \App\Models\GiaoDichVi::where('vi_tien_id', $viTien->id)
+                ->where('loai_giao_dich', 'NhanLuongCaLam')
+                ->whereBetween('thoi_gian', [$startOfMonth, $endOfMonth])
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => true,
+                    'already_settled' => true,
+                    'message' => "Lương tháng $month/$year đã được chốt sổ và nhận trước đó.",
+                    'balance' => $viTien->so_du
+                ]);
+            }
+
             DB::beginTransaction();
             
             $viTien->so_du += $request->amount;
             $viTien->save();
             
-            $noiDung = $request->input('noi_dung', $request->input('description', 'Nhận lương ca làm'));
-            if (empty($noiDung)) $noiDung = 'Nhận lương ca làm';
+            $noiDung = $request->input('noi_dung', $request->input('description', "Nhận lương ca làm tháng $month/$year"));
+            if (empty($noiDung)) $noiDung = "Nhận lương ca làm tháng $month/$year";
+
+            // Đặt thời gian giao dịch là cuối tháng được quyết toán hoặc hiện tại
+            $thoiGianGiaoDich = now();
+            if ($endOfMonth->isPast() || $request->has('month')) {
+                $thoiGianGiaoDich = $endOfMonth;
+            }
 
             \App\Models\GiaoDichVi::create([
                 'ma_giao_dich' => 'SAL' . time() . rand(100, 999),
@@ -590,11 +617,11 @@ class NhanVienController extends Controller
                 'so_du_sau_giao_dich' => $viTien->so_du,
                 'noi_dung' => $noiDung,
                 'trang_thai' => 'ThanhCong',
-                'thoi_gian' => now()
+                'thoi_gian' => $thoiGianGiaoDich
             ]);
             
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Nhận lương thành công!', 'balance' => $viTien->so_du]);
+            return response()->json(['success' => true, 'already_settled' => false, 'message' => 'Nhận lương thành công!', 'balance' => $viTien->so_du]);
         } catch (\Throwable $e) {
             DB::rollBack();
             \Illuminate\Support\Facades\Log::error("Nhan Luong Error: " . $e->getMessage());
