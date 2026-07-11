@@ -922,6 +922,118 @@ const CancelJobModal = ({ isOpen, onClose, job, cancelType, onConfirmCancel }) =
   );
 };
 
+// ===== REJECT OFFER MODAL (TỪ CHỐI LỊCH CHỈ ĐỊNH) =====
+const RejectOfferModal = ({ isOpen, onClose, onConfirm, isSubmitting }) => {
+  const REJECT_REASONS = [
+    "Trùng lịch làm việc / bận việc đột xuất",
+    "Khoảng cách di chuyển quá xa so với vị trí hiện tại",
+    "Thời gian bắt đầu ca làm không phù hợp",
+    "Sức khỏe cá nhân không đảm bảo",
+    "Khác (Nhập lý do cụ thể)"
+  ];
+  const [selectedReason, setSelectedReason] = useState(REJECT_REASONS[0]);
+  const [customReason, setCustomReason] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const finalReason = selectedReason === "Khác (Nhập lý do cụ thể)"
+      ? (customReason.trim() || "Lý do cá nhân khác")
+      : selectedReason;
+    onConfirm(finalReason);
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" style={{ pointerEvents: "all" }}>
+      <div
+        className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 flex flex-col"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-2xl">warning</span>
+            <div>
+              <h3 className="font-bold text-base">Từ chối lịch chỉ định</h3>
+              <p className="text-[11px] text-amber-100">Chọn lý do từ chối đơn lịch này</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Lý do từ chối của bạn sẽ được đính kèm vào thông báo gửi đến Khách hàng để giải thích nguyên nhân.
+          </p>
+
+          <div className="space-y-2">
+            {REJECT_REASONS.map((reason, idx) => (
+              <label
+                key={idx}
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  selectedReason === reason
+                    ? "border-amber-500 bg-amber-50/60 font-bold text-slate-900 shadow-sm"
+                    : "border-slate-200 hover:bg-slate-50 text-slate-700 font-medium"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="reject_reason"
+                  checked={selectedReason === reason}
+                  onChange={() => setSelectedReason(reason)}
+                  className="text-amber-600 focus:ring-amber-500 w-4 h-4"
+                />
+                <span className="text-xs">{reason}</span>
+              </label>
+            ))}
+          </div>
+
+          {selectedReason === "Khác (Nhập lý do cụ thể)" && (
+            <div>
+              <textarea
+                rows={3}
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                placeholder="Nhập chi tiết lý do từ chối của bạn..."
+                className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+              />
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Đóng
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5"
+            >
+              {isSubmitting ? "Đang xử lý..." : "Xác nhận từ chối"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+
 // ===== NOTIFICATION MODAL =====
 const NotificationModal = ({ isOpen, onClose, title, message, type }) => {
   if (!isOpen) return null;
@@ -999,6 +1111,11 @@ const ScheduleManager = () => {
     isOpen: false,
     job: null,
     cancelType: "SINGLE",
+  });
+  const [rejectOfferModal, setRejectOfferModal] = useState({
+    isOpen: false,
+    jobId: null,
+    isSubmitting: false,
   });
 
   const alert = (msg) => {
@@ -1447,21 +1564,31 @@ const ScheduleManager = () => {
     }
   };
 
-  const handleRejectOffer = async (id) => {
-    const reason = prompt("Vui lòng nhập lý do từ chối đơn lịch này:");
-    if (reason !== null) {
-      try {
-        const res = await nhanVienApi.rejectJob(id);
-        if (res && res.success) {
-          alert(`Đã từ chối đơn lịch ${id}.`);
-          fetchJobsData();
-          setSelectedJob(null);
-        } else {
-          alert(res?.message || "Từ chối lịch thất bại");
-        }
-      } catch (e) {
-        alert("Lỗi khi từ chối lịch.");
+  const handleRejectOffer = (id) => {
+    setRejectOfferModal({
+      isOpen: true,
+      jobId: id,
+      isSubmitting: false,
+    });
+  };
+
+  const handleConfirmRejectFromModal = async (finalReason) => {
+    if (!rejectOfferModal.jobId) return;
+    setRejectOfferModal((prev) => ({ ...prev, isSubmitting: true }));
+    try {
+      const res = await nhanVienApi.rejectJob(rejectOfferModal.jobId, { reason: finalReason });
+      if (res && res.success) {
+        alert(`Đã từ chối đơn lịch ${rejectOfferModal.jobId}.`);
+        fetchJobsData();
+        setSelectedJob(null);
+        setRejectOfferModal({ isOpen: false, jobId: null, isSubmitting: false });
+      } else {
+        alert(res?.message || "Từ chối lịch thất bại");
+        setRejectOfferModal((prev) => ({ ...prev, isSubmitting: false }));
       }
+    } catch (e) {
+      alert("Lỗi khi từ chối lịch.");
+      setRejectOfferModal((prev) => ({ ...prev, isSubmitting: false }));
     }
   };
 
@@ -2636,6 +2763,14 @@ const ScheduleManager = () => {
           </div>
         </div>
       )}
+
+      {/* REJECT OFFER MODAL */}
+      <RejectOfferModal
+        isOpen={rejectOfferModal.isOpen}
+        onClose={() => setRejectOfferModal({ isOpen: false, jobId: null, isSubmitting: false })}
+        onConfirm={handleConfirmRejectFromModal}
+        isSubmitting={rejectOfferModal.isSubmitting}
+      />
 
       {/* CANCEL JOB MODAL */}
       <CancelJobModal

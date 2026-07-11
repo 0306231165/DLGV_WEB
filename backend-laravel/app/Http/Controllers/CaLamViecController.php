@@ -306,6 +306,8 @@ class CaLamViecController extends Controller
     public function rejectJob(Request $request, $id)
     {
         $nhanVienId = Auth::user()->nhanVien->id;
+        $reason = trim($request->input('reason', ''));
+        $reasonText = $reason !== '' ? " Lý do: {$reason}." : "";
 
         if (str_starts_with($id, 'PACKAGE_')) {
             $donHangId = str_replace('PACKAGE_', '', $id);
@@ -326,13 +328,14 @@ class CaLamViecController extends Controller
                     $ca->save();
                 }
                 $donHang->trang_thai_don = 'DaHuy';
+                $donHang->nhan_vien_duoc_yeu_cau_id = null;
                 $donHang->save();
 
                 ThongBao::create([
                     'loai_nguoi_nhan' => 'KhachHang',
                     'nguoi_nhan_id' => $donHang->khach_hang_id,
                     'tieu_de' => '⚠️ Nhân viên từ chối lịch chỉ định',
-                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia gói lịch chỉ định của bạn. Đơn hàng đã bị hủy theo yêu cầu không đổi nhân viên của bạn.',
+                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia gói lịch chỉ định của bạn.' . $reasonText . ' Đơn hàng đã bị hủy theo yêu cầu không đổi nhân viên của bạn.',
                     'loai_doi_tuong' => 'DonHang',
                     'doi_tuong_id' => $donHang->id,
                     'ngay_tao' => now(),
@@ -348,11 +351,14 @@ class CaLamViecController extends Controller
                 }
 
                 if ($donHang) {
+                    $donHang->nhan_vien_duoc_yeu_cau_id = null;
+                    $donHang->save();
+
                     ThongBao::create([
                         'loai_nguoi_nhan' => 'KhachHang',
                         'nguoi_nhan_id' => $donHang->khach_hang_id,
                         'tieu_de' => '⚠️ Nhân viên từ chối lịch chỉ định',
-                        'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia gói lịch chỉ định của bạn. Lịch đã được chuyển sang chế độ tự do trên chợ việc cho các nhân viên khác nhận.',
+                        'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia gói lịch chỉ định của bạn.' . $reasonText . ' Lịch đã được chuyển sang chế độ tự do trên chợ việc cho các nhân viên khác nhận.',
                         'loai_doi_tuong' => 'DonHang',
                         'doi_tuong_id' => $donHang->id,
                         'ngay_tao' => now(),
@@ -374,13 +380,14 @@ class CaLamViecController extends Controller
                 $ca->save();
 
                 $donHang->trang_thai_don = 'DaHuy';
+                $donHang->nhan_vien_duoc_yeu_cau_id = null;
                 $donHang->save();
 
                 ThongBao::create([
                     'loai_nguoi_nhan' => 'KhachHang',
                     'nguoi_nhan_id' => $donHang->khach_hang_id,
                     'tieu_de' => '⚠️ Nhân viên từ chối lịch chỉ định',
-                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia lịch chỉ định của bạn. Đơn hàng đã bị hủy theo yêu cầu không đổi nhân viên.',
+                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia lịch chỉ định của bạn.' . $reasonText . ' Đơn hàng đã bị hủy theo yêu cầu không đổi nhân viên.',
                     'loai_doi_tuong' => 'DonHang',
                     'doi_tuong_id' => $donHang->id,
                     'ngay_tao' => now(),
@@ -394,11 +401,14 @@ class CaLamViecController extends Controller
                 $ca->save();
 
                 if ($donHang) {
+                    $donHang->nhan_vien_duoc_yeu_cau_id = null;
+                    $donHang->save();
+
                     ThongBao::create([
                         'loai_nguoi_nhan' => 'KhachHang',
                         'nguoi_nhan_id' => $donHang->khach_hang_id,
                         'tieu_de' => '⚠️ Nhân viên từ chối lịch chỉ định',
-                        'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia lịch chỉ định của bạn. Lịch đã được chuyển sang chế độ tự do cho các nhân viên khác nhận.',
+                        'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' không thể tham gia lịch chỉ định của bạn.' . $reasonText . ' Lịch đã được chuyển sang chế độ tự do cho các nhân viên khác nhận.',
                         'loai_doi_tuong' => 'DonHang',
                         'doi_tuong_id' => $donHang->id,
                         'ngay_tao' => now(),

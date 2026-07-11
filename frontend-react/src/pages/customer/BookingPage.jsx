@@ -98,13 +98,8 @@ const PAYMENT_METHODS = [
 
 const REPLACEMENT_OPTIONS = [
   {
-    id: "favorite",
-    label: "Tìm nhân viên yêu thích thay thế",
-    desc: "Ưu tiên tìm nhân viên bạn đã đánh dấu yêu thích.",
-  },
-  {
     id: "standard",
-    label: "Tìm nhân viên tiêu chuẩn thay thế",
+    label: "Tìm nhân viên thay thế",
     desc: "Phân bổ nhân viên khác phù hợp nhất.",
   },
   {
@@ -116,7 +111,6 @@ const REPLACEMENT_OPTIONS = [
 ];
 
 const REPLACEMENT_OPTION_TO_ENUM = {
-  favorite: "TimNhanVienYeuThich",
   standard: "TimNhanVienTieuChuan",
   none: "KhongTimThayThe",
 };
@@ -2991,11 +2985,9 @@ const BookingPage = () => {
                 <Row
                   label="Phương án thay thế"
                   value={
-                    replacementOption === "favorite"
-                      ? "Tìm nhân viên yêu thích thay thế"
-                      : replacementOption === "standard"
-                        ? "Tìm nhân viên tiêu chuẩn thay thế"
-                        : "Không tìm thay thế – Hủy ca nếu không xác nhận"
+                    replacementOption === "standard"
+                      ? "Tìm nhân viên thay thế"
+                      : "Không tìm thay thế – Hủy ca nếu không xác nhận"
                   }
                   highlight={replacementOption !== "none"}
                 />
@@ -5079,11 +5071,9 @@ const BookingPage = () => {
                           <span
                             className={`font-semibold text-right ml-4 ${replacementOption === "none" ? "text-error" : "text-on-surface"}`}
                           >
-                            {replacementOption === "favorite"
-                              ? "Tìm nhân viên yêu thích thay thế"
-                              : replacementOption === "standard"
-                                ? "Tìm nhân viên tiêu chuẩn thay thế"
-                                : "Không tìm thay thế – Hủy ca nếu không xác nhận"}
+                            {replacementOption === "standard"
+                              ? "Tìm nhân viên thay thế"
+                              : "Không tìm thay thế – Hủy ca nếu không xác nhận"}
                           </span>
                         </div>
                       )}

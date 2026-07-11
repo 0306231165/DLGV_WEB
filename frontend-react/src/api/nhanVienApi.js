@@ -74,8 +74,8 @@ const nhanVienApi = {
     acceptJob: (caLamViecId) => {
         return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/bam-nhan`);
     },
-    rejectJob: (caLamViecId) => {
-        return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/tu-choi`);
+    rejectJob: (caLamViecId, data = {}) => {
+        return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/tu-choi`, data);
     },
     cancelAcceptedJob: (caLamViecId, data = {}) => {
         return axiosClient.post(`/nhan-vien/ca-lam/${caLamViecId}/huy-ca`, data);
