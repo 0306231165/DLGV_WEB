@@ -35,6 +35,7 @@ class AdminAccountController extends Controller
                 'role' => $role,
                 'status' => $status,
                 'created_at' => date('d/m/Y', strtotime($tk->ngay_tao)), 
+                'so_dien_thoai' => $tk->so_dien_thoai,
             ];
         });
 
@@ -50,6 +51,7 @@ class AdminAccountController extends Controller
                 'role' => 'Quản trị viên',
                 'status' => $status,
                 'created_at' => 'N/A', // Bảng taikhoanadmin không có ngay_tao
+                'so_dien_thoai' => $admin->ten_dang_nhap,
             ];
         });
 

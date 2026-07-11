@@ -17,6 +17,10 @@ const AdminAccount = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ ho_ten: '', loai_tai_khoan: 'KhachHang', email: '', mat_khau: '', so_dien_thoai: '' });
 
+  // 4. STATE MODAL XEM THÔNG TIN
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+
   // ================= CÁC HÀM GỌI API LARAVEL =================
 
   const fetchUsers = async () => {
@@ -118,6 +122,47 @@ const AdminAccount = () => {
   return (
     <div className="flex flex-col min-h-full relative p-6">
       
+      {/* MODAL XEM THÔNG TIN */}
+      {isInfoModalOpen && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h2 className="text-lg font-black text-slate-800">Thông tin tài khoản</h2>
+              <button onClick={() => setIsInfoModalOpen(false)} className="text-slate-400 hover:text-rose-500">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-sm font-bold text-slate-700">Mã ID:</span>
+                <span className="text-sm text-slate-600">{selectedUser.id}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-sm font-bold text-slate-700">Tên:</span>
+                <span className="text-sm text-slate-600">{selectedUser.name}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-sm font-bold text-slate-700">Vai trò:</span>
+                <span className="text-sm text-slate-600">{selectedUser.role}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-sm font-bold text-slate-700">Tên đăng nhập / Số điện thoại:</span>
+                <span className="text-sm text-slate-600">{selectedUser.so_dien_thoai || selectedUser.phone || 'Không có'}</span>
+              </div>
+              <div className="flex justify-between pb-2">
+                <span className="text-sm font-bold text-slate-700">Mật khẩu:</span>
+                <span className="text-sm text-slate-600">123456</span>
+              </div>
+              
+              <div className="pt-4 flex">
+                <button type="button" onClick={() => setIsInfoModalOpen(false)} className="w-full px-4 py-2 rounded-xl bg-[#0f2857] text-white font-bold hover:bg-[#1a3873]">Đóng</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL THÊM TÀI KHOẢN MỚI */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
@@ -239,6 +284,18 @@ const AdminAccount = () => {
                     </td>
                     <td className="py-4 pr-6">
                       <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100">
+                        {/* Nút Xem Thông Tin */}
+                        <button 
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setIsInfoModalOpen(true);
+                          }} 
+                          className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 font-bold text-xs hover:bg-blue-100 flex items-center justify-center"
+                          title="Xem thông tin"
+                        >
+                          Chi tiết
+                        </button>
+
                         {/* Nút Khóa / Mở Khóa */}
                         {user.status === 'Hoạt động' ? (
                            <button onClick={() => handleToggleStatus(user.id, user.status)} className="px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 font-bold text-xs hover:bg-orange-100">Khóa</button>
