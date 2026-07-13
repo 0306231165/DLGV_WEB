@@ -255,16 +255,13 @@ class NhanVienController extends Controller
                 ->avg('sao_danh_gia');
             $danhGiaSaoThang = $avgRatingThang > 0 ? (float)$avgRatingThang : 5.0;
 
-            // 4. Tổng số ca hoàn thành toàn bộ (Đảm bảo lấy từ DB/migration, không bao giờ bị 0)
+            // 4. Tổng số ca hoàn thành toàn bộ từ cột trong bảng nhanvien hoặc thực tế trong CaLamViec
             $tongCaHoanThanh = (int) $nhanVien->tong_so_ca_hoan_thanh;
             if ($tongCaHoanThanh <= 0) {
                 $tongCaHoanThanh = DB::table('CaLamViec')
                     ->where('nhan_vien_id', $nhanVien->id)
                     ->where('trang_thai_ca', 'DaHoanThanh')
                     ->count();
-                if ($tongCaHoanThanh <= 0) {
-                    $tongCaHoanThanh = 128; // Giá trị mẫu chuẩn từ migration
-                }
             }
 
             // 5. Đánh giá sao tích lũy toàn bộ (cho khối Tổng quan trên cùng)
