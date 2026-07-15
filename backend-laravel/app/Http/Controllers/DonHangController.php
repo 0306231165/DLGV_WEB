@@ -142,9 +142,17 @@ class DonHangController extends Controller
                 $ngayLamStr = $caLam['ngay_lam'];
                 $dow = (int) date('w', strtotime($ngayLamStr));
                 
+                // 0. Lọc ra các nhân viên đã đăng ký và được duyệt (DaDuyet) cho dịch vụ của ca làm này
+                $skilledStaffIds = DB::table('NhanVien_DichVu')
+                    ->where('dich_vu_id', $caLam['dich_vu_id'])
+                    ->where('trang_thai_duyet', 'DaDuyet')
+                    ->pluck('nhan_vien_id')
+                    ->toArray();
+
                 // 1. Lọc nhân viên có hợp đồng cam kết rảnh hợp lệ trong khoảng thời gian ngày làm
                 $activeStaffIds = DB::table('lichnghi')
                     ->where('loai_nghi', 'DinhKy')
+                    ->whereIn('nhan_vien_id', $skilledStaffIds)
                     ->whereDate('ngay_bat_dau_ap_dung', '<=', $ngayLamStr)
                     ->whereDate('ngay_ket_thuc_ap_dung', '>=', $ngayLamStr)
                     ->pluck('nhan_vien_id')
@@ -297,6 +305,66 @@ class DonHangController extends Controller
                 }
 
                 DB::table('calamviec')->insert($rows);
+
+                // 3.1 Gửi thông báo cho các nhân viên đủ điều kiện (NhanVien_DichVu.trang_thai_duyet = 'DaDuyet')
+                $firstCa = $validated['ca_lam_viec'][0] ?? null;
+                if ($firstCa && isset($firstCa['dich_vu_id'])) {
+                    $dichVuId = $firstCa['dich_vu_id'];
+                    $ngayLam = \Carbon\Carbon::parse($firstCa['ngay_lam'])->format('d/m/Y');
+                    $gioBatDau = $firstCa['gio_bat_dau'];
+
+                    // Tìm danh sách ID nhân viên có dịch vụ đã duyệt khớp với đơn này
+                    $qualifiedStaffIds = DB::table('NhanVien_DichVu')
+                        ->where('dich_vu_id', $dichVuId)
+                        ->where('trang_thai_duyet', 'DaDuyet')
+                        ->pluck('nhan_vien_id')
+                        ->toArray();
+
+                    if (!empty($qualifiedStaffIds)) {
+                        $thongBaos = [];
+                        foreach ($qualifiedStaffIds as $nvId) {
+                            if (!empty($validated['nhan_vien_duoc_yeu_cau_id']) && $nvId == $validated['nhan_vien_duoc_yeu_cau_id']) {
+                                $thongBaos[] = [
+                                    'loai_nguoi_nhan' => 'NhanVien',
+                                    'nguoi_nhan_id'   => $nvId,
+                                    'tieu_de'         => '📌 Bạn nhận được yêu cầu chỉ định ca làm mới',
+                                    'noi_dung'        => "Khách hàng {$validated['ho_ten_thuc_te']} đã chỉ định bạn cho ca làm ngày {$ngayLam} lúc {$gioBatDau}. Vui lòng xác nhận.",
+                                    'loai_doi_tuong'  => 'DonHang',
+                                    'doi_tuong_id'    => $donHang->id,
+                                    'ngay_tao'        => now(),
+                                    'is_da_doc'       => false
+                                ];
+                            } elseif ($autoAssignNhanVienId && $nvId == $autoAssignNhanVienId) {
+                                $thongBaos[] = [
+                                    'loai_nguoi_nhan' => 'NhanVien',
+                                    'nguoi_nhan_id'   => $nvId,
+                                    'tieu_de'         => '🎉 Bạn được gán tự động ca làm việc mới',
+                                    'noi_dung'        => "Hệ thống đã tự động gán cho bạn ca làm ngày {$ngayLam} lúc {$gioBatDau} tại {$validated['dia_chi_thuc_te']}.",
+                                    'loai_doi_tuong'  => 'DonHang',
+                                    'doi_tuong_id'    => $donHang->id,
+                                    'ngay_tao'        => now(),
+                                    'is_da_doc'       => false
+                                ];
+                            } elseif (empty($validated['nhan_vien_duoc_yeu_cau_id']) && !$autoAssignNhanVienId) {
+                                // Ca tự do trên chợ việc
+                                $thongBaos[] = [
+                                    'loai_nguoi_nhan' => 'NhanVien',
+                                    'nguoi_nhan_id'   => $nvId,
+                                    'tieu_de'         => '💼 Có ca làm việc mới phù hợp với kỹ năng của bạn',
+                                    'noi_dung'        => "Khách hàng {$validated['ho_ten_thuc_te']} vừa đặt lịch ngày {$ngayLam} lúc {$gioBatDau}. Hãy vào danh sách chờ nhận ngay!",
+                                    'loai_doi_tuong'  => 'DonHang',
+                                    'doi_tuong_id'    => $donHang->id,
+                                    'ngay_tao'        => now(),
+                                    'is_da_doc'       => false
+                                ];
+                            }
+                        }
+
+                        if (!empty($thongBaos)) {
+                            DB::table('ThongBao')->insert($thongBaos);
+                        }
+                    }
+                }
             }
 
             // 4. Lưu dịch vụ thêm đã chọn (nếu có) vào donhang_dichvuthem

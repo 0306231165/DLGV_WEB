@@ -41,13 +41,23 @@ class CaLamViecController extends Controller
             }
         }
 
+        // Lấy danh sách các dich_vu_id mà nhân viên này đã đăng ký và được duyệt (DaDuyet)
+        $myApprovedServiceIds = \Illuminate\Support\Facades\DB::table('NhanVien_DichVu')
+            ->where('nhan_vien_id', $nhanVienId)
+            ->where('trang_thai_duyet', 'DaDuyet')
+            ->pluck('dich_vu_id')
+            ->toArray();
+
         $caLamViecs = CaLamViec::with(['donHang.khachHang.taiKhoan', 'donHang.dichVuLoaiGoi.dichVu', 'dichVu'])
-            ->where(function($q) use ($nhanVienId) {
-                $q->where('trang_thai_ca', 'ChoNhanVienTuDoNhan')
-                  ->orWhere(function($subQ) use ($nhanVienId) {
-                      $subQ->where('trang_thai_ca', 'ChoNhanVienChiDinhXacNhan')
-                           ->where('nhan_vien_id', $nhanVienId);
-                  });
+            ->where(function($q) use ($nhanVienId, $myApprovedServiceIds) {
+                $q->where(function($subFree) use ($myApprovedServiceIds) {
+                    $subFree->where('trang_thai_ca', 'ChoNhanVienTuDoNhan')
+                            ->whereIn('dich_vu_id', $myApprovedServiceIds); // CHỈ hiển thị ca tự do khớp với kỹ năng/dịch vụ đã được duyệt của nhân viên
+                })
+                ->orWhere(function($subQ) use ($nhanVienId) {
+                    $subQ->where('trang_thai_ca', 'ChoNhanVienChiDinhXacNhan')
+                         ->where('nhan_vien_id', $nhanVienId);
+                });
             })
             ->get();
 

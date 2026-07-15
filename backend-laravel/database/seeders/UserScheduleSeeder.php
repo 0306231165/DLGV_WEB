@@ -113,6 +113,15 @@ class UserScheduleSeeder extends Seeder
         $dichVuList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
         
         foreach ($staffData as $nv) {
+            // Luôn đảm bảo tất cả nhân viên đều có dịch vụ ID = 1 (Dọn dẹp nhà cửa)
+            $staffServices[] = [
+                'nhan_vien_id' => $nv['id'],
+                'dich_vu_id' => 1,
+                'trang_thai_duyet' => 'DaDuyet',
+                'ngay_dang_ky' => now()->subMonths(6),
+                'ngay_duyet' => now()->subMonths(5),
+            ];
+
             // Mỗi nhân viên đăng ký 3-5 dịch vụ ngẫu nhiên (chọn theo id NV)
             $count = ($nv['id'] % 3) + 3;
             for ($i = 0; $i < $count; $i++) {
