@@ -93,6 +93,13 @@ const BookingHistoryPage = () => {
       }
     };
     fetchHistory();
+    const interval = setInterval(fetchHistory, 15000);
+    const handleFocus = () => fetchHistory();
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   // ─── BỘ LỌC TỔNG HỢP ───

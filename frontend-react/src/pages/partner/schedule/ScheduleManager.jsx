@@ -1165,6 +1165,16 @@ const ScheduleManager = () => {
   const [timelineDays, setTimelineDays] = useState(() => generateTimelineDays());
   const [selectedDate, setSelectedDate] = useState(() => generateTimelineDays()[0].dateStr);
 
+  // 1. Khi simulatedTime thay đổi -> reset ngày được chọn về ngày đầu tiên của tuần giả lập
+  useEffect(() => {
+    if (simulatedTime) {
+      TODAY = simulatedTime;
+      const newDays = generateTimelineDays();
+      setSelectedDate(newDays[0].dateStr);
+    }
+  }, [simulatedTime]);
+
+  // 2. Khi simulatedTime hoặc calendarJobs (do polling 10s tải mới) thay đổi -> chỉ cập nhật trạng thái có ca làm (has-jobs) trên timelineDays mà KHÔNG reset selectedDate
   useEffect(() => {
     if (simulatedTime) {
       TODAY = simulatedTime;
@@ -1174,7 +1184,6 @@ const ScheduleManager = () => {
         ...d,
         status: activeJobDates.has(d.dateStr) ? "has-jobs" : "available"
       })));
-      setSelectedDate(newDays[0].dateStr);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simulatedTime, calendarJobs]);
@@ -1346,6 +1355,13 @@ const ScheduleManager = () => {
 
   useEffect(() => {
     fetchJobsData();
+    const interval = setInterval(fetchJobsData, 10000); // Polling ngầm mỗi 10 giây cho trang lịch làm việc
+    const handleFocus = () => fetchJobsData();
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -2325,6 +2341,8 @@ const ScheduleManager = () => {
                   let canCheckOut = true;
                   let checkInReason = "";
                   let checkOutReason = "";
+                  let isPastStartTime = false;
+                  let shiftEndStr = "";
 
                   if (selectedJob && selectedJob.rawDate && selectedJob.rawStartTime) {
                     try {
@@ -2334,13 +2352,15 @@ const ScheduleManager = () => {
 
                       const currentSimTime = TODAY ? new Date(TODAY) : new Date();
 
-                      canCheckIn = currentSimTime >= allowCheckInTime;
+                      canCheckIn = currentSimTime >= allowCheckInTime && currentSimTime <= shiftStart;
                       canCheckOut = currentSimTime >= shiftEnd;
+                      isPastStartTime = currentSimTime > shiftStart;
 
                       const allowStr = allowCheckInTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
                       const endStr = shiftEnd.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+                      shiftEndStr = endStr;
 
-                      if (!canCheckIn) {
+                      if (!canCheckIn && currentSimTime < allowCheckInTime) {
                         checkInReason = `Mở lúc ${allowStr} (Trước 10p)`;
                       }
                       if (!canCheckOut) {
@@ -2371,27 +2391,39 @@ const ScheduleManager = () => {
                         </button>
                       )}
                       {selectedJob.status === "Sắp diễn ra" && (
-                        <button
-                          disabled={!canCheckIn}
-                          onClick={() => canCheckIn && handleUpdateProgress(selectedJob.id)}
-                          className={`w-full font-bold py-2.5 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-1.5 ${
-                            canCheckIn
-                              ? "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md"
-                              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                          }`}
-                        >
-                          {canCheckIn ? (
-                            <>
-                              <span className="material-symbols-outlined text-sm">play_arrow</span>
-                              Bấm chấm công (Vào làm)
-                            </>
-                          ) : (
-                            <>
-                              <span className="material-symbols-outlined text-sm">lock</span>
-                              Chưa đến giờ chấm công ({checkInReason})
-                            </>
-                          )}
-                        </button>
+                        isPastStartTime ? (
+                          <div className="w-full bg-amber-50 border border-amber-300 text-amber-900 p-3 rounded-xl text-xs space-y-1 shadow-sm">
+                            <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                              <span className="material-symbols-outlined text-base text-amber-600">warning</span>
+                              <span>Bạn đã bỏ lỡ giờ bắt đầu ca làm!</span>
+                            </div>
+                            <p className="text-[11px] text-amber-700 leading-relaxed">
+                              Đã qua giờ bắt đầu ca ({selectedJob.rawStartTime}). Ca sẽ tự động bị hủy sau giờ kết thúc ({shiftEndStr}) hoặc bạn có thể chủ động bấm nút Hủy ca phía trên.
+                            </p>
+                          </div>
+                        ) : (
+                          <button
+                            disabled={!canCheckIn}
+                            onClick={() => canCheckIn && handleUpdateProgress(selectedJob.id)}
+                            className={`w-full font-bold py-2.5 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-1.5 ${
+                              canCheckIn
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md"
+                                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                            }`}
+                          >
+                            {canCheckIn ? (
+                              <>
+                                <span className="material-symbols-outlined text-sm">play_arrow</span>
+                                Bấm chấm công (Vào làm)
+                              </>
+                            ) : (
+                              <>
+                                <span className="material-symbols-outlined text-sm">lock</span>
+                                Chưa đến giờ chấm công ({checkInReason})
+                              </>
+                            )}
+                          </button>
+                        )
                       )}
                       {selectedJob.status === "Đang làm" && (
                         <button

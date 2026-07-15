@@ -15,9 +15,9 @@ const MyBookingsLayout = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchBookings = async () => {
+    const fetchBookings = async (isSilent = false) => {
       try {
-        setLoading(true);
+        if (!isSilent) setLoading(true);
         const response = await khachHangApi.getMyBookings();
         if (response.success) {
           const rawData = response.data || [];
@@ -27,10 +27,17 @@ const MyBookingsLayout = () => {
       } catch (error) {
         console.error("Failed to fetch bookings:", error);
       } finally {
-        setLoading(false);
+        if (!isSilent) setLoading(false);
       }
     };
-    fetchBookings();
+    fetchBookings(false);
+    const interval = setInterval(() => fetchBookings(true), 15000); // Polling ngầm mỗi 15 giây
+    const handleFocus = () => fetchBookings(true);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   const filteredData = useMemo(() => {

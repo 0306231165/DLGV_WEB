@@ -8,9 +8,9 @@ const NotificationPage = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const res = await khachHangApi.getNotifications();
       if (res && res.success) {
         setNotifications(res.data || []);
@@ -18,12 +18,19 @@ const NotificationPage = () => {
     } catch (error) {
       console.error('Lỗi khi tải thông báo:', error);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications(false);
+    const interval = setInterval(() => fetchNotifications(true), 15000);
+    const handleFocus = () => fetchNotifications(true);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Đọc đơn lẻ và chuyển hướng tới trang tính năng tương ứng

@@ -12,13 +12,23 @@ const Header = () => {
 
   useEffect(() => {
     if (isLoggedIn) {
-      khachHangApi.getNotifications()
-        .then(res => {
-          if (res && res.success) {
-            setNotifications(res.data || []);
-          }
-        })
-        .catch(err => console.error("Lỗi lấy thông báo header:", err));
+      const fetchNotis = () => {
+        khachHangApi.getNotifications()
+          .then(res => {
+            if (res && res.success) {
+              setNotifications(res.data || []);
+            }
+          })
+          .catch(err => console.error("Lỗi lấy thông báo header:", err));
+      };
+      fetchNotis();
+      const interval = setInterval(fetchNotis, 15000);
+      const handleFocus = () => fetchNotis();
+      window.addEventListener("focus", handleFocus);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("focus", handleFocus);
+      };
     } else {
       setNotifications([]);
     }

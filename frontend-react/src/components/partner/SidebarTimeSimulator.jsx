@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useSimulatedTime } from "../../contexts/SimulatedTimeContext";
 
 const SidebarTimeSimulator = () => {
-  const { simulatedTime, setSimulatedDate, setSimulatedTimeOfDay, resetToRealTime } = useSimulatedTime();
+  const { simulatedTime, setSimulatedTime, setSimulatedDate, setSimulatedTimeOfDay, resetToRealTime } = useSimulatedTime();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("date"); // 'date' hoặc 'time'
@@ -58,13 +58,12 @@ const SidebarTimeSimulator = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (activeTab === "date") {
-      if (formDate) {
-        const [y, m, d] = formDate.split("-").map(Number);
-        setSimulatedDate(y, m - 1, d);
-      }
-    } else {
-      setSimulatedTimeOfDay(Number(formHour || 0), Number(formMinute || 0));
+    if (formDate) {
+      const [y, m, d] = formDate.split("-").map(Number);
+      const h = Number(formHour || 0);
+      const min = Number(formMinute || 0);
+      const newTime = new Date(y, m - 1, d, h, min, 0);
+      setSimulatedTime(newTime);
     }
     setIsModalOpen(false);
   };

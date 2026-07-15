@@ -2,6 +2,11 @@
 import axiosClient from './axiosClient';
 
 const nhanVienApi = {
+    // GET /api/nhan-vien/profile
+    getProfile: () => {
+        return axiosClient.get('/nhan-vien/profile');
+    },
+
     // GET /api/nhan-vien/noi-bat
     getFeaturedStaff: () => {
         return axiosClient.get('/nhan-vien/noi-bat');

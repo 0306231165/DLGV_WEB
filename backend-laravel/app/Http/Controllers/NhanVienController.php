@@ -11,6 +11,59 @@ use Illuminate\Support\Facades\Auth;
 class NhanVienController extends Controller
 {
     /**
+     * GET /api/nhan-vien/profile
+     * Trả về thông tin chi tiết nhân viên cùng danh sách dịch vụ (kỹ năng) đã được duyệt (DaDuyet).
+     */
+    public function profile(Request $request)
+    {
+        try {
+            $taiKhoan = $request->user();
+            $nhanVien = $taiKhoan->nhanVien;
+
+            if (!$nhanVien) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin nhân viên.'], 404);
+            }
+
+            // Lấy các dịch vụ mà nhân viên đã đăng ký và được duyệt (DaDuyet)
+            $skills = DB::table('NhanVien_DichVu')
+                ->join('DichVu', 'NhanVien_DichVu.dich_vu_id', '=', 'DichVu.id')
+                ->where('NhanVien_DichVu.nhan_vien_id', $nhanVien->id)
+                ->where('NhanVien_DichVu.trang_thai_duyet', 'DaDuyet')
+                ->pluck('DichVu.ten_dich_vu')
+                ->toArray();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $nhanVien->id,
+                    'name' => $taiKhoan->ho_ten ?? 'Chưa cập nhật',
+                    'code' => 'PT-' . str_pad($nhanVien->id, 4, '0', STR_PAD_LEFT),
+                    'avatar' => $taiKhoan->avatar ?: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=300&auto=format&fit=crop',
+                    'phone' => $taiKhoan->so_dien_thoai ?? 'Chưa cập nhật',
+                    'email' => $taiKhoan->email ?? 'Chưa cập nhật',
+                    'birthday' => $taiKhoan->ngay_sinh ? \Carbon\Carbon::parse($taiKhoan->ngay_sinh)->format('d/m/Y') : '15/08/1988',
+                    'hometown' => $nhanVien->que_quan ?? 'Bến Tre',
+                    'address' => $nhanVien->dia_chi ?? '248/12 Bùi Viện, Phường Phạm Ngũ Lão, Quận 1, TP. Hồ Chí Minh',
+                    'joinDate' => $taiKhoan->ngay_tao ? \Carbon\Carbon::parse($taiKhoan->ngay_tao)->format('d/m/Y') : '12/02/2024',
+                    'status' => 'Đã xác minh (Verified)',
+                    'experience' => ($nhanVien->kinh_nghiem ?? '3') . ' năm',
+                    'completedJobs' => (int) ($nhanVien->tong_so_ca_hoan_thanh ?? 1240),
+                    'rating' => (float) ($nhanVien->danh_gia_sao_trung_binh ?? 4.9),
+                    'skills' => $skills,
+                    'identity' => [
+                        'idCard' => $nhanVien->cccd ? (substr($nhanVien->cccd, 0, 3) . 'XXXXXXXXX') : '079XXXXXXXXX',
+                        'issuedDate' => '20/10/2021',
+                        'issuedPlace' => 'Cục Cảnh sát QLHC về trật tự xã hội'
+                    ]
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Get Profile Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index()

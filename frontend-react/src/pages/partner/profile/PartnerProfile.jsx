@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import nhanVienApi from '../../../api/nhanVienApi';
 
 const PartnerProfile = () => {
-  // Thông tin giả lập chi tiết của Đối tác
-  const partnerData = {
+  const [partnerData, setPartnerData] = useState({
     name: "Nguyễn Thị Hoa",
     code: "PT-8821",
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=300&auto=format&fit=crop",
@@ -16,13 +16,38 @@ const PartnerProfile = () => {
     experience: "3 năm",
     completedJobs: 1240,
     rating: 4.9,
-    skills: ["Dọn dẹp nhà cửa", "Vệ sinh định kỳ", "Giặt là phân loại", "Nấu ăn gia đình văn phòng", "Khử khuẩn sâu"],
+    skills: [],
     identity: {
       idCard: "079XXXXXXXXX",
       issuedDate: "20/10/2021",
       issuedPlace: "Cục Cảnh sát QLHC về trật tự xã hội"
     }
-  };
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const res = await nhanVienApi.getProfile();
+        if (res && res.success && res.data) {
+          setPartnerData((prev) => ({
+            ...prev,
+            ...res.data,
+            identity: {
+              ...prev.identity,
+              ...(res.data.identity || {})
+            }
+          }));
+        }
+      } catch (e) {
+        console.error("Lỗi tải thông tin hồ sơ đối tác:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -128,22 +153,36 @@ const PartnerProfile = () => {
 
       {/* CARD 4: KỸ NĂNG CHUYÊN MÔN ĐÃ ĐƯỢC KIỂM TRA TAY NGHỀ */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm space-y-4">
-        <h3 className="text-base font-black text-slate-800 flex items-center gap-2 pb-3 border-b border-slate-100">
-          <span className="material-symbols-outlined text-emerald-600 text-xl">workspace_premium</span>
-          Hồ sơ năng lực & Dịch vụ nhận đảm nhiệm
-        </h3>
-        <p className="text-xs text-slate-400 font-medium">Đây là danh sách các kỹ năng chuyên môn đã qua kỳ kiểm tra tay nghề nghiêm ngặt và đạt chuẩn chứng nhận CleanTrust.</p>
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+            <span className="material-symbols-outlined text-emerald-600 text-xl">workspace_premium</span>
+            Hồ sơ năng lực & Dịch vụ nhận đảm nhiệm
+          </h3>
+          {loading && (
+            <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+              Đang đồng bộ...
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-slate-400 font-medium">Đây là danh sách các kỹ năng chuyên môn đã qua kỳ kiểm tra tay nghề nghiêm ngặt và đạt chuẩn chứng nhận CleanTrust (Trạng thái duyệt: Đã duyệt).</p>
         
         <div className="flex flex-wrap gap-2.5 pt-1">
-          {partnerData.skills.map((skill, index) => (
-            <div 
-              key={index}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200/70 text-slate-700 text-xs font-bold rounded-xl shadow-sm"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              {skill}
+          {partnerData.skills && partnerData.skills.length > 0 ? (
+            partnerData.skills.map((skill, index) => (
+              <div 
+                key={index}
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200/70 text-slate-700 text-xs font-bold rounded-xl shadow-sm hover:bg-emerald-50 hover:border-emerald-200 transition-all"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                {skill}
+              </div>
+            ))
+          ) : (
+            <div className="text-xs font-semibold text-slate-400 italic py-3 bg-slate-50/80 w-full rounded-xl text-center border border-dashed border-slate-200">
+              Chưa có dịch vụ/kỹ năng nào được phê duyệt thi tay nghề đạt chuẩn (hoặc đang ở trạng thái chờ duyệt).
             </div>
-          ))}
+          )}
         </div>
       </div>
 
