@@ -1106,6 +1106,7 @@ const ScheduleManager = () => {
   const { simulatedTime } = useSimulatedTime();
   if (simulatedTime) TODAY = simulatedTime;
 
+  const [isSimulateGPS, setIsSimulateGPS] = useState(true); // Mặc định bật chế độ giả lập GPS khi Demo trên lớp
   const [notifyModal, setNotifyModal] = useState({ isOpen: false, title: "", message: "", type: "info" });
   const [cancelModalState, setCancelModalState] = useState({
     isOpen: false,
@@ -1267,6 +1268,8 @@ const ScheduleManager = () => {
     return {
         id: ca.id,
         don_hang_id: ca.don_hang_id,
+        latKhach: ca.don_hang?.vi_do || null,
+        lngKhach: ca.don_hang?.kinh_do || null,
         type: ca.trang_thai_ca === 'ChoNhanVienChiDinhXacNhan' ? 'DIRECT' : (ca.loai_ghep === 'TuDong' ? 'AUTO' : 'FREELANCE'),
         customer: ca.don_hang?.ho_ten_thuc_te || ca.don_hang?.khach_hang?.tai_khoan?.ho_ten,
         phone: ca.don_hang?.sdt_thuc_te || ca.don_hang?.khach_hang?.tai_khoan?.so_dien_thoai,
@@ -1549,6 +1552,19 @@ const ScheduleManager = () => {
     }
   };
 
+  // Hàm tính khoảng cách Haversine giữa 2 tọa độ (trả về mét)
+  const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
+    const R = 6371000; // Bán kính trái đất tính bằng mét
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return Math.round(R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))));
+  };
+
   const handleUpdateProgress = async (id) => {
     try {
       const res = await nhanVienApi.updateProgress(id);
@@ -1562,6 +1578,64 @@ const ScheduleManager = () => {
     } catch (e) {
       alert("Lỗi khi cập nhật tiến độ.");
     }
+  };
+
+  // Hàm chấm công / hoàn thành có kiểm tra hàng rào địa lý (GPS Geofencing)
+  const handleUpdateProgressWithGPS = async (job) => {
+    if (isSimulateGPS) {
+      alert("🕹️ [CHẾ ĐỘ DEMO] Giả lập GPS: Nhân viên đang có mặt tại đúng tọa độ nhà khách hàng!\n\nĐang tiến hành xác nhận trạng thái ca làm...");
+      await handleUpdateProgress(job.id);
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      alert("❌ Trình duyệt của bạn không hỗ trợ định vị GPS!");
+      return;
+    }
+
+    if (!job.latKhach || !job.lngKhach) {
+      alert("⚠️ Đơn hàng này chưa có tọa độ nhà khách hàng trong dữ liệu.\nCho phép cập nhật tiến độ!");
+      await handleUpdateProgress(job.id);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const latThucTe = position.coords.latitude;
+        const lngThucTe = position.coords.longitude;
+        const latKhach = Number(job.latKhach);
+        const lngKhach = Number(job.lngKhach);
+        const khoangCach = calculateDistanceMeters(latThucTe, lngThucTe, latKhach, lngKhach);
+
+        // --- IN RA F12 CONSOLE ĐỂ KIỂM TRA TỌA ĐỘ RÕ RÀNG ---
+        console.group("📍 [CleanTrust Geofencing] Kiểm tra vị trí GPS khi chấm công");
+        console.log("👉 Đơn hàng ID:", job.id, "-", job.service);
+        console.table({
+          "🏠 Nhà Khách Hàng (Trong DB)": { "Vĩ độ (Lat)": latKhach, "Kinh độ (Lng)": lngKhach },
+          "📱 GPS Nhân Viên (Thực tế)": { "Vĩ độ (Lat)": latThucTe, "Kinh độ (Lng)": lngThucTe },
+        });
+        const khoangCachText = khoangCach >= 1000 
+          ? `${(khoangCach / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} km`
+          : `${khoangCach.toLocaleString('vi-VN')} mét`;
+
+        console.log(`📏 Khoảng cách đo được (Haversine): ${khoangCachText} (${khoangCach} mét)`);
+        console.log(`🗺️ Xem trên Google Maps: https://www.google.com/maps/dir/?api=1&origin=${latThucTe},${lngThucTe}&destination=${latKhach},${lngKhach}`);
+        console.groupEnd();
+        // ----------------------------------------------------
+
+        // Bán kính chuẩn cho dịch vụ tại nhà: 200 mét
+        if (khoangCach > 200) {
+          alert(`❌ TỪ CHỐI CHẤM CÔNG / HOÀN THÀNH CA!\n\n📍 Vị trí GPS hiện tại của bạn cách nhà khách hàng đến ${khoangCachText} (${khoangCach.toLocaleString('vi-VN')}m).\n\n👉 Bạn bắt buộc phải có mặt tại nhà khách hàng (trong bán kính cho phép 200m) mới được bấm xác nhận!`);
+          return;
+        }
+
+        alert(`✅ Định vị hợp lệ (cách nhà khách hàng ${khoangCachText}). Đang tiến hành cập nhật...`);
+        await handleUpdateProgress(job.id);
+      },
+      (error) => {
+        alert("❌ Bạn phải nhấn CHO PHÉP TRUY CẬP VỊ TRÍ (Allow Location) trên popup trình duyệt thì mới được bấm vào làm!");
+      }
+    );
   };
 
   const handleAcceptOffer = async (job) => {
@@ -2374,6 +2448,20 @@ const ScheduleManager = () => {
 
                   return (
                     <div className="space-y-2">
+                      {(selectedJob.status === "Sắp diễn ra" || selectedJob.status === "Đang làm") && (
+                        <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 mb-2 shadow-sm">
+                          <input
+                            type="checkbox"
+                            id="gps-sim-toggle"
+                            checked={isSimulateGPS}
+                            onChange={(e) => setIsSimulateGPS(e.target.checked)}
+                            className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500 cursor-pointer shrink-0"
+                          />
+                          <label htmlFor="gps-sim-toggle" className="text-[11px] font-bold text-amber-900 cursor-pointer select-none leading-tight">
+                            🕹️ Bật giả lập GPS đứng tại nhà khách hàng (Dùng khi Demo đồ án trên localhost)
+                          </label>
+                        </div>
+                      )}
                       {selectedJob.status === "Sắp diễn ra" && (
                         <button
                           onClick={() => handleCancelAcceptedJob(selectedJob.id)}
@@ -2404,7 +2492,7 @@ const ScheduleManager = () => {
                         ) : (
                           <button
                             disabled={!canCheckIn}
-                            onClick={() => canCheckIn && handleUpdateProgress(selectedJob.id)}
+                            onClick={() => canCheckIn && handleUpdateProgressWithGPS(selectedJob)}
                             className={`w-full font-bold py-2.5 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-1.5 ${
                               canCheckIn
                                 ? "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md"
@@ -2428,7 +2516,7 @@ const ScheduleManager = () => {
                       {selectedJob.status === "Đang làm" && (
                         <button
                           disabled={!canCheckOut}
-                          onClick={() => canCheckOut && handleUpdateProgress(selectedJob.id)}
+                          onClick={() => canCheckOut && handleUpdateProgressWithGPS(selectedJob)}
                           className={`w-full font-bold py-2.5 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-1.5 ${
                             canCheckOut
                               ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-md"
