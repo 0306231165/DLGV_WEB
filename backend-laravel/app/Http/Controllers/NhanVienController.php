@@ -44,6 +44,8 @@ class NhanVienController extends Controller
                     'birthday' => $taiKhoan->ngay_sinh ? \Carbon\Carbon::parse($taiKhoan->ngay_sinh)->format('d/m/Y') : '15/08/1988',
                     'hometown' => $nhanVien->que_quan ?? 'Bến Tre',
                     'address' => $nhanVien->dia_chi ?? '248/12 Bùi Viện, Phường Phạm Ngũ Lão, Quận 1, TP. Hồ Chí Minh',
+                    'vi_do' => $nhanVien->vi_do,      // ← Tọa độ nhà NV (dùng cho thuật toán 6km)
+                    'kinh_do' => $nhanVien->kinh_do,  // ← Tọa độ nhà NV (dùng cho thuật toán 6km)
                     'joinDate' => $taiKhoan->ngay_tao ? \Carbon\Carbon::parse($taiKhoan->ngay_tao)->format('d/m/Y') : '12/02/2024',
                     'status' => 'Đã xác minh (Verified)',
                     'experience' => ($nhanVien->kinh_nghiem ?? '3') . ' năm',

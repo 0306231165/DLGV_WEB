@@ -1353,10 +1353,23 @@ const ScheduleManager = () => {
         }
       });
 
-      setJobOffers(availData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)));
-      setAcceptedJobs(acceptData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)));
-      setCalendarJobs(workData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)));
-      setJobHistory(histData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)));
+      const getTimestamp = (job) => {
+        if (!job.rawDate) return 0;
+        const timeStr = job.rawStartTime ? (job.rawStartTime.length === 5 ? `${job.rawStartTime}:00` : job.rawStartTime) : "00:00:00";
+        return new Date(`${job.rawDate}T${timeStr}`).getTime();
+      };
+      const sortJobsChronologically = (jobsList, isAsc = true) => {
+        return [...jobsList].sort((a, b) => {
+          const tA = getTimestamp(a);
+          const tB = getTimestamp(b);
+          return isAsc ? (tA - tB || a.id - b.id) : (tB - tA || b.id - a.id);
+        });
+      };
+
+      setJobOffers(sortJobsChronologically(availData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)), true));
+      setAcceptedJobs(sortJobsChronologically(acceptData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)), true));
+      setCalendarJobs(sortJobsChronologically(workData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)), true));
+      setJobHistory(sortJobsChronologically(histData.map((ca) => mapCaLamViecToFrontend(ca, orderCounts)), false));
     } catch (e) {
       console.error("Lỗi fetch dữ liệu ca làm việc:", e);
     }
@@ -1646,41 +1659,68 @@ const ScheduleManager = () => {
 
   // Thuật toán kiểm tra ràng buộc Không gian - Thời gian giữa các ca liền kề (Spatial-Temporal Feasibility Check)
   const checkSpatialTemporalFeasibility = (newJob) => {
+    console.group(`🚀 [CleanTrust Routing] KIỂM TRA ĐIỀU KIỆN NHẬN ĐƠN ID #${newJob?.id} (Ngày: ${newJob?.dateStr})`);
+    console.log("⚙️ Trạng thái nút giả lập (isSimulateGPS):", isSimulateGPS ? "☑️ ĐANG BẬT (Bỏ qua 6km)" : "☐ ĐANG TẮT (Chặt chẽ <= 6km)");
+    console.log("🎯 Thông tin đơn muốn nhận (newJob):", {
+      id: newJob?.id,
+      service: newJob?.service,
+      dateStr: newJob?.dateStr,
+      time: newJob?.time,
+      latKhach: newJob?.latKhach,
+      lngKhach: newJob?.lngKhach,
+      address: newJob?.address
+    });
+
     // Nếu đang bật giả lập Demo -> Cho qua
     if (isSimulateGPS) {
-      console.log("🕹️ [Routing Bypass] Chế độ Demo đang bật -> Bỏ qua kiểm tra khoảng cách 6km khi nhận đơn.");
+      console.warn("🕹️ [Routing Bypass] Chế độ Demo đang bật -> Bỏ qua kiểm tra khoảng cách 6km khi nhận đơn.");
+      console.groupEnd();
       return true;
     }
 
     const latNew = Number(newJob.latKhach);
     const lngNew = Number(newJob.lngKhach);
-    if (!latNew || !lngNew) return true; // Đơn mới chưa có tọa độ -> Cho qua
+    if (!latNew || !lngNew) {
+      console.warn("⚠️ [Routing Bypass] Đơn mới chưa có tọa độ (latKhach/lngKhach bị trống hoặc bằng 0) -> Cho qua!");
+      console.groupEnd();
+      return true;
+    }
 
     // Tìm danh sách các ca làm việc mà nhân viên ĐÃ NHẬN trong CÙNG NGÀY với đơn mới
     const sameDayShifts = [...acceptedJobs, ...calendarJobs].filter(
       (item) => (item.dateStr === newJob.dateStr || item.rawDate === newJob.rawDate) && item.id !== newJob.id
     );
+    console.log(`📋 Các ca làm việc KHÁC trong cùng ngày (${newJob.dateStr}):`, sameDayShifts.length, "ca", sameDayShifts);
 
     // =========================================================================
     // KỊCH BẢN 1: TRONG NGÀY ĐÓ CHƯA CÓ CA LÀM NÀO -> SO SÁNH VỚI ĐỊA CHỈ NHÀ NHÂN VIÊN
     // =========================================================================
     if (sameDayShifts.length === 0) {
+      console.log("👉 KỊCH BẢN 1: Hôm nay chưa có ca nào -> So sánh khoảng cách từ NHÀ RIÊNG tới ĐƠN MỚI.");
+      console.log("👤 Dữ liệu staffProfile hiện tại trong State:", staffProfile);
+
       const latHome = Number(staffProfile?.vi_do);
       const lngHome = Number(staffProfile?.kinh_do);
-      if (!latHome || !lngHome) return true; // Chưa có tọa độ nhà trong DB -> Cho qua
+      console.log(`🏠 Tọa độ nhà nhân viên (latHome, lngHome): [${latHome}, ${lngHome}] | Tọa độ khách (latNew, lngNew): [${latNew}, ${lngNew}]`);
+
+      if (!latHome || !lngHome) {
+        console.warn("⚠️ CẢNH BÁO: Tọa độ nhà của nhân viên trong staffProfile (vi_do, kinh_do) đang bị NULL hoặc bằng 0! -> Cho qua vì không có gốc để đo!");
+        console.groupEnd();
+        return true;
+      }
 
       const distFromHome = calculateDistanceMeters(latHome, lngHome, latNew, lngNew);
       const distKm = (distFromHome / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 1 });
 
-      console.group(`📍 [CleanTrust Routing] Kiểm tra ca đầu tiên trong ngày (${newJob.dateStr})`);
       console.table({
         "🏠 Nhà Nhân Viên": { "Vĩ độ (Lat)": latHome, "Kinh độ (Lng)": lngHome },
         "🎯 Đơn Lịch Mới": { "Vĩ độ (Lat)": latNew, "Kinh độ (Lng)": lngNew },
       });
-      console.log(`📏 Khoảng cách từ nhà tới đơn mới: ${distKm} km (${distFromHome}m)`);
-      console.groupEnd();
+      console.log(`📏 Khoảng cách Haversine đo được: ${distFromHome} mét (~ ${distKm} km) | Ngưỡng giới hạn cho phép: 6000 mét (6 km)`);
 
       if (distFromHome > 6000) {
+        console.error(`❌ KẾT QUẢ: BỊ CHẶN vì ${distFromHome}m > 6000m!`);
+        console.groupEnd();
         alert(
           `❌ TỪ CHỐI NHẬN LỊCH — VƯỢT QUÁ BÁN KÍNH TỪ NHÀ!\n\n` +
           `📅 Ngày làm việc: ${newJob.dateStr}\n` +
@@ -1689,6 +1729,9 @@ const ScheduleManager = () => {
         );
         return false;
       }
+
+      console.log(`✅ KẾT QUẢ: HỢP LỆ vì ${distFromHome}m <= 6000m! Cho phép nhận ca.`);
+      console.groupEnd();
       return true;
     }
 
