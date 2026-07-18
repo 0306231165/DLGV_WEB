@@ -49,8 +49,8 @@ const nhanVienApi = {
         return axiosClient.post('/nhan-vien/lich-nghi/cam-ket', { lichNghi });
     },
 
-    cancelCamKetLichNghi: () => {
-        return axiosClient.delete('/nhan-vien/lich-nghi/cam-ket');
+    cancelCamKetLichNghi: (data = {}) => {
+        return axiosClient.delete('/nhan-vien/lich-nghi/cam-ket', { data });
     },
 
     getBlockedDates: () => {

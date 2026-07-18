@@ -36,8 +36,13 @@ const PartnerWallet = () => {
   });
 
   const handleOpenDetail = async (txn) => {
-    // Tìm tháng/năm trong nội dung giao dịch (VD: "Tháng 7/2026")
     const desc = txn.description || txn.noi_dung || txn.note || "";
+    
+    // Phân loại giao dịch dựa trên enum
+    const isPenalty = txn.loai_giao_dich === 'PhatHuyDon' || txn.type === 'penalty' || /phạt/i.test(desc);
+    const isIncome = txn.loai_giao_dich === 'NhanLuongCaLam' || txn.type === 'income' || /lương|ca làm/i.test(desc);
+
+    // Tìm tháng/năm trong nội dung giao dịch (VD: "Tháng 7/2026")
     const match = desc.match(/Tháng\s*0?(\d+)\/(\d{4})/i);
     let targetMonth = null;
     let targetYear = null;
@@ -54,11 +59,17 @@ const PartnerWallet = () => {
     setDetailModal({
       isOpen: true,
       txn,
-      loadingJobs: true,
+      isPenalty,
+      isIncome,
+      loadingJobs: isIncome, // Chỉ tải jobs nếu là nhận lương
       jobs: [],
       month: targetMonth,
       year: targetYear
     });
+
+    if (isPenalty || !isIncome) {
+      return; // Không cần tải danh sách ca làm việc nếu là giao dịch phạt hoặc loại khác
+    }
 
     try {
       const [resHist, resWork] = await Promise.all([
@@ -680,11 +691,11 @@ const PartnerWallet = () => {
               {/* MODAL HEADER */}
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200">
-                    <span className="material-symbols-outlined text-xl">receipt_long</span>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${detailModal.isPenalty ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-emerald-100 text-emerald-600 border-emerald-200'}`}>
+                    <span className="material-symbols-outlined text-xl">{detailModal.isPenalty ? 'gavel' : 'receipt_long'}</span>
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-900 text-lg leading-tight">Chi tiết Giao dịch & Quyết toán</h3>
+                    <h3 className="font-black text-slate-900 text-lg leading-tight">Chi tiết Giao dịch {detailModal.isPenalty ? '& Khấu trừ' : '& Quyết toán'}</h3>
                     <p className="text-xs text-slate-500 font-medium">
                       Mã GD: <span className="font-bold text-slate-700">{detailModal.txn?.id}</span> • Ngày {displayDate(detailModal.txn?.date)}
                     </p>
@@ -701,102 +712,171 @@ const PartnerWallet = () => {
               {/* MODAL BODY */}
               <div className="p-5 overflow-y-auto space-y-5">
                 {/* Khối tóm tắt số tiền & nội dung */}
-                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/70 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className={`border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${detailModal.isPenalty ? 'bg-gradient-to-r from-rose-50 to-orange-50 border-rose-200/70' : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200/70'}`}>
                   <div>
-                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Nội dung quyết toán</span>
-                    <p className="text-sm font-bold text-slate-800 mt-0.5">
+                    <span className={`text-xs font-bold uppercase tracking-wider ${detailModal.isPenalty ? 'text-rose-800' : 'text-emerald-800'}`}>Nội dung {detailModal.isPenalty ? 'khấu trừ' : 'quyết toán'}</span>
+                    <p className="text-sm font-bold text-slate-800 mt-0.5 max-w-sm truncate">
                       {detailModal.txn?.description || detailModal.txn?.noi_dung || detailModal.txn?.note || "Giao dịch ví"}
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
                     <span className="text-xs font-bold text-slate-400 uppercase">Số tiền giao dịch</span>
-                    <p className="text-2xl font-black text-emerald-600">
-                      +{Number(detailModal.txn?.amount || 0).toLocaleString()}đ
+                    <p className={`text-2xl font-black ${detailModal.isPenalty ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {detailModal.isPenalty ? '-' : '+'}{Number(detailModal.txn?.amount || 0).toLocaleString()}đ
                     </p>
                   </div>
                 </div>
 
-                {/* Danh sách ca làm việc chi tiết */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-emerald-600 text-base">work_history</span>
-                      Danh sách ca làm việc hoàn thành
-                      {detailModal.month && detailModal.year && (
-                        <span className="text-xs font-normal text-slate-500">(Tháng {detailModal.month}/{detailModal.year})</span>
-                      )}
+                {/* Chi tiết theo phân loại giao dịch */}
+                {detailModal.isPenalty ? (
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5 mb-3">
+                      <span className="material-symbols-outlined text-rose-600 text-base">receipt_long</span>
+                      Bảng kê chi tiết đơn hàng bị phạt
                     </h4>
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                      {detailModal.jobs.length} ca
-                    </span>
+                    
+                    {(() => {
+                      const desc = detailModal.txn?.description || detailModal.txn?.noi_dung || detailModal.txn?.note || "";
+                      const isTruncated = desc.endsWith('...');
+                      if (desc.includes('|')) {
+                        const parts = desc.split('|').map(s => s.trim());
+                        let detailPart = parts.find(p => p.includes('DH#'));
+                        if (detailPart) {
+                          const items = detailPart.split(',').map(s => s.trim());
+                          return (
+                            <>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                {items.map((item, idx) => {
+                                  const match = item.match(/DH#(\d+)\((.*?)\):\s*(.*)/);
+                                  if (match) {
+                                    return (
+                                      <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center justify-between hover:border-rose-300 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-sm">shopping_bag</span>
+                                          </div>
+                                          <div>
+                                            <div className="font-bold text-slate-800 text-sm">Đơn #{match[1]}</div>
+                                            <div className="text-[11px] text-slate-500 font-medium">Bao gồm: <span className="text-rose-600 font-bold">{match[2]}</span></div>
+                                          </div>
+                                        </div>
+                                        <div className="font-black text-rose-600 text-sm">-{match[3]}</div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                              {isTruncated && (
+                                <div className="text-center text-xs text-slate-400 italic mb-3">
+                                  ... và một số đơn hàng khác đã bị ẩn bớt do danh sách quá dài.
+                                </div>
+                              )}
+                            </>
+                          );
+                        }
+                      }
+                      // Fallback content nếu không parse được
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-xl p-4 text-sm text-slate-800 font-medium leading-relaxed shadow-sm mb-3">
+                          {desc}
+                        </div>
+                      );
+                    })()}
+
+                    <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 flex gap-2 items-start mt-2">
+                      <span className="material-symbols-outlined text-rose-500 text-base mt-0.5">info</span>
+                      <p className="text-xs text-rose-800 leading-relaxed font-medium">
+                        * Theo chính sách của hệ thống, khi bạn hủy cam kết hoặc hủy ca làm việc sau khi đã xác nhận, hệ thống sẽ tự động trừ 20% thu nhập dự kiến của các ca bị ảnh hưởng.
+                      </p>
+                    </div>
                   </div>
+                ) : detailModal.isIncome ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-emerald-600 text-base">work_history</span>
+                        Danh sách ca làm việc hoàn thành
+                        {detailModal.month && detailModal.year && (
+                          <span className="text-xs font-normal text-slate-500">(Tháng {detailModal.month}/{detailModal.year})</span>
+                        )}
+                      </h4>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                        {detailModal.jobs.length} ca
+                      </span>
+                    </div>
 
-                  {detailModal.loadingJobs ? (
-                    <div className="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
-                      <div className="w-8 h-8 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
-                      <span className="text-xs font-medium">Đang tải chi tiết các ca làm việc...</span>
-                    </div>
-                  ) : detailModal.jobs.length > 0 ? (
-                    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                      {/* Bảng cuộn dọc max-h-[280px] */}
-                      <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
-                        <table className="w-full text-left border-collapse">
-                          <thead className="sticky top-0 bg-slate-100 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 z-10">
-                            <tr>
-                              <th className="p-3.5">Mã ca / Ngày</th>
-                              <th className="p-3.5">Dịch vụ & Khách hàng</th>
-                              <th className="p-3.5">Khung giờ</th>
-                              <th className="p-3.5 text-right">Thu nhập ca</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 text-xs">
-                            {detailModal.jobs.map((job, idx) => {
-                              const price = Number(job.thuc_nhan_nv || job.price || 250000);
-                              return (
-                                <tr key={job.id || idx} className="hover:bg-slate-50 transition-colors">
-                                  <td className="p-3.5 font-bold text-slate-700">
-                                    #{job.id || (idx + 1)}
-                                    <div className="text-[11px] font-normal text-slate-400 mt-0.5">
-                                      {job.dateStr || job.ngay_lam || "N/A"}
-                                    </div>
-                                  </td>
-                                  <td className="p-3.5">
-                                    <div className="font-bold text-slate-800">
-                                      {job.ten_dich_vu || job.serviceName || "Dịch vụ dọn dẹp"}
-                                    </div>
-                                    <div className="text-slate-500 text-[11px] mt-0.5">
-                                      {job.ten_khach_hang || job.khach_hang_ten || "Khách hàng"}
-                                    </div>
-                                  </td>
-                                  <td className="p-3.5 text-slate-600 font-medium">
-                                    {job.timeSlot || job.gio_bat_dau || "08:00 - 12:00"}
-                                  </td>
-                                  <td className="p-3.5 text-right font-black text-emerald-600 text-sm">
-                                    +{price.toLocaleString()}đ
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                    {detailModal.loadingJobs ? (
+                      <div className="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+                        <div className="w-8 h-8 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+                        <span className="text-xs font-medium">Đang tải chi tiết các ca làm việc...</span>
                       </div>
+                    ) : detailModal.jobs.length > 0 ? (
+                      <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                        {/* Bảng cuộn dọc max-h-[280px] */}
+                        <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
+                          <table className="w-full text-left border-collapse">
+                            <thead className="sticky top-0 bg-slate-100 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 z-10">
+                              <tr>
+                                <th className="p-3.5">Mã ca / Ngày</th>
+                                <th className="p-3.5">Dịch vụ & Khách hàng</th>
+                                <th className="p-3.5">Khung giờ</th>
+                                <th className="p-3.5 text-right">Thu nhập ca</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs">
+                              {detailModal.jobs.map((job, idx) => {
+                                const price = Number(job.thuc_nhan_nv || job.price || 250000);
+                                return (
+                                  <tr key={job.id || idx} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-3.5 font-bold text-slate-700">
+                                      #{job.id || (idx + 1)}
+                                      <div className="text-[11px] font-normal text-slate-400 mt-0.5">
+                                        {job.dateStr || job.ngay_lam || "N/A"}
+                                      </div>
+                                    </td>
+                                    <td className="p-3.5">
+                                      <div className="font-bold text-slate-800">
+                                        {job.ten_dich_vu || job.serviceName || "Dịch vụ dọn dẹp"}
+                                      </div>
+                                      <div className="text-slate-500 text-[11px] mt-0.5">
+                                        {job.ten_khach_hang || job.khach_hang_ten || "Khách hàng"}
+                                      </div>
+                                    </td>
+                                    <td className="p-3.5 text-slate-600 font-medium">
+                                      {job.timeSlot || job.gio_bat_dau || "08:00 - 12:00"}
+                                    </td>
+                                    <td className="p-3.5 text-right font-black text-emerald-600 text-sm">
+                                      +{price.toLocaleString()}đ
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
 
-                      {/* Footer tổng hợp ca */}
-                      <div className="bg-slate-50 px-4 py-3 border-t border-slate-200 flex items-center justify-between text-xs font-bold">
-                        <span className="text-slate-600">
-                          Tổng hợp ({detailModal.jobs.length} ca hoàn thành):
-                        </span>
-                        <span className="text-emerald-700 text-sm font-black">
-                          +{detailModal.jobs.reduce((sum, job) => sum + Number(job.thuc_nhan_nv || job.price || 250000), 0).toLocaleString()}đ
-                        </span>
+                        {/* Footer tổng hợp ca */}
+                        <div className="bg-slate-50 px-4 py-3 border-t border-slate-200 flex items-center justify-between text-xs font-bold">
+                          <span className="text-slate-600">
+                            Tổng hợp ({detailModal.jobs.length} ca hoàn thành):
+                          </span>
+                          <span className="text-emerald-700 text-sm font-black">
+                            +{detailModal.jobs.reduce((sum, job) => sum + Number(job.thuc_nhan_nv || job.price || 250000), 0).toLocaleString()}đ
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500 font-medium">
-                      Giao dịch này là quyết toán/thu nhập trực tiếp hoặc không có ca làm cụ thể nào được lưu trong giai đoạn này.
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500 font-medium">
+                        Không tìm thấy ca làm việc hoàn thành nào trong tháng này.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500 font-medium">
+                    Giao dịch này là quyết toán/thu nhập trực tiếp hoặc thanh toán khác (Không có ca làm cụ thể đính kèm).
+                  </div>
+                )}
               </div>
 
               {/* MODAL FOOTER */}

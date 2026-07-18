@@ -1315,7 +1315,9 @@ const ScheduleManager = () => {
             } catch (e) {
                 return ca.chi_tiet_dich_vu_them;
             }
-        })()
+        })(),
+        is_package: ca.is_package,
+        so_ca_kha_dung: ca.so_ca_kha_dung
     };
   };
 
@@ -2060,18 +2062,29 @@ const ScheduleManager = () => {
     }
   };
 
-  const handleCancelContract = async () => {
-    if (window.confirm("Bạn có chắc chắn muốn hủy hợp đồng cam kết này không?")) {
-      try {
-        await nhanVienApi.cancelCamKetLichNghi();
-        alert("Hủy hợp đồng cam kết thành công!");
-        setHasRegisteredContract(false);
-        setContractBlockedDates({});
-        setContractForm((prev) => ({ ...prev, restSession: "none", daysOff: [] }));
-      } catch (error) {
-        console.error(error);
-        alert("Có lỗi xảy ra khi hủy hợp đồng!");
-      }
+  const [cancelContractModal, setCancelContractModal] = React.useState({
+    isOpen: false,
+    reason: "",
+    isSubmitting: false,
+  });
+
+  const handleCancelContract = () => {
+    setCancelContractModal({ isOpen: true, reason: "", isSubmitting: false });
+  };
+
+  const confirmCancelContract = async () => {
+    setCancelContractModal((prev) => ({ ...prev, isSubmitting: true }));
+    try {
+      await nhanVienApi.cancelCamKetLichNghi({ reason: cancelContractModal.reason });
+      setHasRegisteredContract(false);
+      setContractBlockedDates({});
+      setContractForm((prev) => ({ ...prev, restSession: "none", daysOff: [] }));
+      setCancelContractModal({ isOpen: false, reason: "", isSubmitting: false });
+      fetchJobsData();
+    } catch (error) {
+      console.error(error);
+      setCancelContractModal((prev) => ({ ...prev, isSubmitting: false }));
+      alert("Có lỗi xảy ra khi hủy hợp đồng!");
     }
   };
 
@@ -2147,8 +2160,9 @@ const ScheduleManager = () => {
               </button>
               <button
                 onClick={handleCancelContract}
-                className="text-xs font-bold text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 px-3 py-2 rounded-xl transition-all"
+                className="flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-2 rounded-xl transition-all"
               >
+                <span className="material-symbols-outlined text-sm">cancel</span>
                 Hủy hợp đồng
               </button>
             </div>
@@ -3096,7 +3110,109 @@ const ScheduleManager = () => {
         message={notifyModal.message}
         type={notifyModal.type}
       />
+
+      {/* CANCEL CONTRACT MODAL */}
+      {cancelContractModal.isOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="bg-rose-50 border-b border-rose-100 px-6 py-5 flex items-start gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="material-symbols-outlined text-rose-600 text-2xl">contract_delete</span>
+              </div>
+              <div>
+                <h3 className="font-black text-rose-700 text-base leading-tight">Hủy Hợp Đồng Cam Kết</h3>
+                <p className="text-xs text-rose-500 font-medium mt-0.5">Hành động này sẽ ảnh hưởng đến tất cả các ca làm việc chưa thực hiện.</p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Cảnh báo phạt tiền */}
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
+                <span className="material-symbols-outlined text-amber-500 text-xl shrink-0 mt-0.5">warning</span>
+                <div className="text-xs text-amber-800 space-y-1">
+                  <p className="font-black">⚠️ Bạn sẽ bị phạt tiền!</p>
+                  <p className="font-medium leading-relaxed">
+                    Theo chính sách, mỗi ca làm việc bị hủy sẽ bị <strong>phạt 20% thu nhập ca đó</strong> và trừ trực tiếp vào ví đối tác.
+                    Nếu số dư ví không đủ, hệ thống sẽ ghi nợ và khấu trừ vào lần nhận lương tiếp theo.
+                  </p>
+                </div>
+              </div>
+
+              {/* Tóm tắt hợp đồng */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
+                <p className="font-black text-slate-600 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-slate-400">info</span>
+                  Hợp đồng hiện tại:
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-slate-400 font-medium">Hiệu lực:</span>
+                    <p className="font-bold text-slate-700">{contractForm.startDate} → {contractForm.endDate}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium">Ngày nghỉ/tuần:</span>
+                    <p className="font-bold text-slate-700">
+                      {contractForm.daysOff?.length > 0 ? contractForm.daysOff.join(", ") : "Không có"}
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-rose-100 text-rose-700 rounded-xl px-3 py-2 flex items-center gap-1.5 mt-1">
+                  <span className="material-symbols-outlined text-sm">payments</span>
+                  <span className="font-black text-xs">
+                    Tổng ca chưa làm ({acceptedJobs.reduce((sum, job) => sum + (job.is_package ? (job.so_ca_kha_dung || 1) : 1), 0)} ca) → Phạt ≈ 20% tổng thu nhập chưa nhận
+                  </span>
+                </div>
+              </div>
+
+              {/* Lý do */}
+              <div>
+                <label className="block text-xs font-black text-slate-600 mb-1.5">
+                  Lý do hủy hợp đồng <span className="text-slate-400 font-medium">(không bắt buộc)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Nhập lý do hủy hợp đồng..."
+                  value={cancelContractModal.reason}
+                  onChange={(e) => setCancelContractModal((prev) => ({ ...prev, reason: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 resize-none bg-white transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-5 flex gap-3">
+              <button
+                onClick={() => setCancelContractModal({ isOpen: false, reason: "", isSubmitting: false })}
+                disabled={cancelContractModal.isSubmitting}
+                className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
+              >
+                Quay lại
+              </button>
+              <button
+                onClick={confirmCancelContract}
+                disabled={cancelContractModal.isSubmitting}
+                className="flex-1 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-black shadow-lg shadow-rose-500/30 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {cancelContractModal.isSubmitting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">contract_delete</span>
+                    Xác nhận hủy & chấp nhận phạt
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 };
 

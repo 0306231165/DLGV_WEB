@@ -542,7 +542,7 @@ class CaLamViecController extends Controller
                 'nguoi_yeu_cau_loai'  => 'NhanVien',
                 'nguoi_yeu_cau_id'    => $nhanVienId,
                 'loai_yeu_cau'        => 'HuyCaLe',
-                'ly_do'               => $request->input('ly_do', 'Nhân viên hủy ca làm việc'),
+                'ly_do'               => empty($request->input('ly_do')) ? 'Nhân viên hủy ca làm việc' : $request->input('ly_do'),
                 'trang_thai_duyet'    => 'DaDuyet',
                 'so_tien_hoan_tra'    => 0,
                 'so_tien_phat'        => 0,
@@ -606,61 +606,148 @@ class CaLamViecController extends Controller
     }
 
     /**
-     * Hủy toàn bộ hợp đồng (đẩy tất cả ca chưa làm của hợp đồng lên chợ việc)
+     * Hủy toàn bộ hợp đồng (đẩy tất cả ca chưa làm lên chợ việc).
+     * Áp dụng phạt 20% thuc_nhan_nv/ca, trừ vào VíTiền NV, ghi GiaoDichVi.
      */
     public function cancelContract(Request $request, $id)
     {
-        $nhanVienId = Auth::user()->nhanVien->id;
-        $ca = CaLamViec::findOrFail($id);
+        $nhanVienId   = Auth::user()->nhanVien->id;
+        $taiKhoanId   = Auth::user()->id;
+        $nhanVienName = Auth::user()->nhanVien->taiKhoan->ho_ten ?? 'Nhân viên';
+        $ca           = CaLamViec::findOrFail($id);
 
         if ($ca->nhan_vien_id != $nhanVienId) {
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền hủy hợp đồng này'], 403);
         }
 
         $don_hang_id = $ca->don_hang_id;
-
-        // Cancel all un-worked shifts of this contract assigned to this staff
-        $affectedRows = CaLamViec::where('don_hang_id', $don_hang_id)
-            ->where('nhan_vien_id', $nhanVienId)
-            ->whereIn('trang_thai_ca', ['DaNhan', 'ChoNhanVienChiDinhXacNhan'])
-            ->update([
-                'nhan_vien_id' => null,
-                'trang_thai_ca' => 'ChoNhanVienTuDoNhan'
-            ]);
-
-        if ($affectedRows > 0) {
-            \App\Models\YeuCauXuLy::create([
-                'loai_cap_do_yeu_cau' => 'DonHang',
-                'don_hang_id' => $don_hang_id,
-                'ca_lam_viec_id' => null,
-                'nguoi_yeu_cau_loai' => 'NhanVien',
-                'nguoi_yeu_cau_id' => $nhanVienId,
-                'loai_yeu_cau' => 'HuyDonToanGoi',
-                'ly_do' => $request->input('ly_do', 'Nhân viên hủy hợp đồng làm việc'),
-                'trang_thai_duyet' => 'DaDuyet',
-                'so_tien_hoan_tra' => 0,
-                'so_tien_phat' => 0,
-                'thoi_gian' => now()
-            ]);
-
-            $donHang = DonHang::find($don_hang_id);
-            if ($donHang) {
-                ThongBao::create([
-                    'loai_nguoi_nhan' => 'KhachHang',
-                    'nguoi_nhan_id' => $donHang->khach_hang_id,
-                    'tieu_de' => '🚨 Nhân viên đã hủy hợp đồng làm việc',
-                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' đã hủy tiếp tục thực hiện các ca làm việc còn lại của hợp đồng #' . $don_hang_id . '. Các lịch chưa làm đã được đẩy lại lên chợ việc.',
-                    'loai_doi_tuong' => 'DonHang',
-                    'doi_tuong_id' => $don_hang_id,
-                    'ngay_tao' => now(),
-                    'is_da_doc' => false
-                ]);
-            }
-
-            return response()->json(['success' => true, 'message' => "Đã hủy toàn bộ $affectedRows ca làm việc còn lại của hợp đồng. Lịch đã được đẩy lên chợ việc."]);
+        $lyDo        = $request->input('ly_do');
+        if (empty($lyDo)) {
+            $lyDo = 'Nhân viên hủy hợp đồng làm việc';
         }
 
-        return response()->json(['success' => false, 'message' => 'Không có ca làm việc nào chưa bắt đầu để hủy'], 400);
+        // ── Bước 1: Lấy tất cả ca chưa làm được gán cho NV này ─────────────
+        $casChuaLam = CaLamViec::where('don_hang_id', $don_hang_id)
+            ->where('nhan_vien_id', $nhanVienId)
+            ->whereIn('trang_thai_ca', ['DaNhan', 'ChoNhanVienChiDinhXacNhan'])
+            ->get();
+
+        if ($casChuaLam->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Không có ca làm việc nào chưa bắt đầu để hủy'], 400);
+        }
+
+        // ── Bước 2: Tính tổng tiền phạt (20% thuc_nhan_nv mỗi ca) ──────────
+        $PENALTY_RATE  = 0.20;
+        $affectedCount = $casChuaLam->count();
+        $tongTienPhat  = $casChuaLam->sum(fn($c) => (int) round(floatval($c->thuc_nhan_nv) * $PENALTY_RATE));
+
+        // Nhóm ca theo don_hang để xử lý YeuCauXuLy & ThongBao riêng từng đơn
+        $casByDonHang = $casChuaLam->groupBy('don_hang_id');
+
+        // Tóm tắt chi tiết để ghi vào noi_dung GiaoDichVi
+        $detailParts = [];
+        foreach ($casByDonHang as $dhId => $dsCa) {
+            $phatDon       = (int) round($dsCa->sum(fn($c) => floatval($c->thuc_nhan_nv)) * $PENALTY_RATE);
+            $detailParts[] = 'DH#' . $dhId . '(' . $dsCa->count() . ' ca): ' . number_format($phatDon, 0, ',', '.') . 'đ';
+        }
+        $noiDungGD = 'Phạt hủy hợp đồng | ' . $affectedCount . ' ca | '
+            . implode(', ', $detailParts)
+            . ' | Tổng: ' . number_format($tongTienPhat, 0, ',', '.') . 'đ';
+
+        \Illuminate\Support\Facades\DB::transaction(function () use (
+            $casChuaLam, $casByDonHang, $nhanVienId, $taiKhoanId, $nhanVienName,
+            $tongTienPhat, $affectedCount, $noiDungGD, $lyDo, $don_hang_id, $PENALTY_RATE
+        ) {
+            // ── Bước 3: Đẩy tất cả ca về Chợ việc ──────────────────────────
+            foreach ($casChuaLam as $c) {
+                $c->nhan_vien_id  = null;
+                $c->trang_thai_ca = 'ChoNhanVienTuDoNhan';
+                $c->save();
+            }
+
+            // ── Bước 4: Trừ tiền phạt vào Ví NV ────────────────────────────
+            $viTien = \App\Models\ViTien::where('tai_khoan_id', $taiKhoanId)->first();
+            if (!$viTien) {
+                $viTien = \App\Models\ViTien::create([
+                    'tai_khoan_id' => $taiKhoanId,
+                    'so_du'        => 0,
+                ]);
+            }
+            $soDuSau       = floatval($viTien->so_du) - $tongTienPhat;
+            $viTien->so_du = $soDuSau;
+            $viTien->save();
+
+            // ── Bước 5: Ghi 1 record GiaoDichVi tổng hợp ───────────────────
+            $maGD = 'PAY-HUY-' . strtoupper(substr(md5(now()->timestamp . $nhanVienId), 0, 8));
+            \App\Models\GiaoDichVi::create([
+                'vi_tien_id'             => $viTien->id,
+                'vi_he_thong_id'         => null,
+                'ma_giao_dich'           => $maGD,
+                'loai_giao_dich'         => 'PhatHuyDon',
+                'loai_bien_dong'         => 'Giam',
+                'so_tien'                => $tongTienPhat,
+                'so_du_sau_giao_dich'    => $soDuSau,
+                'ma_tham_chieu_he_thong' => $don_hang_id,
+                'noi_dung'               => $noiDungGD,
+                'trang_thai'             => 'ThanhCong',
+                'thoi_gian'              => now(),
+            ]);
+
+            // ── Bước 6: YeuCauXuLy + ThongBao cho từng DonHang ─────────────
+            foreach ($casByDonHang as $dhId => $dsCa) {
+                $phatDon = (int) round($dsCa->sum(fn($c) => floatval($c->thuc_nhan_nv)) * $PENALTY_RATE);
+
+                \App\Models\YeuCauXuLy::create([
+                    'loai_cap_do_yeu_cau' => 'DonHang',
+                    'don_hang_id'         => $dhId,
+                    'ca_lam_viec_id'      => null,
+                    'nguoi_yeu_cau_loai'  => 'NhanVien',
+                    'nguoi_yeu_cau_id'    => $nhanVienId,
+                    'loai_yeu_cau'        => 'HuyDonToanGoi',
+                    'ly_do'               => $lyDo,
+                    'trang_thai_duyet'    => 'DaDuyet',
+                    'so_tien_hoan_tra'    => 0,
+                    'so_tien_phat'        => $phatDon,
+                    'thoi_gian'           => now(),
+                ]);
+
+                $donHang = DonHang::find($dhId);
+                if ($donHang) {
+                    ThongBao::create([
+                        'loai_nguoi_nhan' => 'KhachHang',
+                        'nguoi_nhan_id'   => $donHang->khach_hang_id,
+                        'tieu_de'         => '🚨 Nhân viên đã hủy hợp đồng làm việc',
+                        'noi_dung'        => 'Nhân viên ' . $nhanVienName . ' đã hủy ' . $dsCa->count() . ' ca còn lại của đơn #DH-' . str_pad($dhId, 6, '0', STR_PAD_LEFT) . '. Hệ thống đang tìm nhân viên thay thế cho bạn.',
+                        'loai_doi_tuong'  => 'DonHang',
+                        'doi_tuong_id'    => $dhId,
+                        'ngay_tao'        => now(),
+                        'is_da_doc'       => false,
+                    ]);
+                }
+            }
+
+            // ── Bước 7: ThongBao cảnh báo phạt cho chính NV ─────────────────
+            $soDuText = $soDuSau >= 0
+                ? number_format($soDuSau, 0, ',', '.') . 'đ'
+                : '-' . number_format(abs($soDuSau), 0, ',', '.') . 'đ (nợ)';
+
+            ThongBao::create([
+                'loai_nguoi_nhan' => 'NhanVien',
+                'nguoi_nhan_id'   => $nhanVienId,
+                'tieu_de'         => '⚠️ Bạn bị phạt do hủy hợp đồng',
+                'noi_dung'        => 'Bạn đã hủy ' . $affectedCount . ' ca làm việc. Tiền phạt (20%): ' . number_format($tongTienPhat, 0, ',', '.') . 'đ. Số dư ví sau phạt: ' . $soDuText . '.',
+                'loai_doi_tuong'  => 'DonHang',
+                'doi_tuong_id'    => $don_hang_id,
+                'ngay_tao'        => now(),
+                'is_da_doc'       => false,
+            ]);
+        });
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Đã hủy ' . $affectedCount . ' ca. Tiền phạt 20% (' . number_format($tongTienPhat, 0, ',', '.') . 'đ) đã trừ vào ví.',
+            'tien_phat' => $tongTienPhat,
+        ]);
     }
 
     /**
@@ -745,7 +832,7 @@ class CaLamViecController extends Controller
      *  5. Không có CaLamViec trùng giờ (buffer ±1 tiếng)
      *  6. Tọa độ trong bán kính 3km từ ca liền kề cùng ngày (hoặc nhà nếu trống lịch)
      */
-    private function autoAssignCancelledCa(CaLamViec $ca, int $cancelledByNhanVienId): ?\App\Models\NhanVien
+    public function autoAssignCancelledCa(CaLamViec $ca, int $cancelledByNhanVienId): ?\App\Models\NhanVien
     {
         try {
             $ngayLam        = $ca->ngay_lam;
