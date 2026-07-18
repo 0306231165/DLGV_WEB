@@ -1107,6 +1107,7 @@ const ScheduleManager = () => {
   if (simulatedTime) TODAY = simulatedTime;
 
   const [isSimulateGPS, setIsSimulateGPS] = useState(true); // Mặc định bật chế độ giả lập GPS khi Demo trên lớp
+  const [staffProfile, setStaffProfile] = useState(null); // Lưu thông tin nhân viên & tọa độ nhà riêng
   const [notifyModal, setNotifyModal] = useState({ isOpen: false, title: "", message: "", type: "info" });
   const [cancelModalState, setCancelModalState] = useState({
     isOpen: false,
@@ -1124,10 +1125,10 @@ const ScheduleManager = () => {
     let title = "Thông báo từ hệ thống";
     if (typeof msg === "string") {
       const lower = msg.toLowerCase();
-      if (lower.includes("lỗi") || lower.includes("thất bại") || lower.includes("không được") || lower.includes("vui lòng") || lower.includes("tối đa")) {
-        type = lower.includes("vui lòng") || lower.includes("tối đa") ? "warning" : "error";
-        title = lower.includes("vui lòng") || lower.includes("tối đa") ? "Lưu ý từ hệ thống" : "Có lỗi xảy ra";
-      } else if (lower.includes("thành công") || lower.includes("đã ") || lower.includes("[thành công]")) {
+      if (lower.includes("❌") || lower.includes("từ chối") || lower.includes("xung đột") || lower.includes("bị trùng") || lower.includes("lỗi") || lower.includes("thất bại") || lower.includes("không được") || lower.includes("vui lòng") || lower.includes("tối đa")) {
+        type = lower.includes("❌") || lower.includes("từ chối") || lower.includes("xung đột") || lower.includes("lỗi") ? "error" : "warning";
+        title = "Lưu ý từ hệ thống";
+      } else if (lower.includes("thành công") || lower.includes("[thành công]") || (lower.includes("đã ") && !lower.includes("đã có ca") && !lower.includes("đã nhận trước đó"))) {
         type = "success";
         title = "Thao tác thành công";
       }
@@ -1320,13 +1321,18 @@ const ScheduleManager = () => {
 
   const fetchJobsData = async () => {
     try {
-      const [resAvail, resAccept, resWork, resHist] = await Promise.all([
+      const [resAvail, resAccept, resWork, resHist, resProfile] = await Promise.all([
          nhanVienApi.getAvailableJobs(),
          nhanVienApi.getAcceptedJobs(),
          nhanVienApi.getWorkingSchedule(),
-         nhanVienApi.getJobHistory()
+         nhanVienApi.getJobHistory(),
+         nhanVienApi.getProfile()
       ]);
       
+      if (resProfile && resProfile.success) {
+        setStaffProfile(resProfile.data);
+      }
+
       const availData = resAvail && resAvail.success ? resAvail.data : [];
       const acceptData = resAccept && resAccept.success ? resAccept.data : [];
       const workData = resWork && resWork.success ? resWork.data : [];
@@ -1607,6 +1613,10 @@ const ScheduleManager = () => {
         const lngKhach = Number(job.lngKhach);
         const khoangCach = calculateDistanceMeters(latThucTe, lngThucTe, latKhach, lngKhach);
 
+        const khoangCachText = khoangCach >= 1000 
+          ? `${(khoangCach / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} km`
+          : `${khoangCach.toLocaleString('vi-VN')} mét`;
+
         // --- IN RA F12 CONSOLE ĐỂ KIỂM TRA TỌA ĐỘ RÕ RÀNG ---
         console.group("📍 [CleanTrust Geofencing] Kiểm tra vị trí GPS khi chấm công");
         console.log("👉 Đơn hàng ID:", job.id, "-", job.service);
@@ -1614,10 +1624,6 @@ const ScheduleManager = () => {
           "🏠 Nhà Khách Hàng (Trong DB)": { "Vĩ độ (Lat)": latKhach, "Kinh độ (Lng)": lngKhach },
           "📱 GPS Nhân Viên (Thực tế)": { "Vĩ độ (Lat)": latThucTe, "Kinh độ (Lng)": lngThucTe },
         });
-        const khoangCachText = khoangCach >= 1000 
-          ? `${(khoangCach / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} km`
-          : `${khoangCach.toLocaleString('vi-VN')} mét`;
-
         console.log(`📏 Khoảng cách đo được (Haversine): ${khoangCachText} (${khoangCach} mét)`);
         console.log(`🗺️ Xem trên Google Maps: https://www.google.com/maps/dir/?api=1&origin=${latThucTe},${lngThucTe}&destination=${latKhach},${lngKhach}`);
         console.groupEnd();
@@ -1638,7 +1644,142 @@ const ScheduleManager = () => {
     );
   };
 
+  // Thuật toán kiểm tra ràng buộc Không gian - Thời gian giữa các ca liền kề (Spatial-Temporal Feasibility Check)
+  const checkSpatialTemporalFeasibility = (newJob) => {
+    // Nếu đang bật giả lập Demo -> Cho qua
+    if (isSimulateGPS) {
+      console.log("🕹️ [Routing Bypass] Chế độ Demo đang bật -> Bỏ qua kiểm tra khoảng cách 6km khi nhận đơn.");
+      return true;
+    }
+
+    const latNew = Number(newJob.latKhach);
+    const lngNew = Number(newJob.lngKhach);
+    if (!latNew || !lngNew) return true; // Đơn mới chưa có tọa độ -> Cho qua
+
+    // Tìm danh sách các ca làm việc mà nhân viên ĐÃ NHẬN trong CÙNG NGÀY với đơn mới
+    const sameDayShifts = [...acceptedJobs, ...calendarJobs].filter(
+      (item) => (item.dateStr === newJob.dateStr || item.rawDate === newJob.rawDate) && item.id !== newJob.id
+    );
+
+    // =========================================================================
+    // KỊCH BẢN 1: TRONG NGÀY ĐÓ CHƯA CÓ CA LÀM NÀO -> SO SÁNH VỚI ĐỊA CHỈ NHÀ NHÂN VIÊN
+    // =========================================================================
+    if (sameDayShifts.length === 0) {
+      const latHome = Number(staffProfile?.vi_do);
+      const lngHome = Number(staffProfile?.kinh_do);
+      if (!latHome || !lngHome) return true; // Chưa có tọa độ nhà trong DB -> Cho qua
+
+      const distFromHome = calculateDistanceMeters(latHome, lngHome, latNew, lngNew);
+      const distKm = (distFromHome / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 1 });
+
+      console.group(`📍 [CleanTrust Routing] Kiểm tra ca đầu tiên trong ngày (${newJob.dateStr})`);
+      console.table({
+        "🏠 Nhà Nhân Viên": { "Vĩ độ (Lat)": latHome, "Kinh độ (Lng)": lngHome },
+        "🎯 Đơn Lịch Mới": { "Vĩ độ (Lat)": latNew, "Kinh độ (Lng)": lngNew },
+      });
+      console.log(`📏 Khoảng cách từ nhà tới đơn mới: ${distKm} km (${distFromHome}m)`);
+      console.groupEnd();
+
+      if (distFromHome > 6000) {
+        alert(
+          `❌ TỪ CHỐI NHẬN LỊCH — VƯỢT QUÁ BÁN KÍNH TỪ NHÀ!\n\n` +
+          `📅 Ngày làm việc: ${newJob.dateStr}\n` +
+          `📍 Khoảng cách từ địa chỉ nhà bạn tới nhà khách hàng này là: ${distKm} km (giới hạn cho phép <= 6km).\n\n` +
+          `👉 Theo quy định nghiệp vụ, ca làm đầu tiên trong ngày không được vượt quá bán kính 6 km từ địa chỉ nhà nhân viên để đảm bảo sức khỏe và đi lại đúng giờ!`
+        );
+        return false;
+      }
+      return true;
+    }
+
+    // =========================================================================
+    // KỊCH BẢN 2: TRONG NGÀY ĐÓ ĐÃ CÓ CA LÀM -> TÌM CA LIỀN KỀ GẦN NHẤT & SO SÁNH
+    // =========================================================================
+    const parseStartMinutes = (timeStr) => {
+      if (!timeStr) return 0;
+      const [h, m] = timeStr.split(":").map(Number);
+      return h * 60 + m;
+    };
+
+    const newStartMin = parseStartMinutes(newJob.rawStartTime);
+    const newEndMin = newStartMin + (newJob.durationMinutes || 120);
+
+    let closestShift = null;
+    let minTimeGap = 999999;
+
+    sameDayShifts.forEach((shift) => {
+      const shiftStartMin = parseStartMinutes(shift.rawStartTime);
+      const shiftEndMin = shiftStartMin + (shift.durationMinutes || 120);
+
+      let gap = 999999;
+      if (shiftEndMin <= newStartMin) {
+        gap = newStartMin - shiftEndMin; // Ca liền kề trước
+      } else if (newEndMin <= shiftStartMin) {
+        gap = shiftStartMin - newEndMin; // Ca liền kề sau
+      } else {
+        gap = 0; // Trùng giờ nhau
+      }
+
+      if (gap < minTimeGap) {
+        minTimeGap = gap;
+        closestShift = shift;
+      }
+    });
+
+    if (closestShift) {
+      const latAdjacent = Number(closestShift.latKhach);
+      const lngAdjacent = Number(closestShift.lngKhach);
+      if (!latAdjacent || !lngAdjacent) return true;
+
+      const distFromAdjacent = calculateDistanceMeters(latAdjacent, lngAdjacent, latNew, lngNew);
+      const distKm = (distFromAdjacent / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 1 });
+      const gapHoursText = minTimeGap === 0 
+        ? "Trùng giờ làm việc" 
+        : minTimeGap < 60 
+          ? `${minTimeGap} phút` 
+          : `${(minTimeGap / 60).toFixed(0)} tiếng`;
+
+      console.group(`📍 [CleanTrust Routing] Kiểm tra ca liền kề trong ngày (${newJob.dateStr})`);
+      console.log(`👉 Ca liền kề gần nhất: ID ${closestShift.id} (${closestShift.time})`);
+      console.table({
+        "🏢 Ca Liền Kề Trước/Sau": { "Vĩ độ (Lat)": latAdjacent, "Kinh độ (Lng)": lngAdjacent },
+        "🎯 Đơn Lịch Mới": { "Vĩ độ (Lat)": latNew, "Kinh độ (Lng)": lngNew },
+      });
+      console.log(`📏 Khoảng cách giữa 2 ca: ${distKm} km (${distFromAdjacent}m) | Thời gian trống: ${gapHoursText}`);
+      console.groupEnd();
+
+      if (minTimeGap === 0) {
+        alert(
+          `❌ TỪ CHỐI NHẬN LỊCH — XUNG ĐỘT THỜI GIAN!\n\n` +
+          `📅 Ngày làm việc: ${newJob.dateStr}\n` +
+          `⏱️ Đơn lịch mới (${newJob.time}) đang bị trùng thời gian với ca làm bạn đã nhận trước đó (ID: ${closestShift.id}, giờ làm: ${closestShift.time}).\n\n` +
+          `👉 Bạn không thể nhận 2 ca trùng giờ nhau!`
+        );
+        return false;
+      }
+
+      if (distFromAdjacent > 6000) {
+        alert(
+          `❌ TỪ CHỐI NHẬN LỊCH — RÀNG BUỘC DI CHUYỂN & THỜI GIAN!\n\n` +
+          `📅 Ngày làm việc: ${newJob.dateStr}\n` +
+          `🏢 Bạn đã có ca làm liền kề (ID: ${closestShift.id}, giờ làm: ${closestShift.time}).\n` +
+          `📍 Khoảng cách từ địa điểm ca liền kề tới đơn lịch mới này là: ${distKm} km (giới hạn <= 6km).\n` +
+          `⏱️ Thời gian trống giữa 2 ca chỉ có: ${gapHoursText}.\n\n` +
+          `👉 Theo thuật toán định tuyến Không gian - Thời gian, khoảng cách > 6 km giữa 2 ca liền kề là quá xa, bạn không thể vừa chạy xe vừa nghỉ ngơi/ăn uống kịp giờ làm! Vui lòng chọn ca gần hơn (` + `<= 6km).`
+        );
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleAcceptOffer = async (job) => {
+    // Kiểm tra ràng buộc Không gian - Thời gian trước khi gọi API nhận lịch
+    if (!checkSpatialTemporalFeasibility(job)) {
+      return; // Dừng lại nếu vi phạm điều kiện bán kính <= 6km / ca liền kề
+    }
+
     try {
       const res = await nhanVienApi.acceptJob(job.id);
       if (res && res.success) {
@@ -2409,7 +2550,23 @@ const ScheduleManager = () => {
               </div>
 
               {/* ACTION BUTTONS */}
-              <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                {/* CHẾ ĐỘ DEMO / GIẢ LẬP GPS & ĐỊNH TUYẾN CHỈ HIỆN Ở TAB 1 VÀ TAB 2 */}
+                {(selectedJob.origin === "calendar" || selectedJob.origin === "offers") && (
+                  <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 shadow-sm">
+                    <input
+                      type="checkbox"
+                      id="gps-sim-toggle"
+                      checked={isSimulateGPS}
+                      onChange={(e) => setIsSimulateGPS(e.target.checked)}
+                      className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500 cursor-pointer shrink-0"
+                    />
+                    <label htmlFor="gps-sim-toggle" className="text-[11px] font-bold text-amber-900 cursor-pointer select-none leading-tight">
+                      🕹️ Bật giả lập GPS & Định tuyến (Dùng khi Demo đồ án trên localhost)
+                    </label>
+                  </div>
+                )}
+
                 {selectedJob.origin === "calendar" && (() => {
                   let canCheckIn = true;
                   let canCheckOut = true;
@@ -2448,20 +2605,6 @@ const ScheduleManager = () => {
 
                   return (
                     <div className="space-y-2">
-                      {(selectedJob.status === "Sắp diễn ra" || selectedJob.status === "Đang làm") && (
-                        <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 mb-2 shadow-sm">
-                          <input
-                            type="checkbox"
-                            id="gps-sim-toggle"
-                            checked={isSimulateGPS}
-                            onChange={(e) => setIsSimulateGPS(e.target.checked)}
-                            className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500 cursor-pointer shrink-0"
-                          />
-                          <label htmlFor="gps-sim-toggle" className="text-[11px] font-bold text-amber-900 cursor-pointer select-none leading-tight">
-                            🕹️ Bật giả lập GPS đứng tại nhà khách hàng (Dùng khi Demo đồ án trên localhost)
-                          </label>
-                        </div>
-                      )}
                       {selectedJob.status === "Sắp diễn ra" && (
                         <button
                           onClick={() => handleCancelAcceptedJob(selectedJob.id)}
