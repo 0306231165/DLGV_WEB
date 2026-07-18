@@ -48,6 +48,27 @@ class CaLamViecController extends Controller
             ->pluck('dich_vu_id')
             ->toArray();
 
+        // =========================================================================
+        // LỌC BLACKLIST: Loại trừ các ca/đơn mà nhân viên này đã từng hủy
+        // =========================================================================
+        // TH1: Hủy ca lẻ (loai_cap_do_yeu_cau = 'CaLam') -> lấy ra danh sách ca_lam_viec_id đã hủy
+        $cancelledCaIds = \App\Models\YeuCauXuLy::where('nguoi_yeu_cau_loai', 'NhanVien')
+            ->where('nguoi_yeu_cau_id', $nhanVienId)
+            ->where('loai_cap_do_yeu_cau', 'CaLam')
+            ->whereIn('loai_yeu_cau', ['HuyCaLe'])
+            ->whereNotNull('ca_lam_viec_id')
+            ->pluck('ca_lam_viec_id')
+            ->toArray();
+
+        // TH2: Hủy hợp đồng (loai_cap_do_yeu_cau = 'DonHang') -> lấy ra danh sách don_hang_id đã hủy hợp đồng
+        $cancelledDonHangIds = \App\Models\YeuCauXuLy::where('nguoi_yeu_cau_loai', 'NhanVien')
+            ->where('nguoi_yeu_cau_id', $nhanVienId)
+            ->where('loai_cap_do_yeu_cau', 'DonHang')
+            ->whereIn('loai_yeu_cau', ['HuyDonToanGoi'])
+            ->whereNotNull('don_hang_id')
+            ->pluck('don_hang_id')
+            ->toArray();
+
         $caLamViecs = CaLamViec::with(['donHang.khachHang.taiKhoan', 'donHang.dichVuLoaiGoi.dichVu', 'dichVu'])
             ->where(function($q) use ($nhanVienId, $myApprovedServiceIds) {
                 $q->where(function($subFree) use ($myApprovedServiceIds) {
@@ -58,6 +79,14 @@ class CaLamViecController extends Controller
                     $subQ->where('trang_thai_ca', 'ChoNhanVienChiDinhXacNhan')
                          ->where('nhan_vien_id', $nhanVienId);
                 });
+            })
+            // Loại trừ các ca mà nhân viên đã từng hủy trực tiếp (HuyCaLe)
+            ->when(!empty($cancelledCaIds), function($q) use ($cancelledCaIds) {
+                $q->whereNotIn('id', $cancelledCaIds);
+            })
+            // Loại trừ toàn bộ ca của đơn hàng mà nhân viên đã hủy hợp đồng (HuyDonToanGoi)
+            ->when(!empty($cancelledDonHangIds), function($q) use ($cancelledDonHangIds) {
+                $q->whereNotIn('don_hang_id', $cancelledDonHangIds);
             })
             ->get();
 
