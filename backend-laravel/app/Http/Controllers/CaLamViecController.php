@@ -521,50 +521,85 @@ class CaLamViecController extends Controller
 
     /**
      * Hủy ca làm việc đã nhận
+     * Sau khi hủy, hệ thống tự động tìm NV thay thế (Auto-Reassignment).
+     * Nếu tìm được → gán luôn cho NV đó. Nếu không → đẩy ra chợ việc.
      */
     public function cancelAcceptedJob(Request $request, $id)
     {
         $nhanVienId = Auth::user()->nhanVien->id;
-        $ca = CaLamViec::findOrFail($id);
+        $ca = CaLamViec::with('donHang')->findOrFail($id);
 
         if ($ca->nhan_vien_id != $nhanVienId) {
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền hủy ca này'], 403);
         }
 
         if ($ca->trang_thai_ca == 'DaNhan') {
-            $ca->nhan_vien_id = null;
-            $ca->trang_thai_ca = 'ChoNhanVienTuDoNhan';
-            $ca->save();
-
+            // Bước 1: Ghi nhận yêu cầu hủy vào YeuCauXuLy (TRƯỚC khi đổi trạng thái)
             \App\Models\YeuCauXuLy::create([
                 'loai_cap_do_yeu_cau' => 'CaLam',
-                'don_hang_id' => null,
-                'ca_lam_viec_id' => $ca->id,
-                'nguoi_yeu_cau_loai' => 'NhanVien',
-                'nguoi_yeu_cau_id' => $nhanVienId,
-                'loai_yeu_cau' => 'HuyCaLe',
-                'ly_do' => $request->input('ly_do', 'Nhân viên hủy ca làm việc'),
-                'trang_thai_duyet' => 'DaDuyet',
-                'so_tien_hoan_tra' => 0,
-                'so_tien_phat' => 0,
-                'thoi_gian' => now()
+                'don_hang_id'         => null,
+                'ca_lam_viec_id'      => $ca->id,
+                'nguoi_yeu_cau_loai'  => 'NhanVien',
+                'nguoi_yeu_cau_id'    => $nhanVienId,
+                'loai_yeu_cau'        => 'HuyCaLe',
+                'ly_do'               => $request->input('ly_do', 'Nhân viên hủy ca làm việc'),
+                'trang_thai_duyet'    => 'DaDuyet',
+                'so_tien_hoan_tra'    => 0,
+                'so_tien_phat'        => 0,
+                'thoi_gian'           => now()
             ]);
 
-            $donHang = DonHang::find($ca->don_hang_id);
-            if ($donHang) {
-                ThongBao::create([
-                    'loai_nguoi_nhan' => 'KhachHang',
-                    'nguoi_nhan_id' => $donHang->khach_hang_id,
-                    'tieu_de' => '🚨 Nhân viên đã hủy ca làm việc',
-                    'noi_dung' => 'Nhân viên ' . Auth::user()->nhanVien->ho_ten . ' đã hủy nhận ca làm việc ngày ' . \Carbon\Carbon::parse($ca->ngay_lam)->format('d/m/Y') . ' lúc ' . \Carbon\Carbon::parse($ca->gio_bat_dau)->format('H:i') . '. Lịch của bạn đã được đẩy lại lên hệ thống để nhân viên khác nhận.',
-                    'loai_doi_tuong' => 'DonHang',
-                    'doi_tuong_id' => $donHang->id,
-                    'ngay_tao' => now(),
-                    'is_da_doc' => false
-                ]);
-            }
+            // Bước 2: Thử tự động tìm NV thay thế trong bán kính 3km
+            $replacementNv = $this->autoAssignCancelledCa($ca, $nhanVienId);
 
-            return response()->json(['success' => true, 'message' => 'Đã hủy nhận ca. Lịch được đưa trở lại chợ việc.']);
+            $donHang = $ca->donHang ?? DonHang::find($ca->don_hang_id);
+            $cancellerName = Auth::user()->nhanVien->ho_ten;
+            $ngayHienThi = \Carbon\Carbon::parse($ca->ngay_lam)->format('d/m/Y');
+            $gioHienThi  = \Carbon\Carbon::parse($ca->gio_bat_dau)->format('H:i');
+
+            if ($replacementNv) {
+                // ✅ Tìm được NV thay thế → gán ca trực tiếp
+                $ca->nhan_vien_id  = $replacementNv->id;
+                $ca->trang_thai_ca = 'DaNhan';
+                $ca->save();
+
+                \Log::info("[Auto-Reassign] Ca #{$ca->id} đã được gán cho NV #{$replacementNv->id} sau khi NV #{$nhanVienId} hủy.");
+
+                if ($donHang) {
+                    ThongBao::create([
+                        'loai_nguoi_nhan' => 'KhachHang',
+                        'nguoi_nhan_id'   => $donHang->khach_hang_id,
+                        'tieu_de'         => '✅ Nhân viên thay thế đã được gán tự động',
+                        'noi_dung'        => 'Nhân viên ' . $cancellerName . ' đã hủy ca ngày ' . $ngayHienThi . ' lúc ' . $gioHienThi . '. Hệ thống đã tự động tìm và gán nhân viên ' . ($replacementNv->taiKhoan->ho_ten ?? 'mới') . ' để thay thế. Bạn không cần lo lắng!',
+                        'loai_doi_tuong'  => 'DonHang',
+                        'doi_tuong_id'    => $donHang->id,
+                        'ngay_tao'        => now(),
+                        'is_da_doc'       => false
+                    ]);
+                }
+
+                return response()->json(['success' => true, 'message' => 'Đã hủy nhận ca. Hệ thống đã tự động tìm và gán nhân viên thay thế cho khách hàng.']);
+            } else {
+                // ❌ Không tìm được NV phù hợp → đẩy ra chợ việc như cũ
+                $ca->nhan_vien_id  = null;
+                $ca->trang_thai_ca = 'ChoNhanVienTuDoNhan';
+                $ca->save();
+
+                if ($donHang) {
+                    ThongBao::create([
+                        'loai_nguoi_nhan' => 'KhachHang',
+                        'nguoi_nhan_id'   => $donHang->khach_hang_id,
+                        'tieu_de'         => '🚨 Nhân viên đã hủy ca làm việc',
+                        'noi_dung'        => 'Nhân viên ' . $cancellerName . ' đã hủy nhận ca làm việc ngày ' . $ngayHienThi . ' lúc ' . $gioHienThi . '. Hệ thống đang tìm nhân viên thay thế — lịch của bạn đã được đẩy lên chợ việc để các nhân viên khác nhận.',
+                        'loai_doi_tuong'  => 'DonHang',
+                        'doi_tuong_id'    => $donHang->id,
+                        'ngay_tao'        => now(),
+                        'is_da_doc'       => false
+                    ]);
+                }
+
+                return response()->json(['success' => true, 'message' => 'Đã hủy nhận ca. Lịch được đưa trở lại chợ việc.']);
+            }
         }
 
         return response()->json(['success' => false, 'message' => 'Chỉ có thể hủy ca khi chưa bắt đầu làm việc'], 400);
@@ -696,5 +731,197 @@ class CaLamViecController extends Controller
             }
         }
         return null;
+    }
+
+    /**
+     * Thuật toán Auto-Reassignment: Tìm NV thay thế khi NV hủy ca lẻ.
+     * Trả về đối tượng NhanVien phù hợp nhất (gần nhất trong 3km), hoặc null nếu không tìm được.
+     *
+     * Điều kiện NV thay thế hợp lệ:
+     *  1. Có dịch vụ được duyệt khớp với ca
+     *  2. Không phải NV vừa hủy
+     *  3. Chưa từng hủy ca này (blacklist YeuCauXuLy)
+     *  4. Có LichNghi DinhKy bao phủ ngày đó & không bị nghỉ định kỳ/đột xuất
+     *  5. Không có CaLamViec trùng giờ (buffer ±1 tiếng)
+     *  6. Tọa độ trong bán kính 3km từ ca liền kề cùng ngày (hoặc nhà nếu trống lịch)
+     */
+    private function autoAssignCancelledCa(CaLamViec $ca, int $cancelledByNhanVienId): ?\App\Models\NhanVien
+    {
+        try {
+            $ngayLam        = $ca->ngay_lam;
+            $gioBatDau      = $ca->gio_bat_dau;
+            $thoiGianPhut   = $ca->thoi_gian_lam_phut;
+            $dichVuId       = $ca->dich_vu_id;
+
+            $donHang = $ca->donHang ?? DonHang::find($ca->don_hang_id);
+            if (!$donHang) return null;
+
+            $latKhach = (float) $donHang->vi_do;
+            $lngKhach = (float) $donHang->kinh_do;
+            if (!$latKhach || !$lngKhach) return null; // Không có tọa độ → bỏ qua
+
+            $startDt      = \Carbon\Carbon::parse($ngayLam . ' ' . $gioBatDau);
+            $endDt        = (clone $startDt)->addMinutes($thoiGianPhut);
+            $bufferStart  = (clone $startDt)->subMinutes(60); // Trừ 1 tiếng đệm
+            $bufferEnd    = (clone $endDt)->addMinutes(60);   // Cộng 1 tiếng đệm
+            $dow          = (int) date('w', strtotime($ngayLam)); // 0=CN, 6=T7
+
+            // ── Bước 1: Lấy danh sách NV có kỹ năng phù hợp ──────────────────
+            $candidateIds = \Illuminate\Support\Facades\DB::table('NhanVien_DichVu')
+                ->where('dich_vu_id', $dichVuId)
+                ->where('trang_thai_duyet', 'DaDuyet')
+                ->where('nhan_vien_id', '!=', $cancelledByNhanVienId)
+                ->pluck('nhan_vien_id')
+                ->toArray();
+
+            if (empty($candidateIds)) return null;
+
+            // ── Bước 2: Lọc blacklist (NV đã từng hủy ca này) ─────────────────
+            $blacklistedIds = \App\Models\YeuCauXuLy::where('nguoi_yeu_cau_loai', 'NhanVien')
+                ->where('ca_lam_viec_id', $ca->id)
+                ->pluck('nguoi_yeu_cau_id')
+                ->toArray();
+            $candidateIds = array_diff($candidateIds, $blacklistedIds);
+            if (empty($candidateIds)) return null;
+
+            // ── Bước 3: Lọc theo LichNghi, DotXuat, trùng giờ ────────────────
+            $validIds = [];
+            foreach ($candidateIds as $nvId) {
+                // 3a. Phải có LichNghi DinhKy bao phủ ngay_lam
+                $lichNghiList = \App\Models\LichNghi::where('nhan_vien_id', $nvId)
+                    ->where('loai_nghi', 'DinhKy')
+                    ->get();
+                if ($lichNghiList->isEmpty()) continue;
+
+                $startDate = $lichNghiList->min('ngay_bat_dau_ap_dung');
+                $endDate   = $lichNghiList->max('ngay_ket_thuc_ap_dung');
+                if ($ngayLam < $startDate || $ngayLam > $endDate) continue;
+
+                // 3b. Ngày đó không phải ngày nghỉ định kỳ trong tuần
+                $offDows = $lichNghiList->pluck('thu_trong_tuan')->filter()->toArray();
+                if (in_array($dow, $offDows)) continue;
+
+                // 3c. Không có DotXuat block cho ngày đó
+                $hasBlock = \App\Models\LichNghi::where('nhan_vien_id', $nvId)
+                    ->where('loai_nghi', 'DotXuat')
+                    ->where('ngay_nghi', $ngayLam)
+                    ->exists();
+                if ($hasBlock) continue;
+
+                // 3d. Khung giờ ca không chồng lên giờ nghỉ định kỳ
+                $nghiEntry = $lichNghiList->firstWhere('thu_trong_tuan', null);
+                if ($nghiEntry && $nghiEntry->gio_bat_dau_nghi && $nghiEntry->gio_ket_thuc_nghi) {
+                    $rS = \Carbon\Carbon::parse($nghiEntry->gio_bat_dau_nghi);
+                    $rE = \Carbon\Carbon::parse($nghiEntry->gio_ket_thuc_nghi);
+                    if ($rS <= $rE) {
+                        $intersects = ($startDt->format('H:i:s') < $rE->format('H:i:s') && $endDt->format('H:i:s') > $rS->format('H:i:s'));
+                    } else {
+                        $intersects = ($startDt->format('H:i:s') > $rS->format('H:i:s') || $endDt->format('H:i:s') < $rE->format('H:i:s'));
+                    }
+                    if ($intersects) continue;
+                }
+
+                // 3e. Không có CaLamViec nào trùng giờ (buffer ±1 tiếng)
+                $existingCas = CaLamViec::where('nhan_vien_id', $nvId)
+                    ->whereIn('trang_thai_ca', ['DaNhan', 'DangThucHien'])
+                    ->where('ngay_lam', $ngayLam)
+                    ->get(['gio_bat_dau', 'thoi_gian_lam_phut']);
+
+                $hasOverlap = $existingCas->contains(function ($ex) use ($bufferStart, $bufferEnd, $ngayLam) {
+                    $exStart = \Carbon\Carbon::parse($ngayLam . ' ' . $ex->gio_bat_dau);
+                    $exEnd   = (clone $exStart)->addMinutes($ex->thoi_gian_lam_phut);
+                    return $exStart < $bufferEnd && $exEnd > $bufferStart;
+                });
+                if ($hasOverlap) continue;
+
+                $validIds[] = $nvId;
+            }
+
+            if (empty($validIds)) return null;
+
+            // ── Bước 4: Spatial check – chọn NV gần nhất trong 3km ───────────
+            $bestNv   = null;
+            $bestDist = PHP_INT_MAX;
+
+            foreach ($validIds as $nvId) {
+                $nv = \App\Models\NhanVien::with('taiKhoan')->find($nvId);
+                if (!$nv) continue;
+
+                // Tìm ca liền kề cùng ngày để dùng làm điểm tham chiếu
+                $sameDayShifts = CaLamViec::where('nhan_vien_id', $nvId)
+                    ->whereIn('trang_thai_ca', ['DaNhan', 'DangThucHien'])
+                    ->where('ngay_lam', $ngayLam)
+                    ->orderBy('gio_bat_dau')
+                    ->get();
+
+                $refLat = null;
+                $refLng = null;
+
+                if ($sameDayShifts->isEmpty()) {
+                    // Không có ca nào trong ngày → dùng tọa độ nhà
+                    $refLat = (float) $nv->vi_do;
+                    $refLng = (float) $nv->kinh_do;
+                } else {
+                    // Có ca khác → tìm ca liền kề gần nhất theo thời gian
+                    $newStartMin = $startDt->hour * 60 + $startDt->minute;
+                    $newEndMin   = $endDt->hour * 60 + $endDt->minute;
+                    $minGap      = PHP_INT_MAX;
+                    $closestShift = null;
+
+                    foreach ($sameDayShifts as $s) {
+                        $sStart  = \Carbon\Carbon::parse($ngayLam . ' ' . $s->gio_bat_dau);
+                        $sEnd    = (clone $sStart)->addMinutes($s->thoi_gian_lam_phut);
+                        $sStartM = $sStart->hour * 60 + $sStart->minute;
+                        $sEndM   = $sEnd->hour * 60 + $sEnd->minute;
+                        $gap     = min(abs($newStartMin - $sEndM), abs($sStartM - $newEndMin));
+                        if ($gap < $minGap) {
+                            $minGap       = $gap;
+                            $closestShift = $s;
+                        }
+                    }
+
+                    if ($closestShift) {
+                        $adjDonHang = DonHang::find($closestShift->don_hang_id);
+                        if ($adjDonHang) {
+                            $refLat = (float) $adjDonHang->vi_do;
+                            $refLng = (float) $adjDonHang->kinh_do;
+                        }
+                    }
+
+                    // Fallback sang nhà nếu ca liền kề không có tọa độ
+                    if (!$refLat || !$refLng) {
+                        $refLat = (float) $nv->vi_do;
+                        $refLng = (float) $nv->kinh_do;
+                    }
+                }
+
+                if (!$refLat || !$refLng) continue; // Vẫn không có tọa độ → bỏ qua
+
+                $dist = $this->haversineDistance($refLat, $refLng, $latKhach, $lngKhach);
+
+                if ($dist <= 3000 && $dist < $bestDist) {
+                    $bestDist = $dist;
+                    $bestNv   = $nv;
+                }
+            }
+
+            return $bestNv;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[Auto-Reassign] Lỗi tìm NV thay thế: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Tính khoảng cách Haversine (mặt cầu) giữa 2 tọa độ GPS, trả về đơn vị mét.
+     */
+    private function haversineDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $R    = 6371000; // Bán kính Trái Đất (mét)
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a    = sin($dLat / 2) ** 2
+              + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        return $R * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 }

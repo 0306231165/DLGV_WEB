@@ -1028,7 +1028,7 @@ const BookingDetailPage = () => {
           date: formattedDate,
           time: prev.schedule.time,
           status: 'awaiting_confirm',
-          staff: prev.staff ? prev.staff.name : '?ang ch? ph?n c?ng',
+          staff: prev.staff ? prev.staff.name : 'Đang chờ phân công',
           rescheduleDate: undefined,
           rescheduleStaffOption: staffOption,
           isAddedExtra: true,

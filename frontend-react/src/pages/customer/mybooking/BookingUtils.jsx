@@ -515,13 +515,18 @@ export const mapApiToBookingDetailFormat = (dh) => {
       tldGiamGoi: tldGiamVal
     },
   };
+
+  // Lấy ra object NhanVien trước để lấy sao và số ca
+  const nhanVienObj = firstCa?.nhan_vien || dh.nhan_vien_yeu_cau;
+  
+  // Lấy ra object TaiKhoan từ NhanVien để lấy Tên và Avatar
   const staffObj = firstCa?.nhan_vien?.tai_khoan || dh.nhan_vien_yeu_cau?.tai_khoan;
   
   if (staffObj) {
     base.staff = {
       name: staffObj.ho_ten,
-      rating: 5.0,
-      jobs: 0,
+      rating: Number(nhanVienObj.danh_gia_sao_trung_binh || 5.0).toFixed(1), // Lấy từ DB
+      jobs: nhanVienObj.tong_so_ca_hoan_thanh || 0, // Lấy từ DB
       avatar: staffObj.anh_dai_dien || 'https://i.pravatar.cc/150',
     };
   } else {
