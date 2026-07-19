@@ -1140,6 +1140,8 @@ const ScheduleManager = () => {
   const [hasRegisteredContract, setHasRegisteredContract] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [isEditContractMode, setIsEditContractMode] = useState(false);
+  // Snapshot lưu lại contractForm trước khi edit — để restore khi bấm "Đóng lại" mà chưa lưu
+  const [contractFormSnapshot, setContractFormSnapshot] = useState(null);
 
   const generateTimelineDays = () => {
     const days = [];
@@ -2145,6 +2147,7 @@ const ScheduleManager = () => {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => {
+                  setContractFormSnapshot({ ...contractForm }); // Chụp snapshot trước khi cho sửa
                   setIsEditContractMode(true);
                   setIsContractModalOpen(true);
                 }}
@@ -2901,9 +2904,8 @@ const ScheduleManager = () => {
                     <button
                       key={option.id}
                       type="button"
-                      disabled={isEditContractMode}
                       onClick={() => setContractForm(prev => ({ ...prev, restSession: option.id }))}
-                      className={`flex flex-col items-start px-4 py-3 rounded-xl border transition-all text-left ${contractForm.restSession === option.id ? "bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500" : "bg-white border-slate-200 hover:border-emerald-300"} ${isEditContractMode ? "opacity-70 cursor-not-allowed" : "cursor-pointer"}`}
+                      className={`flex flex-col items-start px-4 py-3 rounded-xl border transition-all text-left cursor-pointer ${contractForm.restSession === option.id ? "bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500" : "bg-white border-slate-200 hover:border-emerald-300"}`}
                     >
                       <span className={`font-bold text-sm ${contractForm.restSession === option.id ? "text-emerald-700" : "text-slate-700"}`}>
                         {option.label}
@@ -2918,9 +2920,13 @@ const ScheduleManager = () => {
               <button
                 type="button"
                 onClick={() => {
+                  // Restore lại snapshot nếu có (trường hợp đóng không lưu ở edit mode)
+                  if (isEditContractMode && contractFormSnapshot) {
+                    setContractForm(contractFormSnapshot);
+                  }
                   setIsContractModalOpen(false);
                   setIsEditContractMode(false);
-                  fetchCamKet(); // Reset local state
+                  setContractFormSnapshot(null);
                 }}
                 className="bg-slate-200 text-slate-600 font-bold py-2 px-4 rounded-xl hover:bg-slate-300 text-sm"
               >
