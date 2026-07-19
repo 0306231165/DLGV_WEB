@@ -119,7 +119,7 @@ class KhieuNaiController extends Controller
 
     public function indexReviews()
     {
-        $reviews = \App\Models\CaLamViec::with(['donHang.khachHang.taiKhoan', 'dichVu'])
+        $reviews = \App\Models\CaLamViec::with(['donHang.khachHang.taiKhoan', 'dichVu', 'nhanVien.taiKhoan'])
             ->whereNotNull('sao_danh_gia')
             ->orderBy('ngay_danh_gia', 'desc')
             ->get();
@@ -132,6 +132,13 @@ class KhieuNaiController extends Controller
 
             $serviceName = $item->dichVu ? $item->dichVu->ten_dich_vu : 'Chưa xác định';
             
+            $employeeName = 'Chưa phân công';
+            $employeeId = null;
+            if ($item->nhanVien && $item->nhanVien->taiKhoan) {
+                $employeeName = $item->nhanVien->taiKhoan->ho_ten ?? 'Không tên';
+                $employeeId = $item->nhanVien->id;
+            }
+
             $desc = $item->noi_dung_danh_gia ?? '';
             $isVisible = true;
             if (strpos($desc, '[HIDDEN]') === 0) {
@@ -143,6 +150,8 @@ class KhieuNaiController extends Controller
                 'id' => $item->id,
                 'customer' => $customerName,
                 'service' => $serviceName,
+                'employee' => $employeeName,
+                'employeeId' => $employeeId,
                 'date' => $item->ngay_danh_gia ? \Carbon\Carbon::parse($item->ngay_danh_gia)->format('d/m/Y') : '',
                 'type' => 'Đánh giá dịch vụ',
                 'desc' => $desc,

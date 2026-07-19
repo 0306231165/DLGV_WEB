@@ -116,7 +116,9 @@ const ServiceStats = () => {
                   <td className="py-3 px-4 text-sm text-slate-500 text-center font-medium">#{dv.id}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <img src={dv.hinh_anh} alt="hinh-anh" className="w-12 h-12 rounded-lg object-cover border border-slate-200 shadow-sm" />
+                      <div className="w-12 h-12 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm">
+                        <span className="material-symbols-outlined text-2xl">{dv.icon || 'cleaning_services'}</span>
+                      </div>
                       <span className="font-semibold text-sm text-slate-800">{dv.ten_dich_vu}</span>
                     </div>
                   </td>

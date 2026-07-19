@@ -12,7 +12,7 @@ class AdminServiceStatsController extends Controller
     public function index(Request $request)
     {
         try {
-            $dichVus = DichVu::with('loaiGoi')->get();
+            $dichVus = DichVu::with(['loaiGoi', 'nhomDichVu'])->get();
             $now = Carbon::now();
             
             $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : $now->copy()->startOfMonth();
@@ -37,7 +37,7 @@ class AdminServiceStatsController extends Controller
                 $stats[] = [
                     'id' => $dv->id,
                     'ten_dich_vu' => $dv->ten_dich_vu ?? 'N/A',
-                    'hinh_anh' => $dv->hinh_anh ?? 'https://via.placeholder.com/150',
+                    'icon' => $dv->nhomDichVu->icon ?? 'cleaning_services',
                     'so_goi_da_dat' => $soGoiDaDat,
                     'tong_doanh_thu' => $tongDoanhThu,
                     'trang_thai' => $dv->trang_thai

@@ -24,6 +24,7 @@ const AdminReviews = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRating, setFilterRating] = useState('Tất cả sao');
   const [filterVisibility, setFilterVisibility] = useState('Tất cả trạng thái');
+  const [filterEmployee, setFilterEmployee] = useState('Tất cả nhân viên');
 
   const [selectedReview, setSelectedReview] = useState(null);
   const [replyText, setReplyText] = useState('');
@@ -81,8 +82,22 @@ const AdminReviews = () => {
     if (filterVisibility === 'Đang hiển thị') matchVisibility = itemVisible === true;
     if (filterVisibility === 'Đã ẩn') matchVisibility = itemVisible === false;
 
-    return matchSearch && matchRating && matchVisibility;
+    const matchEmployee = filterEmployee === 'Tất cả nhân viên' || (r.employee || 'Chưa phân công') === filterEmployee;
+
+    return matchSearch && matchRating && matchVisibility && matchEmployee;
   });
+
+  const employeeMap = new Map();
+  reviews.forEach(r => {
+    const name = r.employee || 'Chưa phân công';
+    if (!employeeMap.has(name)) {
+      employeeMap.set(name, r.employeeId || 0);
+    }
+  });
+
+  const uniqueEmployees = [...employeeMap.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .map(e => e[0]);
 
   const totalReviewsCount = reviews.length;
   const averageRating = totalReviewsCount > 0 
@@ -164,6 +179,12 @@ const AdminReviews = () => {
             <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Tìm theo tên khách, nội dung..." className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 transition-colors" />
           </div>
           <div className="flex gap-3 flex-wrap">
+            <select value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value)} className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-500 cursor-pointer bg-slate-50 max-w-[200px] truncate">
+              <option value="Tất cả nhân viên">Tất cả nhân viên</option>
+              {uniqueEmployees.map((emp, i) => (
+                <option key={i} value={emp}>{emp}</option>
+              ))}
+            </select>
             <select value={filterRating} onChange={(e) => setFilterRating(e.target.value)} className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-500 cursor-pointer bg-slate-50">
               <option value="Tất cả sao">Tất cả số sao</option>
               <option value="5">⭐⭐⭐⭐⭐ (5 Sao)</option>
@@ -187,6 +208,7 @@ const AdminReviews = () => {
                 <div className="w-full md:w-52 shrink-0 space-y-1">
                   <h4 className="font-bold text-slate-800 text-sm">{rev.customer}</h4>
                   <p className="text-xs text-slate-400 font-medium">Dịch vụ: <strong className="text-slate-600">{rev.service}</strong></p>
+                  <p className="text-xs text-slate-400 font-medium">Nhân viên: <strong className="text-slate-600">{rev.employee || 'Chưa phân công'}</strong></p>
                   <p className="text-[10px] text-slate-400 font-bold">Vấn đề: {rev.type}</p>
                   <div className="flex text-amber-400 pt-1">
                     {[...Array(rev.rating || 1)].map((_, i) => <span key={i} className="material-symbols-outlined text-[16px] fill-current">star</span>)}
