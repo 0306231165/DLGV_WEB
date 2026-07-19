@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
             UserScheduleSeeder::class,
             OperationTransactionSeeder::class,
             CustomerSupportSeeder::class,
+            StatisticsDataSeeder::class, // 100+ DonHang + CaLamViec cho thống kê Admin
+
         ]);
     }
 }
