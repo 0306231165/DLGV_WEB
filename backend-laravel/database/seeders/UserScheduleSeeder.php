@@ -88,7 +88,9 @@ class UserScheduleSeeder extends Seeder
         for ($i = 1; $i <= 5; $i++) {
             DB::table('DiaChiDaLuu')->insert([
                 ['khach_hang_id' => $i, 'ten_goi_nho' => 'Nhà riêng', 'dia_chi_chi_tiet' => '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM', 'vi_do' => 10.773411, 'kinh_do' => 106.614124],
-                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Văn phòng(~ 9km)', 'dia_chi_chi_tiet' => '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM', 'vi_do' => 10.8500000, 'kinh_do' => 106.6122510],
+                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Văn phòng (~9km)', 'dia_chi_chi_tiet' => '456 Lê Lợi, Phường Phạm Ngũ Lão, Quận 1, TP.HCM', 'vi_do' => 10.8500000, 'kinh_do' => 106.6122510],
+                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Biệt thự Vũng Tàu (~80km)', 'dia_chi_chi_tiet' => 'Số 1 Thùy Vân, Phường Thắng Tam, TP Vũng Tàu', 'vi_do' => 10.345990, 'kinh_do' => 107.084260],
+                ['khach_hang_id' => $i, 'ten_goi_nho' => 'Nhà xưởng Bình Dương (~50km)', 'dia_chi_chi_tiet' => 'KCN Sóng Thần, Dĩ An, Bình Dương', 'vi_do' => 10.920130, 'kinh_do' => 106.755120],
             ]);
             
             DB::table('LienHeDaLuu')->insert([
